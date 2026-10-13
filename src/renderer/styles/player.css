@@ -1,0 +1,863 @@
+/* ==========================================================================
+   VidPlayer: YouTube-Style Dark Theme Stylesheet
+   ========================================================================== */
+
+:root {
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a1a1a;
+  --bg-surface: #212121;
+  --bg-surface-hover: #2f2f2f;
+  --bg-overlay: rgba(0, 0, 0, 0.85);
+
+  --accent-red: #ff0000;
+  --accent-blue: #3ea6ff;
+  --accent-white: #ffffff;
+
+  --text-primary: #f1f1f1;
+  --text-secondary: #aaaaaa;
+  --text-muted: #717171;
+
+  --font-family: "YouTube Sans", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --titlebar-height: 40px;
+  --controls-height: 56px;
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Accessible Keyboard Focus Ring */
+button:focus-visible,
+input:focus-visible,
+div[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Titlebar
+   ========================================================================== */
+.titlebar {
+  height: var(--titlebar-height);
+  background-color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 100;
+  position: relative;
+}
+
+.titlebar-drag-region {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+  padding-left: 12px;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.brand-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: var(--text-primary);
+}
+
+.video-meta-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-title-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.codec-badge {
+  background-color: rgba(62, 166, 255, 0.15);
+  color: var(--accent-blue);
+  border: 1px solid rgba(62, 166, 255, 0.3);
+}
+
+.titlebar-actions {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.btn-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.btn-action:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0 4px;
+  transition: background-color var(--transition-fast);
+}
+
+.btn-icon:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.window-controls {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.win-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  width: 44px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.win-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.win-btn-close:hover {
+  background-color: #e81123;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Player Stage & Canvas
+   ========================================================================== */
+.player-stage {
+  flex: 1;
+  position: relative;
+  background-color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.video-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-wrapper.cursor-hidden {
+  cursor: none;
+}
+
+video#mainVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: #000000;
+}
+
+/* ==========================================================================
+   Speed Boost Pill (Top Center Overlay)
+   ========================================================================== */
+.speed-boost-pill {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-overlay);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  z-index: 50;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  animation: popIn 0.15s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.boost-icon {
+  font-size: 16px;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+/* ==========================================================================
+   Double Tap / Seek Ripples (Left & Right)
+   ========================================================================== */
+.seek-ripple {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 35%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.seek-ripple-left {
+  left: 0;
+  background: radial-gradient(circle at left center, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+}
+
+.seek-ripple-right {
+  right: 0;
+  background: radial-gradient(circle at right center, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+}
+
+.seek-ripple-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+  animation: pulseScale 0.4s ease-out;
+}
+
+.seek-ripple-text {
+  font-size: 14px;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes pulseScale {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+
+/* ==========================================================================
+   Center Play/Pause Ripple Feedback
+   ========================================================================== */
+.center-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 45;
+  pointer-events: none;
+  animation: centerRipple 0.5s ease-out forwards;
+}
+
+.center-feedback-icon svg {
+  fill: var(--text-primary);
+  width: 44px;
+  height: 44px;
+}
+
+@keyframes centerRipple {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  50% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+}
+
+/* ==========================================================================
+   HUD Indicators (Volume & Toast)
+   ========================================================================== */
+.volume-hud {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  background: var(--bg-overlay);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 50;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.volume-hud-bar {
+  width: 80px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.volume-hud-fill {
+  height: 100%;
+  background: var(--accent-red);
+  width: 100%;
+  transition: width 0.1s linear;
+}
+
+.volume-hud-text {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.toast-message {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-overlay);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  z-index: 55;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  animation: popIn 0.2s ease;
+}
+
+/* ==========================================================================
+   Subtitle Overlay
+   ========================================================================== */
+.subtitle-display {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  max-width: 85%;
+  z-index: 35;
+  pointer-events: none;
+  font-size: 24px;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 0 4px #000, 0 0 8px #000, 0 2px 4px #000;
+  line-height: 1.4;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* ==========================================================================
+   YouTube Bottom Controls Bar
+   ========================================================================== */
+.controls-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--controls-height);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 16px 8px 16px;
+  z-index: 60;
+  opacity: 1;
+  transition: opacity var(--transition-normal);
+}
+
+.controls-bar.faded {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Progress Bar / Scrubber (YouTube Style)
+   ========================================================================== */
+.progress-bar-container {
+  width: 100%;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 3px;
+  background-color: rgba(255, 255, 255, 0.2);
+  position: relative;
+  transition: height var(--transition-fast);
+}
+
+.progress-bar-container:hover .progress-bar-track,
+.progress-bar-container.dragging .progress-bar-track {
+  height: 5px;
+}
+
+.progress-bar-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.progress-bar-buffer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.4);
+  width: 0%;
+  pointer-events: none;
+}
+
+.progress-bar-hover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.5);
+  width: 0%;
+  pointer-events: none;
+}
+
+.progress-bar-played {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: var(--accent-red);
+  width: 0%;
+  pointer-events: none;
+}
+
+.scrub-knob {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 13px;
+  height: 13px;
+  background-color: var(--accent-red);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: transform var(--transition-fast);
+}
+
+.progress-bar-container:hover .scrub-knob,
+.progress-bar-container.dragging .scrub-knob {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.scrubber-tooltip {
+  position: absolute;
+  bottom: 22px;
+  transform: translateX(-50%);
+  background: rgba(28, 28, 28, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #ffffff;
+  pointer-events: none;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* ==========================================================================
+   Controls Row
+   ========================================================================== */
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+}
+
+.controls-left,
+.controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ctrl-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.ctrl-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.ctrl-btn:active {
+  transform: scale(0.92);
+}
+
+.speed-badge-btn {
+  width: auto;
+  min-width: 36px;
+  padding: 0 8px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.subtitles-active-bar {
+  position: absolute;
+  bottom: 4px;
+  left: 8px;
+  right: 8px;
+  height: 3px;
+  background-color: var(--accent-red);
+  border-radius: 1px;
+}
+
+/* ==========================================================================
+   Volume Control & Expanding Slider
+   ========================================================================== */
+.volume-container {
+  display: flex;
+  align-items: center;
+}
+
+.volume-slider-wrapper {
+  width: 0;
+  overflow: hidden;
+  transition: width var(--transition-normal);
+  display: flex;
+  align-items: center;
+}
+
+.volume-container:hover .volume-slider-wrapper,
+.volume-slider-wrapper:focus-within {
+  width: 64px;
+  margin-right: 6px;
+}
+
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 64px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Time Display
+   ========================================================================== */
+.time-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-separator {
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+.empty-state {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  z-index: 70;
+  padding: 24px;
+}
+
+.empty-state.drag-over {
+  border: 3px dashed var(--accent-red);
+  background: rgba(255, 0, 0, 0.05);
+}
+
+.empty-state-card {
+  max-width: 480px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.empty-state-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.empty-state-desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--accent-red);
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-primary:hover {
+  background-color: #cc0000;
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+.supported-formats-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.format-tag {
+  font-size: 11px;
+  font-weight: 600;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   Loading Spinner (YouTube Style)
+   ========================================================================== */
+.loading-spinner-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  pointer-events: none;
+}
+
+.youtube-spinner {
+  width: 54px;
+  height: 54px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent-red);
+  border-radius: 50%;
+  animation: spinnerRotate 0.8s linear infinite;
+}
+
+@keyframes spinnerRotate {
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Error State
+   ========================================================================== */
+.error-state {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 15, 15, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 75;
+  padding: 24px;
+}
+
+.error-card {
+  max-width: 440px;
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.error-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.error-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.error-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* ==========================================================================
+   Theater Mode
+   ========================================================================== */
+body.theater-mode .player-stage {
+  max-height: calc(100vh - var(--titlebar-height));
+  width: 100vw;
+}
+
+/* Utilities */
+.hidden {
+  display: none !important;
+}

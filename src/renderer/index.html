@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VidPlayer - YouTube Style Video Player</title>
+  <link rel="stylesheet" href="styles/player.css">
+  <link rel="stylesheet" href="styles/modals.css">
+</head>
+<body class="theme-dark">
+  <div id="appContainer" class="app-container">
+
+    <!-- Custom Titlebar -->
+    <header class="titlebar" id="titleBar">
+      <div class="titlebar-drag-region">
+        <div class="brand">
+          <svg class="youtube-logo-icon" viewBox="0 0 28 20" width="24" height="18" fill="none">
+            <path d="M27.4 3.1c-.3-1.2-1.3-2.1-2.5-2.4C22.7 0 14 0 14 0S5.3 0 3.1.7C1.9 1 1 1.9.6 3.1 0 5.3 0 10 0 10s0 4.7.6 6.9c.3 1.2 1.3 2.1 2.5 2.4 2.2.7 10.9.7 10.9.7s8.7 0 10.9-.7c1.2-.3 2.1-1.2 2.5-2.4.6-2.2.6-6.9.6-6.9s0-4.7-.6-6.9z" fill="#FF0000"/>
+            <path d="M11.2 14.3L18.4 10l-7.2-4.3v8.6z" fill="#FFFFFF"/>
+          </svg>
+          <span class="brand-title">VidPlayer</span>
+        </div>
+        <div class="video-meta-info" id="videoMetaInfo">
+          <span id="videoTitleDisplay" class="video-title-text">Belum ada video</span>
+          <span id="codecBadge" class="badge codec-badge hidden">Direct</span>
+        </div>
+      </div>
+      <div class="titlebar-actions">
+        <button id="btnOpenFileTop" class="btn-action" title="Buka File Video (Ctrl+O)" aria-label="Buka File Video">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/>
+          </svg>
+          <span>Buka</span>
+        </button>
+        <button id="btnOpenSubTop" class="btn-action" title="Muat Subtitle (.srt, .vtt, .ass)" aria-label="Muat Subtitle">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M19 4H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/>
+          </svg>
+          <span>Subtitle</span>
+        </button>
+        <button id="btnShortcutsHelp" class="btn-icon" title="Daftar Shortcut YouTube (?)" aria-label="Shortcut Bantuan">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/>
+          </svg>
+        </button>
+        <div class="window-controls">
+          <button id="btnWinMinimize" class="win-btn" title="Kecilkan" aria-label="Kecilkan Jendela">
+            <svg viewBox="0 0 12 12" width="10" height="10"><path d="M1 6h10v1H1z" fill="currentColor"/></svg>
+          </button>
+          <button id="btnWinMaximize" class="win-btn" title="Perbesar" aria-label="Perbesar Jendela">
+            <svg id="iconMaximize" viewBox="0 0 12 12" width="10" height="10"><path d="M2 2h8v8H2V2zm1 1v6h6V3H3z" fill="currentColor"/></svg>
+          </button>
+          <button id="btnWinClose" class="win-btn win-btn-close" title="Tutup" aria-label="Tutup Jendela">
+            <svg viewBox="0 0 12 12" width="10" height="10"><path d="M2.2 1.5L6 5.3l3.8-3.8.7.7L6.7 6l3.8 3.8-.7.7L6 6.7 2.2 10.5l-.7-.7L5.3 6 1.5 2.2l.7-.7z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Player Stage -->
+    <main class="player-stage" id="playerStage">
+      
+      <!-- Video Element -->
+      <div class="video-wrapper" id="videoWrapper">
+        <video id="mainVideo" playsinline preload="auto" crossorigin="anonymous"></video>
+        
+        <!-- Subtitle overlay -->
+        <div id="subtitleDisplay" class="subtitle-display hidden"></div>
+
+        <!-- 2X Speed Hold Pill Indicator -->
+        <div id="speedBoostPill" class="speed-boost-pill hidden" aria-live="polite">
+          <span class="boost-icon">⏩</span>
+          <span class="boost-text">2X Speed</span>
+        </div>
+
+        <!-- Double Click Seek Overlays -->
+        <div id="seekRippleLeft" class="seek-ripple seek-ripple-left hidden">
+          <div class="ripple-circle"></div>
+          <div class="seek-ripple-content">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
+              <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/>
+            </svg>
+            <span class="seek-ripple-text">-10 detik</span>
+          </div>
+        </div>
+
+        <div id="seekRippleRight" class="seek-ripple seek-ripple-right hidden">
+          <div class="ripple-circle"></div>
+          <div class="seek-ripple-content">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
+              <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/>
+            </svg>
+            <span class="seek-ripple-text">+10 detik</span>
+          </div>
+        </div>
+
+        <!-- Big Center Play/Pause Ripple -->
+        <div id="centerFeedback" class="center-feedback hidden">
+          <div class="center-feedback-icon" id="centerFeedbackIcon"></div>
+        </div>
+
+        <!-- HUD Volume Indicator -->
+        <div id="volumeHud" class="volume-hud hidden">
+          <div class="volume-hud-icon" id="volumeHudIcon"></div>
+          <div class="volume-hud-bar">
+            <div id="volumeHudFill" class="volume-hud-fill"></div>
+          </div>
+          <span id="volumeHudText" class="volume-hud-text">100%</span>
+        </div>
+
+        <!-- HUD Toast Message -->
+        <div id="toastMessage" class="toast-message hidden" role="status"></div>
+
+        <!-- Stats for Nerds Panel -->
+        <div id="statsPanel" class="stats-panel hidden">
+          <div class="stats-header">
+            <span>Statistik Pemutaran</span>
+            <button id="btnCloseStats" class="btn-close-stats" aria-label="Tutup Statistik">&times;</button>
+          </div>
+          <div class="stats-body" id="statsBody"></div>
+        </div>
+
+        <!-- Empty State Dropzone -->
+        <section id="emptyState" class="empty-state">
+          <div class="empty-state-card">
+            <div class="empty-state-icon">
+              <svg viewBox="0 0 24 24" width="64" height="64" fill="#FF0000">
+                <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
+              </svg>
+            </div>
+            <h2 class="empty-state-title">Putar Video Apa Saja</h2>
+            <p class="empty-state-desc">Tarik dan lepaskan file video ke sini, atau klik tombol di bawah untuk memilih file dari komputer Anda.</p>
+            <button id="btnEmptyBrowse" class="btn-primary" aria-label="Pilih File Video">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+              </svg>
+              <span>Pilih File Video</span>
+            </button>
+            <div class="supported-formats-list">
+              <span class="format-tag">MP4</span>
+              <span class="format-tag">MKV</span>
+              <span class="format-tag">AVI</span>
+              <span class="format-tag">MOV</span>
+              <span class="format-tag">WEBM</span>
+              <span class="format-tag">FLV</span>
+              <span class="format-tag">WMV</span>
+              <span class="format-tag">TS / M2TS</span>
+              <span class="format-tag">HEVC / H.265</span>
+              <span class="format-tag">AC3 / DTS Audio</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="loading-spinner-container hidden">
+          <div class="youtube-spinner" role="progressbar" aria-label="Memuat video"></div>
+        </div>
+
+        <!-- Error State Alert -->
+        <div id="errorState" class="error-state hidden" role="alert">
+          <div class="error-card">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="#FF4444">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>
+            <h3 class="error-title">Gagal Memutar Media</h3>
+            <p id="errorMessage" class="error-desc">Terjadi kesalahan saat memproses codec video.</p>
+            <div class="error-actions">
+              <button id="btnRetryTranscode" class="btn-primary">Coba Transcode Ulang</button>
+              <button id="btnErrorBrowse" class="btn-secondary">Buka Video Lain</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- YouTube Controls Bar -->
+      <nav id="controlsBar" class="controls-bar" aria-label="Kontrol Video">
+        
+        <!-- Scrubber Progress Bar Container -->
+        <div class="progress-bar-container" id="progressBarContainer" tabindex="0" role="slider" aria-label="Waktu pemutaran" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <!-- Hover Time Tooltip -->
+          <div id="scrubberTooltip" class="scrubber-tooltip hidden">0:00</div>
+          
+          <div class="progress-bar-track">
+            <!-- Background base -->
+            <div class="progress-bar-bg"></div>
+            <!-- Buffer range -->
+            <div id="progressBuffer" class="progress-bar-buffer"></div>
+            <!-- Hover preview -->
+            <div id="progressHover" class="progress-bar-hover"></div>
+            <!-- Played red progress -->
+            <div id="progressPlayed" class="progress-bar-played"></div>
+            <!-- Scrubber Handle / Knob -->
+            <div id="scrubKnob" class="scrub-knob"></div>
+          </div>
+        </div>
+
+        <!-- Controls Row -->
+        <div class="controls-row">
+          
+          <!-- Left Controls -->
+          <div class="controls-left">
+            <!-- Play / Pause / Replay Button -->
+            <button id="btnPlayPause" class="ctrl-btn" title="Putar (k / Spasi)" aria-label="Putar">
+              <svg id="iconPlay" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              <svg id="iconPause" class="hidden" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+              </svg>
+              <svg id="iconReplay" class="hidden" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+              </svg>
+            </button>
+
+            <!-- Rewind 10s Button -->
+            <button id="btnRewind10" class="ctrl-btn" title="Mundur 10 detik (j)" aria-label="Mundur 10 detik">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.2 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+                <text x="12" y="16.5" font-size="7" font-weight="bold" fill="currentColor" text-anchor="middle">10</text>
+              </svg>
+            </button>
+
+            <!-- Forward 10s Button -->
+            <button id="btnForward10" class="ctrl-btn" title="Maju 10 detik (l)" aria-label="Maju 10 detik">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M11.5 8c2.65 0 5.05.99 6.9 2.6L22 7v9h-9l3.62-3.62c-1.39-1.2-3.16-1.88-5.12-1.88-3.54 0-6.55 2.31-7.6 5.5l-2.37-.78C2.92 11.03 6.85 8 11.5 8z"/>
+                <text x="12" y="16.5" font-size="7" font-weight="bold" fill="currentColor" text-anchor="middle">10</text>
+              </svg>
+            </button>
+
+            <!-- Volume Container -->
+            <div class="volume-container" id="volumeContainer">
+              <button id="btnVolume" class="ctrl-btn" title="Senyap (m)" aria-label="Bisu atau Bunyikan">
+                <svg id="iconVolumeHigh" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                  <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                </svg>
+                <svg id="iconVolumeLow" class="hidden" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                  <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                </svg>
+                <svg id="iconVolumeMute" class="hidden" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                  <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                </svg>
+              </button>
+              <div class="volume-slider-wrapper">
+                <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.01" value="1" aria-label="Tingkat Volume">
+              </div>
+            </div>
+
+            <!-- Time Display -->
+            <div class="time-display">
+              <span id="currentTime">0:00</span>
+              <span class="time-separator">/</span>
+              <span id="totalDuration">0:00</span>
+            </div>
+
+          </div>
+
+          <!-- Right Controls -->
+          <div class="controls-right">
+            
+            <!-- Speed Quick Display / Indicator -->
+            <button id="btnSpeedQuick" class="ctrl-btn speed-badge-btn" title="Kecepatan Pemutaran" aria-label="Kecepatan Pemutaran">
+              <span id="speedBadgeText">1x</span>
+            </button>
+
+            <!-- Subtitle (CC) Button -->
+            <button id="btnSubtitles" class="ctrl-btn" title="Subtitle / Teks (c)" aria-label="Nyalakan atau Matikan Subtitle">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/>
+              </svg>
+              <div id="subtitlesActiveBar" class="subtitles-active-bar hidden"></div>
+            </button>
+
+            <!-- Settings Button -->
+            <button id="btnSettings" class="ctrl-btn" title="Setelan" aria-label="Menu Setelan" aria-haspopup="true">
+              <svg id="iconSettingsGear" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+              </svg>
+            </button>
+
+            <!-- Miniplayer (PiP) Button -->
+            <button id="btnMiniplayer" class="ctrl-btn" title="Miniplayer / PiP (i)" aria-label="Buka Gambar dalam Gambar">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/>
+              </svg>
+            </button>
+
+            <!-- Theater Mode Button -->
+            <button id="btnTheater" class="ctrl-btn" title="Mode Teater (t)" aria-label="Mode Teater">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M19 6H5c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H5V8h14v8z"/>
+              </svg>
+            </button>
+
+            <!-- Fullscreen Button -->
+            <button id="btnFullscreen" class="ctrl-btn" title="Layar Penuh (f)" aria-label="Layar Penuh">
+              <svg id="iconEnterFullscreen" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+              </svg>
+              <svg id="iconExitFullscreen" class="hidden" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
+              </svg>
+            </button>
+
+          </div>
+
+        </div>
+
+      </nav>
+
+    </main>
+
+    <!-- Settings Popover Menu -->
+    <div id="settingsMenu" class="settings-menu hidden" role="menu" aria-label="Menu Setelan">
+      
+      <!-- Main Settings View -->
+      <div id="settingsMainView" class="settings-view">
+        <div class="settings-header-title">Setelan</div>
+        <button class="settings-item" id="btnSettingsSpeed" role="menuitem">
+          <div class="settings-item-label">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M10 8v8l6-4-6-4zm9-5H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+            </svg>
+            <span>Kecepatan Pemutaran</span>
+          </div>
+          <div class="settings-item-value">
+            <span id="settingsCurrentSpeedText">Normal</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+          </div>
+        </button>
+        <button class="settings-item" id="btnSettingsAudio" role="menuitem">
+          <div class="settings-item-label">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"/>
+            </svg>
+            <span>Trek Audio</span>
+          </div>
+          <div class="settings-item-value">
+            <span id="settingsCurrentAudioText">Default</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+          </div>
+        </button>
+        <button class="settings-item" id="btnSettingsSubs" role="menuitem">
+          <div class="settings-item-label">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M19 4H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/>
+            </svg>
+            <span>Subtitle / Teks</span>
+          </div>
+          <div class="settings-item-value">
+            <span id="settingsCurrentSubText">Nonaktif</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+          </div>
+        </button>
+        <button class="settings-item" id="btnSettingsStats" role="menuitem">
+          <div class="settings-item-label">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+            </svg>
+            <span>Statistik untuk Nerds</span>
+          </div>
+          <div class="settings-item-value">
+            <span id="settingsStatsStatus">Nonaktif</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Speed Submenu View (Supports up to 4x) -->
+      <div id="settingsSpeedView" class="settings-view hidden">
+        <div class="settings-header">
+          <button class="btn-settings-back" id="btnBackFromSpeed" aria-label="Kembali ke Setelan">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </button>
+          <span>Kecepatan Pemutaran</span>
+        </div>
+        <div class="speed-options-list" id="speedOptionsList">
+          <!-- Populated dynamically via JS: 0.25x up to 4.0x -->
+        </div>
+        <div class="custom-speed-section">
+          <div class="custom-speed-label">
+            <span>Kustom:</span>
+            <span id="customSpeedVal">1.00x</span>
+          </div>
+          <input type="range" id="customSpeedSlider" min="0.25" max="4.0" step="0.05" value="1.0" class="custom-speed-slider" aria-label="Slider Kecepatan Kustom">
+        </div>
+      </div>
+
+      <!-- Audio Track Submenu View -->
+      <div id="settingsAudioView" class="settings-view hidden">
+        <div class="settings-header">
+          <button class="btn-settings-back" id="btnBackFromAudio" aria-label="Kembali ke Setelan">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </button>
+          <span>Trek Audio</span>
+        </div>
+        <div class="audio-options-list" id="audioOptionsList">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Subtitles Submenu View -->
+      <div id="settingsSubView" class="settings-view hidden">
+        <div class="settings-header">
+          <button class="btn-settings-back" id="btnBackFromSub" aria-label="Kembali ke Setelan">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </button>
+          <span>Subtitle / Teks</span>
+        </div>
+        <div class="sub-options-list" id="subOptionsList">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- YouTube Shortcuts Cheatsheet Modal -->
+    <div id="shortcutsModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="shortcuts-card">
+        <div class="shortcuts-header">
+          <h2 id="modalTitle">Pintasan Keyboard (YouTube Shortcuts)</h2>
+          <button id="btnCloseShortcuts" class="btn-close-modal" aria-label="Tutup Dialog Shortcut">&times;</button>
+        </div>
+        <div class="shortcuts-grid">
+          
+          <div class="shortcut-col">
+            <h4 class="shortcut-cat-title">Pemutaran & Akselerasi</h4>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Putar / Jeda</span>
+              <span class="shortcut-keys"><kbd>k</kbd> atau <kbd>Spasi</kbd></span>
+            </div>
+            <div class="shortcut-row highlight-row">
+              <span class="shortcut-desc">Akselerasi 2x Instan</span>
+              <span class="shortcut-keys">Tahan <kbd>Spasi</kbd> / Tahan <kbd>Klik Kiri</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Percepat playback (+0.25x hingga 4x)</span>
+              <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>&gt;</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Perlambat playback (-0.25x)</span>
+              <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>&lt;</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Frame berikutnya (saat pause)</span>
+              <span class="shortcut-keys"><kbd>.</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Frame sebelumnya (saat pause)</span>
+              <span class="shortcut-keys"><kbd>,</kbd></span>
+            </div>
+          </div>
+
+          <div class="shortcut-col">
+            <h4 class="shortcut-cat-title">Navigasi Waktu (Seeking)</h4>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Mundur 10 detik</span>
+              <span class="shortcut-keys"><kbd>j</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Maju 10 detik</span>
+              <span class="shortcut-keys"><kbd>l</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Mundur 5 detik</span>
+              <span class="shortcut-keys"><kbd>&larr;</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Maju 5 detik</span>
+              <span class="shortcut-keys"><kbd>&rarr;</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Lompat ke 0% - 90% video</span>
+              <span class="shortcut-keys"><kbd>0</kbd> .. <kbd>9</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Lompat ke awal / akhir</span>
+              <span class="shortcut-keys"><kbd>Home</kbd> / <kbd>End</kbd></span>
+            </div>
+          </div>
+
+          <div class="shortcut-col">
+            <h4 class="shortcut-cat-title">Audio & Tampilan</h4>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Volume naik 5%</span>
+              <span class="shortcut-keys"><kbd>&uarr;</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Volume turun 5%</span>
+              <span class="shortcut-keys"><kbd>&darr;</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Bisu / Bunyikan (Mute)</span>
+              <span class="shortcut-keys"><kbd>m</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Layar Penuh (Fullscreen)</span>
+              <span class="shortcut-keys"><kbd>f</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Mode Teater</span>
+              <span class="shortcut-keys"><kbd>t</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Miniplayer (PiP)</span>
+              <span class="shortcut-keys"><kbd>i</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Nyalakan / Matikan Subtitle</span>
+              <span class="shortcut-keys"><kbd>c</kbd></span>
+            </div>
+            <div class="shortcut-row">
+              <span class="shortcut-desc">Buka File Video</span>
+              <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>O</kbd></span>
+            </div>
+          </div>
+
+        </div>
+        <div class="shortcuts-footer">
+          <span>Tekan <kbd>Esc</kbd> untuk menutup dialog ini</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="js/player.js"></script>
+  <script src="js/controls.js"></script>
+  <script src="js/gestures.js"></script>
+  <script src="js/shortcuts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
