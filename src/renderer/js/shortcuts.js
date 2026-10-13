@@ -249,3 +249,4 @@ class ShortcutsEngine {
 }
 
 window.shortcutsEngine = new ShortcutsEngine(window.playerCore, window.controlsManager);
+

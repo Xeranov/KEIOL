@@ -32,6 +32,19 @@ if (step2.status !== 0) {
   process.exit(step2.status || 1);
 }
 
+// 3. Run User Improvements Verification (Fullscreen, Taskbar, 2X Auto-hide, Anime Gallery, Resume)
+console.log('\nSTEP 3: Testing User Improvements (Fullscreen, Auto-Hide 2X, Anime Gallery, Resume)...');
+const step3 = spawnSync(electronBin, [path.join(__dirname, 'test_improvements.js')], {
+  env,
+  stdio: 'inherit'
+});
+
+if (step3.status !== 0) {
+  console.error('\n❌ Step 3 failed with exit code:', step3.status);
+  process.exit(step3.status || 1);
+}
+
 console.log('\n==================================================');
 console.log('🎉 ALL TESTS PASSED: READY FOR PRODUCTION USE!');
 console.log('==================================================');
+

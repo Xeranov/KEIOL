@@ -1,11 +1,15 @@
 /**
  * VidPlayer Main Application Entry
  * Binds window controls, drag-and-drop file loading, empty state,
- * loading and error transitions, and titlebar information.
+ * loading and error transitions, titlebar information, and anime library.
  */
 document.addEventListener('DOMContentLoaded', async () => {
   const player = window.playerCore;
   await player.init();
+
+  if (window.libraryManager) {
+    await window.libraryManager.init();
+  }
 
   const emptyState = document.getElementById('emptyState');
   const errorState = document.getElementById('errorState');
@@ -41,11 +45,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.electronAPI.closeWindow();
     });
 
-    // Listen for file passed on launch
+    // Listen for file passed on launch via CLI
     window.electronAPI.onFileDropFromMain((filePath) => {
       if (filePath) {
+        if (window.libraryManager) window.libraryManager.showPlayerView();
         player.loadFile(filePath);
       }
+    });
+
+    // Listen to Fullscreen changes
+    window.electronAPI.onFullScreenChanged(({ isFullScreen }) => {
+      document.body.classList.toggle('is-fullscreen', isFullScreen);
+      if (window.controlsManager) {
+        window.controlsManager.updateFullscreenIcon(isFullScreen);
+      }
+    });
+
+    // Listen to Window Maximized state (prevents taskbar overlap)
+    window.electronAPI.onWindowStateChanged(({ isMaximized }) => {
+      document.body.classList.toggle('window-maximized', isMaximized);
     });
   }
 
@@ -56,6 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (window.electronAPI) {
       const selectedPath = await window.electronAPI.openFileDialog();
       if (selectedPath) {
+        if (window.libraryManager) window.libraryManager.showPlayerView();
         player.loadFile(selectedPath);
       }
     }
@@ -66,7 +85,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const selectedPath = await window.electronAPI.openSubtitleDialog();
       if (selectedPath) {
         const subFileName = selectedPath.split(/[\\/]/).pop();
-        // Read file via fetch or local protocol
         window.controlsManager.showToast(`Subtitle dimuat: ${subFileName}`);
       }
     }
@@ -105,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!files || files.length === 0) return;
 
     const file = files[0];
-    const filePath = file.path; // Electron exposes path on File object
+    const filePath = file.path;
 
     const ext = (file.name.split('.').pop() || '').toLowerCase();
     const subExtensions = ['srt', 'vtt', 'ass', 'ssa'];
@@ -118,6 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       // Video file dropped
       if (filePath) {
+        if (window.libraryManager) window.libraryManager.showPlayerView();
         player.loadFile(filePath);
       }
     }

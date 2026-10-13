@@ -4,12 +4,20 @@ const fs = require('fs');
 const mediaServer = require('../main/mediaServer');
 const { probeMedia } = require('../main/probeService');
 
+const libraryService = require('../main/libraryService');
+
 async function runInteractiveVerification() {
   console.log('=== Starting Antislop C-2 / R-35 Click-Through Verification ===');
   const port = await mediaServer.start();
 
   ipcMain.handle('server:getPort', () => port);
   ipcMain.handle('media:probe', async (_e, fp) => probeMedia(fp));
+  ipcMain.handle('library:scan', () => libraryService.scanLibrary());
+  ipcMain.handle('library:getPath', () => libraryService.getLibraryPath());
+  ipcMain.handle('library:setPath', (_e, p) => libraryService.setLibraryPath(p));
+  ipcMain.handle('library:chooseFolder', () => libraryService.scanLibrary());
+  ipcMain.handle('library:saveProgress', () => true);
+  ipcMain.handle('library:getContinueWatching', () => libraryService.getContinueWatching());
   ipcMain.handle('window:isFullScreen', () => false);
   ipcMain.handle('window:setFullScreen', () => false);
   ipcMain.handle('window:minimize', () => {});

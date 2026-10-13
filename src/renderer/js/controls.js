@@ -690,3 +690,4 @@ class ControlsManager {
 }
 
 window.controlsManager = new ControlsManager(window.playerCore);
+

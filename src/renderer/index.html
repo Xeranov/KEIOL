@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VidPlayer - YouTube Style Video Player</title>
+  <title>VidPlayer - YouTube Style Anime Player</title>
   <link rel="stylesheet" href="styles/player.css">
   <link rel="stylesheet" href="styles/modals.css">
+  <link rel="stylesheet" href="styles/gallery.css">
 </head>
 <body class="theme-dark">
   <div id="appContainer" class="app-container">
@@ -20,17 +21,27 @@
           </svg>
           <span class="brand-title">VidPlayer</span>
         </div>
+
+        <!-- Back to Gallery Button (appears when in player mode) -->
+        <button id="btnBackToGallery" class="btn-action hidden" title="Kembali ke Beranda Galeri Anime" aria-label="Kembali ke Galeri">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+          </svg>
+          <span>Beranda</span>
+        </button>
+
         <div class="video-meta-info" id="videoMetaInfo">
-          <span id="videoTitleDisplay" class="video-title-text">Belum ada video</span>
+          <span id="videoTitleDisplay" class="video-title-text">Galeri Anime</span>
           <span id="codecBadge" class="badge codec-badge hidden">Direct</span>
         </div>
       </div>
+
       <div class="titlebar-actions">
-        <button id="btnOpenFileTop" class="btn-action" title="Buka File Video (Ctrl+O)" aria-label="Buka File Video">
+        <button id="btnOpenFileTop" class="btn-action" title="Buka File Tunggal (Ctrl+O)" aria-label="Buka File Video">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/>
           </svg>
-          <span>Buka</span>
+          <span>File</span>
         </button>
         <button id="btnOpenSubTop" class="btn-action" title="Muat Subtitle (.srt, .vtt, .ass)" aria-label="Muat Subtitle">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
@@ -57,8 +68,85 @@
       </div>
     </header>
 
-    <!-- Main Player Stage -->
-    <main class="player-stage" id="playerStage">
+    <!-- VIEW 1: ANIME GALLERY / BERANDA -->
+    <section class="view-panel" id="galleryView">
+      
+      <!-- Toolbar -->
+      <div class="gallery-toolbar">
+        <div class="gallery-search-box">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+          <input type="text" id="inputSearchAnime" placeholder="Cari judul anime..." aria-label="Cari anime">
+        </div>
+
+        <div class="gallery-toolbar-actions">
+          <button id="btnChooseFolder" class="btn-library-folder" title="Ganti Folder Anime Library">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+            </svg>
+            <span id="libraryFolderText">Folder Anime</span>
+          </button>
+
+          <button id="btnRefreshLibrary" class="btn-icon" title="Pindai Ulang Folder" aria-label="Pindai Ulang">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Gallery Content -->
+      <div class="gallery-content">
+
+        <!-- Continue Watching Hero Banner -->
+        <div id="continueHero" class="continue-hero hidden">
+          <div class="continue-left">
+            <div class="continue-thumb-box">
+              <span class="continue-thumb-placeholder">🎬</span>
+            </div>
+            <div class="continue-info">
+              <span class="continue-badge">Lanjutkan Terakhir Nonton</span>
+              <div id="continueTitle" class="continue-title">Nama Anime</div>
+              <div id="continueEpisode" class="continue-episode">Episode 01</div>
+              <div class="continue-progress-bar">
+                <div id="continueProgressFill" class="continue-progress-fill"></div>
+              </div>
+              <span id="continueTimeText" class="continue-time-text">0:00 / 0:00</span>
+            </div>
+          </div>
+          <button id="btnContinuePlay" class="btn-continue-play" aria-label="Lanjutkan Menonton">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span>Lanjutkan</span>
+          </button>
+        </div>
+
+        <!-- Anime Grid Section -->
+        <div class="anime-section">
+          <div class="section-title">
+            <span>Koleksi Anime</span>
+          </div>
+
+          <div id="animeGrid" class="anime-grid">
+            <!-- Dynamically populated anime cards -->
+          </div>
+
+          <!-- Empty State when folder has no anime -->
+          <div id="galleryEmpty" class="gallery-empty hidden">
+            <svg viewBox="0 0 24 24" width="56" height="56" fill="#717171">
+              <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+            </svg>
+            <h3>Belum Ada Folder Anime</h3>
+            <p>Masukkan folder anime ke folder library atau pilih folder anime Anda.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- VIEW 2: VIDEO PLAYER STAGE (YOUTUBE STYLE) -->
+    <main class="view-panel player-stage hidden" id="playerView">
       
       <!-- Video Element -->
       <div class="video-wrapper" id="videoWrapper">
@@ -67,7 +155,7 @@
         <!-- Subtitle overlay -->
         <div id="subtitleDisplay" class="subtitle-display hidden"></div>
 
-        <!-- 2X Speed Hold Pill Indicator -->
+        <!-- 2X Speed Hold Pill Indicator (Translucent Pop-up) -->
         <div id="speedBoostPill" class="speed-boost-pill hidden" aria-live="polite">
           <span class="boost-icon">⏩</span>
           <span class="boost-text">2X Speed</span>
@@ -111,6 +199,16 @@
         <!-- HUD Toast Message -->
         <div id="toastMessage" class="toast-message hidden" role="status"></div>
 
+        <!-- Next Episode Autoplay Toast -->
+        <div id="nextAutoplayToast" class="next-autoplay-toast hidden">
+          <div class="next-autoplay-info">
+            <span class="next-autoplay-label">Episode Berikutnya</span>
+            <span id="nextAutoplayTitle" class="next-autoplay-title">Episode 02</span>
+          </div>
+          <button id="btnPlayNextNow" class="btn-primary" style="padding: 6px 14px; font-size: 12px;">Putar Sekarang</button>
+          <button id="btnCancelAutoplay" class="btn-cancel-autoplay">Batal</button>
+        </div>
+
         <!-- Stats for Nerds Panel -->
         <div id="statsPanel" class="stats-panel hidden">
           <div class="stats-header">
@@ -121,7 +219,7 @@
         </div>
 
         <!-- Empty State Dropzone -->
-        <section id="emptyState" class="empty-state">
+        <section id="emptyState" class="empty-state hidden">
           <div class="empty-state-card">
             <div class="empty-state-icon">
               <svg viewBox="0 0 24 24" width="64" height="64" fill="#FF0000">
@@ -172,6 +270,17 @@
         </div>
 
       </div>
+
+      <!-- In-Player Playlist Drawer -->
+      <aside id="playlistDrawer" class="playlist-drawer hidden" aria-label="Daftar Putar Episode">
+        <div class="playlist-drawer-header">
+          <span id="playlistDrawerTitle">Daftar Episode</span>
+          <button id="btnClosePlaylistDrawer" class="btn-icon" aria-label="Tutup Playlist">&times;</button>
+        </div>
+        <div class="playlist-drawer-body" id="playlistDrawerBody">
+          <!-- Populated dynamically -->
+        </div>
+      </aside>
 
       <!-- YouTube Controls Bar -->
       <nav id="controlsBar" class="controls-bar" aria-label="Kontrol Video">
@@ -259,6 +368,13 @@
           <!-- Right Controls -->
           <div class="controls-right">
             
+            <!-- Toggle Playlist Drawer Button -->
+            <button id="btnTogglePlaylist" class="ctrl-btn" title="Daftar Putar Episode" aria-label="Daftar Putar Episode">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+              </svg>
+            </button>
+
             <!-- Speed Quick Display / Indicator -->
             <button id="btnSpeedQuick" class="ctrl-btn speed-badge-btn" title="Kecepatan Pemutaran" aria-label="Kecepatan Pemutaran">
               <span id="speedBadgeText">1x</span>
@@ -310,6 +426,22 @@
       </nav>
 
     </main>
+
+    <!-- Episodes Playlist Modal -->
+    <div id="episodesModal" class="episodes-modal hidden" role="dialog" aria-modal="true" aria-labelledby="episodesAnimeTitle">
+      <div class="episodes-card">
+        <div class="episodes-header">
+          <div class="episodes-header-left">
+            <h2 id="episodesAnimeTitle" class="episodes-anime-title">Anime</h2>
+            <button id="btnPlayAllEpisodes" class="btn-primary" style="padding: 6px 16px; font-size: 12px;">Putar Semua</button>
+          </div>
+          <button id="btnCloseEpisodes" class="btn-close-modal" aria-label="Tutup Daftar Episode">&times;</button>
+        </div>
+        <div class="episodes-list" id="episodesList">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
 
     <!-- Settings Popover Menu -->
     <div id="settingsMenu" class="settings-menu hidden" role="menu" aria-label="Menu Setelan">
@@ -528,6 +660,7 @@
   <script src="js/controls.js"></script>
   <script src="js/gestures.js"></script>
   <script src="js/shortcuts.js"></script>
+  <script src="js/library.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

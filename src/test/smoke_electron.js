@@ -61,3 +61,4 @@ app.whenReady().then(runSmoke).catch(err => {
   console.error('Smoke test failed:', err);
   process.exit(1);
 });
+

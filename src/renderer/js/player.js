@@ -368,3 +368,4 @@ class VidPlayerCore {
 }
 
 window.playerCore = new VidPlayerCore();
+

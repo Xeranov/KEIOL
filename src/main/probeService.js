@@ -123,3 +123,4 @@ function calculateFps(rateStr) {
 module.exports = {
   probeMedia
 };
+

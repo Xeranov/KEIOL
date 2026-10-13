@@ -98,6 +98,10 @@ class MediaServer {
     else if (ext === '.ogg' || ext === '.ogv') mimeType = 'video/ogg';
     else if (ext === '.mkv') mimeType = 'video/x-matroska';
     else if (ext === '.mov') mimeType = 'video/quicktime';
+    else if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+    else if (ext === '.png') mimeType = 'image/png';
+    else if (ext === '.webp') mimeType = 'image/webp';
+    else if (ext === '.svg') mimeType = 'image/svg+xml';
 
     if (range) {
       const parts = range.replace(/bytes=/, '').split('-');
@@ -278,3 +282,4 @@ class MediaServer {
 }
 
 module.exports = new MediaServer();
+

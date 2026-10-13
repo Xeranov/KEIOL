@@ -179,8 +179,13 @@ class GesturesEngine {
 
   initBoostEvents() {
     window.addEventListener('player:boost', (e) => {
+      clearTimeout(this.boostPillTimer);
       if (e.detail.active) {
+        // Show transparent pop-up briefly then auto-fade after 800ms
         this.speedBoostPill.classList.remove('hidden');
+        this.boostPillTimer = setTimeout(() => {
+          this.speedBoostPill.classList.add('hidden');
+        }, 800);
       } else {
         this.speedBoostPill.classList.add('hidden');
       }
@@ -213,3 +218,4 @@ class GesturesEngine {
 }
 
 window.gesturesEngine = new GesturesEngine(window.playerCore);
+

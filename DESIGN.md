@@ -25,3 +25,4 @@ A sleek, responsive desktop video player modeled after modern YouTube web player
 - ENERGY: 2 (Focused, media-centric, responsive)
 - RHYTHM: 2 (Logical grouping of transport controls, timestamps, and secondary actions)
 - MOTION: 2 (Smooth 200ms transitions for controls fade, tooltip positioning, and speed badges)
+
