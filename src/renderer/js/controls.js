@@ -43,7 +43,6 @@ class ControlsManager {
     this.subtitlesActiveBar = document.getElementById('subtitlesActiveBar');
     this.btnSettings = document.getElementById('btnSettings');
     this.btnMiniplayer = document.getElementById('btnMiniplayer');
-    this.btnTheater = document.getElementById('btnTheater');
     this.btnFullscreen = document.getElementById('btnFullscreen');
     this.iconEnterFullscreen = document.getElementById('iconEnterFullscreen');
     this.iconExitFullscreen = document.getElementById('iconExitFullscreen');
@@ -54,6 +53,7 @@ class ControlsManager {
     this.settingsSpeedView = document.getElementById('settingsSpeedView');
     this.settingsAudioView = document.getElementById('settingsAudioView');
     this.settingsSubView = document.getElementById('settingsSubView');
+    this.settingsSeekView = document.getElementById('settingsSeekView');
 
     this.btnSettingsSpeed = document.getElementById('btnSettingsSpeed');
     this.settingsCurrentSpeedText = document.getElementById('settingsCurrentSpeedText');
@@ -61,6 +61,14 @@ class ControlsManager {
     this.speedOptionsList = document.getElementById('speedOptionsList');
     this.customSpeedSlider = document.getElementById('customSpeedSlider');
     this.customSpeedVal = document.getElementById('customSpeedVal');
+
+    this.btnSettingsSeek = document.getElementById('btnSettingsSeek');
+    this.settingsCurrentSeekText = document.getElementById('settingsCurrentSeekText');
+    this.btnBackFromSeek = document.getElementById('btnBackFromSeek');
+    this.seekOptionsList = document.getElementById('seekOptionsList');
+
+    // Seek interval configuration (default 10s, options: 5, 10, 15, 20, 25, 30s)
+    this.seekInterval = parseInt(localStorage.getItem('xplayer_seek_interval'), 10) || 10;
 
     this.btnSettingsAudio = document.getElementById('btnSettingsAudio');
     this.settingsCurrentAudioText = document.getElementById('settingsCurrentAudioText');
@@ -94,6 +102,7 @@ class ControlsManager {
     this.initVolume();
     this.initSettingsMenu();
     this.initSpeedOptions();
+    this.initSeekOptions();
     this.initAutohide();
     this.initPlayerEvents();
     this.initStats();
@@ -184,20 +193,15 @@ class ControlsManager {
     });
 
     this.btnRewind10.addEventListener('click', () => {
-      this.player.seekRelative(-10);
-      window.gesturesEngine.showSeekRipple('left');
+      this.player.seekRelative(-this.seekInterval);
+      window.gesturesEngine.showSeekRipple('left', this.seekInterval);
       this.btnRewind10.blur();
     });
 
     this.btnForward10.addEventListener('click', () => {
-      this.player.seekRelative(10);
-      window.gesturesEngine.showSeekRipple('right');
+      this.player.seekRelative(this.seekInterval);
+      window.gesturesEngine.showSeekRipple('right', this.seekInterval);
       this.btnForward10.blur();
-    });
-
-    this.btnTheater.addEventListener('click', () => {
-      document.body.classList.toggle('theater-mode');
-      this.btnTheater.blur();
     });
 
     this.btnMiniplayer.addEventListener('click', async () => {
@@ -411,6 +415,14 @@ class ControlsManager {
       this.showSubView(this.settingsMainView);
     });
 
+    this.btnSettingsSeek.addEventListener('click', () => {
+      this.showSubView(this.settingsSeekView);
+    });
+
+    this.btnBackFromSeek.addEventListener('click', () => {
+      this.showSubView(this.settingsMainView);
+    });
+
     this.btnSettingsStats.addEventListener('click', () => {
       this.toggleStats();
     });
@@ -427,6 +439,63 @@ class ControlsManager {
       this.toggleSubtitlesCC();
       this.btnSubtitles.blur();
     });
+  }
+
+  initSeekOptions() {
+    const intervals = [5, 10, 15, 20, 25, 30];
+    if (!this.seekOptionsList) return;
+    this.seekOptionsList.innerHTML = '';
+
+    intervals.forEach(sec => {
+      const btn = document.createElement('button');
+      btn.className = 'seek-option-btn';
+      btn.dataset.sec = sec;
+      const isSelected = sec === this.seekInterval;
+      btn.innerHTML = `
+        <span>${sec} detik</span>
+        <span class="seek-check-icon ${isSelected ? '' : 'hidden'}">✓</span>
+      `;
+
+      btn.addEventListener('click', () => {
+        this.setSeekInterval(sec);
+        this.showToast(`Durasi lompat: ${sec} detik`);
+      });
+
+      this.seekOptionsList.appendChild(btn);
+    });
+
+    this.updateSeekUI(this.seekInterval);
+  }
+
+  setSeekInterval(sec) {
+    this.seekInterval = sec;
+    localStorage.setItem('xplayer_seek_interval', sec);
+    this.updateSeekUI(sec);
+  }
+
+  updateSeekUI(sec) {
+    if (this.settingsCurrentSeekText) {
+      this.settingsCurrentSeekText.textContent = `${sec}s`;
+    }
+
+    const rewindText = this.btnRewind10 ? this.btnRewind10.querySelector('text') : null;
+    const forwardText = this.btnForward10 ? this.btnForward10.querySelector('text') : null;
+    if (rewindText) rewindText.textContent = sec;
+    if (forwardText) forwardText.textContent = sec;
+
+    if (this.btnRewind10) this.btnRewind10.title = `Mundur ${sec} detik (j)`;
+    if (this.btnForward10) this.btnForward10.title = `Maju ${sec} detik (l)`;
+
+    if (this.seekOptionsList) {
+      const buttons = this.seekOptionsList.querySelectorAll('.seek-option-btn');
+      buttons.forEach(btn => {
+        const val = parseInt(btn.dataset.sec, 10);
+        const match = val === sec;
+        btn.classList.toggle('active', match);
+        const icon = btn.querySelector('.seek-check-icon');
+        if (icon) icon.classList.toggle('hidden', !match);
+      });
+    }
   }
 
   toggleSettings() {
@@ -448,10 +517,10 @@ class ControlsManager {
   }
 
   showSubView(viewEl) {
-    [this.settingsMainView, this.settingsSpeedView, this.settingsAudioView, this.settingsSubView].forEach(v => {
-      v.classList.add('hidden');
+    [this.settingsMainView, this.settingsSpeedView, this.settingsAudioView, this.settingsSubView, this.settingsSeekView].forEach(v => {
+      if (v) v.classList.add('hidden');
     });
-    viewEl.classList.remove('hidden');
+    if (viewEl) viewEl.classList.remove('hidden');
   }
 
   renderAudioTracks() {

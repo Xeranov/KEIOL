@@ -52,11 +52,13 @@ div[tabindex]:focus-visible {
 }
 
 /* ==========================================================================
-   Titlebar
+   Titlebar (Semi-Transparent with Backdrop Blur)
    ========================================================================== */
 .titlebar {
   height: var(--titlebar-height);
-  background-color: var(--bg-primary);
+  background-color: rgba(18, 18, 18, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -71,22 +73,29 @@ div[tabindex]:focus-visible {
   align-items: center;
   flex: 1;
   height: 100%;
-  padding-left: 12px;
+  padding-left: 14px;
   gap: 16px;
   overflow: hidden;
 }
 
 .brand {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
   flex-shrink: 0;
+  cursor: pointer;
+}
+
+.brand-x {
+  font-size: 18px;
+  font-weight: 900;
+  color: #e50914; /* Netflix Red */
+  letter-spacing: -0.5px;
 }
 
 .brand-title {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
   color: var(--text-primary);
 }
 
@@ -866,14 +875,6 @@ body.window-maximized {
   display: flex;
   gap: 10px;
   margin-top: 8px;
-}
-
-/* ==========================================================================
-   Theater Mode
-   ========================================================================== */
-body.theater-mode .player-stage {
-  max-height: calc(100vh - var(--titlebar-height));
-  width: 100vw;
 }
 
 /* Utilities */

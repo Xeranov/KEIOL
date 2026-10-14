@@ -113,14 +113,16 @@ class GesturesEngine {
       const clickX = e.clientX - rect.left;
       const width = rect.width;
 
+      const seekSec = window.controlsManager ? window.controlsManager.seekInterval : 10;
+
       if (clickX < width * 0.35) {
-        // Left side: Rewind 10s
-        this.player.seekRelative(-10);
-        this.showSeekRipple('left');
+        // Left side: Rewind configured seconds
+        this.player.seekRelative(-seekSec);
+        this.showSeekRipple('left', seekSec);
       } else if (clickX > width * 0.65) {
-        // Right side: Fast-Forward 10s
-        this.player.seekRelative(10);
-        this.showSeekRipple('right');
+        // Right side: Fast-Forward configured seconds
+        this.player.seekRelative(seekSec);
+        this.showSeekRipple('right', seekSec);
       } else {
         // Center double click: Toggle fullscreen
         window.dispatchEvent(new CustomEvent('controls:togglefullscreen'));
@@ -192,8 +194,12 @@ class GesturesEngine {
     });
   }
 
-  showSeekRipple(direction) {
+  showSeekRipple(direction, seconds = 10) {
     const el = direction === 'left' ? this.seekRippleLeft : this.seekRippleRight;
+    const textEl = el.querySelector('.seek-ripple-text');
+    if (textEl) {
+      textEl.textContent = `${direction === 'left' ? '-' : '+'}${seconds} detik`;
+    }
     el.classList.remove('hidden');
     // Force reflow for CSS animation restart
     void el.offsetWidth;

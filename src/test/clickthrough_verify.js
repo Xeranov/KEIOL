@@ -117,13 +117,26 @@ async function runInteractiveVerification() {
       report('Toggle Stats for Nerds', 'Panel visible: ' + !statsPanel.classList.contains('hidden'), !statsPanel.classList.contains('hidden'));
       window.controlsManager.toggleStats();
 
-      // 10. Theater mode toggle
-      const btnTheater = document.getElementById('btnTheater');
-      btnTheater.click();
-      report('Toggle Theater mode on', 'Body has theater-mode: ' + document.body.classList.contains('theater-mode'), document.body.classList.contains('theater-mode'));
-      btnTheater.click();
+      // 10. Configurable seek duration in settings
+      window.controlsManager.setSeekInterval(15);
+      const isInterval15 = window.controlsManager.seekInterval === 15;
+      const rewindBadgeText = document.querySelector('#btnRewind10 text')?.textContent;
+      const forwardBadgeText = document.querySelector('#btnForward10 text')?.textContent;
+      report('Configure seek interval to 15s', 'Interval: ' + window.controlsManager.seekInterval + ', Badges: ' + rewindBadgeText + '/' + forwardBadgeText, isInterval15 && rewindBadgeText === '15' && forwardBadgeText === '15');
+      // Restore default 10s
+      window.controlsManager.setSeekInterval(10);
 
-      // 11. Test MKV with AC3 audio playback
+      // 11. XPlayer branding check (No YouTube logo, XPlayer text present)
+      const brandX = document.querySelector('.brand-x')?.textContent;
+      const brandTitle = document.querySelector('.brand-title')?.textContent;
+      const isXPlayer = brandX === 'X' && brandTitle === 'Player';
+      report('XPlayer branding verification', 'Brand text: ' + brandX + brandTitle, isXPlayer);
+
+      // 12. Theater mode removed check
+      const btnTheaterGone = document.getElementById('btnTheater') === null;
+      report('Theater mode removed verification', 'btnTheater is null: ' + btnTheaterGone, btnTheaterGone);
+
+      // 13. Test MKV with AC3 audio playback
       const testMkvPath = ${JSON.stringify(path.join(__dirname, '../../test-media/test_sample.mkv'))};
       await window.playerCore.loadFile(testMkvPath);
       report('Load MKV with AC3 audio', 'PlaybackMode: ' + window.playerCore.playbackMode, window.playerCore.playbackMode === 'transmux');

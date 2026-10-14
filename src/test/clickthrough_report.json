@@ -1,6 +1,6 @@
 {
   "allPassed": true,
-  "timestamp": "2026-10-13T23:46:34.382Z",
+  "timestamp": "2026-10-14T00:03:24.164Z",
   "results": [
     {
       "action": "Empty state browse button exists",
@@ -78,8 +78,18 @@
       "passed": true
     },
     {
-      "action": "Toggle Theater mode on",
-      "result": "Body has theater-mode: true",
+      "action": "Configure seek interval to 15s",
+      "result": "Interval: 15, Badges: 15/15",
+      "passed": true
+    },
+    {
+      "action": "XPlayer branding verification",
+      "result": "Brand text: XPlayer",
+      "passed": true
+    },
+    {
+      "action": "Theater mode removed verification",
+      "result": "btnTheater is null: true",
       "passed": true
     },
     {

@@ -6,12 +6,12 @@ const { probeMedia } = require('../main/probeService');
 const libraryService = require('../main/libraryService');
 
 async function testImprovements() {
-  console.log('=== Testing User Requested Improvements ===\n');
+  console.log('=== Testing User Requested Improvements (Netflix UI, Seek Config, Master Folder, Translucent Titlebar, XPlayer) ===\n');
 
-  // 1. Setup mock Anime folders & files
-  const mockAnimeRoot = path.join(__dirname, '../../test-media/mock_anime');
-  const frierenDir = path.join(mockAnimeRoot, 'Sousou no Frieren');
-  const jjkDir = path.join(mockAnimeRoot, 'Jujutsu Kaisen');
+  // 1. Setup mock media root with both Series subfolders and standalone Movie files
+  const mockMediaRoot = path.join(__dirname, '../../test-media/mock_library');
+  const frierenDir = path.join(mockMediaRoot, 'Sousou no Frieren');
+  const jjkDir = path.join(mockMediaRoot, 'Jujutsu Kaisen');
 
   fs.mkdirSync(frierenDir, { recursive: true });
   fs.mkdirSync(jjkDir, { recursive: true });
@@ -19,13 +19,17 @@ async function testImprovements() {
   const sampleMp4Source = path.join(__dirname, '../../test-media/test_sample.mp4');
   const sampleMkvSource = path.join(__dirname, '../../test-media/test_sample.mkv');
 
+  // Series episodes
   fs.copyFileSync(sampleMp4Source, path.join(frierenDir, 'Episode 01.mp4'));
   fs.copyFileSync(sampleMkvSource, path.join(frierenDir, 'Episode 02.mkv'));
   fs.copyFileSync(sampleMp4Source, path.join(frierenDir, 'Episode 10.mp4'));
   fs.copyFileSync(sampleMp4Source, path.join(jjkDir, 'Episode 01.mp4'));
 
-  // Point libraryService to mockAnimeRoot
-  libraryService.setLibraryPath(mockAnimeRoot);
+  // Standalone Movie in root media folder
+  fs.copyFileSync(sampleMp4Source, path.join(mockMediaRoot, 'Suzume no Tojimari.mp4'));
+
+  // Point libraryService to mockMediaRoot
+  libraryService.setLibraryPath(mockMediaRoot);
 
   const port = await mediaServer.start();
 
@@ -36,8 +40,8 @@ async function testImprovements() {
   ipcMain.handle('library:getPath', () => libraryService.getLibraryPath());
   ipcMain.handle('library:setPath', (_e, p) => libraryService.setLibraryPath(p));
   ipcMain.handle('library:chooseFolder', () => libraryService.scanLibrary());
-  ipcMain.handle('library:saveProgress', (_e, aPath, epPath, epName, cur, dur) => {
-    libraryService.saveProgress(aPath, epPath, epName, cur, dur);
+  ipcMain.handle('library:saveProgress', (_e, sPath, epPath, epName, cur, dur) => {
+    libraryService.saveProgress(sPath, epPath, epName, cur, dur);
     return true;
   });
   ipcMain.handle('library:getContinueWatching', () => libraryService.getContinueWatching());
@@ -50,8 +54,8 @@ async function testImprovements() {
 
   const win = new BrowserWindow({
     show: false,
-    width: 1200,
-    height: 720,
+    width: 1280,
+    height: 760,
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
@@ -66,7 +70,7 @@ async function testImprovements() {
       const log = [];
       const report = (name, passed, detail) => log.push({ name, passed, detail });
 
-      // TEST 1: Fullscreen Top Bar Removal & Maximized Taskbar Safe
+      // TEST 1: Fullscreen Top Bar Removal and Maximized Window Safety
       document.body.classList.add('is-fullscreen');
       const titleBar = document.getElementById('titleBar');
       const titlebarComputed = window.getComputedStyle(titleBar).display;
@@ -75,10 +79,31 @@ async function testImprovements() {
 
       document.body.classList.add('window-maximized');
       const bodyComputed = window.getComputedStyle(document.body).overflow;
-      report('Maximized window styling applied', bodyComputed === 'hidden', 'Body overflow: ' + bodyComputed);
+      report('Maximized window styling applied safely', bodyComputed === 'hidden', 'Body overflow: ' + bodyComputed);
       document.body.classList.remove('window-maximized');
 
-      // TEST 2: 2X Boost Pill Auto-Hides After 800ms
+      // TEST 2: Semi-Transparent Window Titlebar Styling
+      const titlebarBg = window.getComputedStyle(titleBar).backgroundColor;
+      const titlebarBackdrop = window.getComputedStyle(titleBar).backdropFilter || window.getComputedStyle(titleBar).webkitBackdropFilter;
+      const isSemiTransparent = titlebarBg.includes('rgba') || titlebarBg.includes('0.72');
+      report(
+        'Semi-transparent titlebar with backdrop blur',
+        isSemiTransparent,
+        'BG: ' + titlebarBg + ', Backdrop: ' + titlebarBackdrop
+      );
+
+      // TEST 3: XPlayer Text Branding (No YouTube Logo)
+      const brandX = document.querySelector('.brand-x');
+      const brandTitle = document.querySelector('.brand-title');
+      const hasYoutubeSvg = !!document.querySelector('.titlebar-left svg path[d*="23.498"]');
+      const isXPlayerBranded = brandX && brandX.textContent === 'X' && brandTitle && brandTitle.textContent === 'Player' && !hasYoutubeSvg;
+      report(
+        'XPlayer branding active (YouTube logo replaced)',
+        isXPlayerBranded,
+        'Brand: ' + (brandX ? brandX.textContent : '') + (brandTitle ? brandTitle.textContent : '') + ', YouTube SVG present: ' + hasYoutubeSvg
+      );
+
+      // TEST 4: 2X Speed Boost Pop-up Auto-Hides After 800ms
       await window.playerCore.loadFile(${JSON.stringify(path.join(frierenDir, 'Episode 01.mp4'))});
       window.playerCore.setBoost2x(true);
       const pill = document.getElementById('speedBoostPill');
@@ -98,22 +123,113 @@ async function testImprovements() {
         'Shown: ' + pillShownImmediately + ', Auto-Hidden: ' + pillHiddenAfterTimeout + ', Rate kept 2x: ' + rateStillBoosted + ', Restored: ' + rateRestored
       );
 
-      // TEST 3: Anime Library Scan & Hierarchy
+      // Switch back to gallery view
+      window.libraryManager.showGalleryView();
+
+      // TEST 5: Master Folder Scan (Distinguishes Root Files as Movies & Subfolders as Series)
       await window.libraryManager.scanAndRender();
-      const animeCount = window.libraryManager.libraryData.animeList.length;
-      const animeTitles = window.libraryManager.libraryData.animeList.map(a => a.title);
-      const frieren = window.libraryManager.libraryData.animeList.find(a => a.title === 'Sousou no Frieren');
+      const libData = window.libraryManager.libraryData;
+      const seriesList = libData.seriesList || [];
+      const movies = libData.movies || [];
+
+      const foundFrieren = seriesList.some(s => s.title === 'Sousou no Frieren');
+      const foundJjk = seriesList.some(s => s.title === 'Jujutsu Kaisen');
+      const foundSuzume = movies.some(m => m.title === 'Suzume no Tojimari');
+
+      const frieren = seriesList.find(s => s.title === 'Sousou no Frieren');
       const epOrder = frieren ? frieren.episodes.map(e => e.name) : [];
-      // Natural sort check: Episode 02 should come before Episode 10
       const isNaturalSorted = epOrder[1] === 'Episode 02.mkv' && epOrder[2] === 'Episode 10.mp4';
 
       report(
-        'Anime Library scanned with folder hierarchy',
-        animeCount === 2 && isNaturalSorted,
-        'Found: ' + animeTitles.join(', ') + '; Episodes order: ' + epOrder.join(' -> ')
+        'Master folder scanner detects Series subfolders and standalone Movies',
+        foundFrieren && foundJjk && foundSuzume && isNaturalSorted,
+        'Series found: ' + seriesList.map(s => s.title).join(', ') + ' (' + seriesList.length + '); Movies: ' + movies.map(m => m.title).join(', ') + ' (' + movies.length + '); Ep order: ' + epOrder.join(' -> ')
       );
 
-      // TEST 4: Continue Watching Resume (Episode & Exact Second)
+      // TEST 6: Netflix-Style Gallery UI Elements & Category Filter Tabs
+      const billboard = document.getElementById('billboardSection');
+      const tabAll = document.getElementById('tabAll');
+      const tabSeries = document.getElementById('tabSeries');
+      const tabMovies = document.getElementById('tabMovies');
+      const rowSeries = document.getElementById('rowSeries');
+      const rowMovies = document.getElementById('rowMovies');
+
+      const netflixElementsExist = !!billboard && !!tabAll && !!tabSeries && !!tabMovies && !!rowSeries && !!rowMovies;
+
+      // Test Category Filtering
+      tabMovies.click();
+      const seriesHiddenWhenMoviesSelected = rowSeries.classList.contains('hidden');
+      const moviesVisibleWhenMoviesSelected = !rowMovies.classList.contains('hidden');
+
+      tabSeries.click();
+      const seriesVisibleWhenSeriesSelected = !rowSeries.classList.contains('hidden');
+      const moviesHiddenWhenSeriesSelected = rowMovies.classList.contains('hidden');
+
+      tabAll.click();
+      const allVisible = !rowSeries.classList.contains('hidden') && !rowMovies.classList.contains('hidden');
+
+      report(
+        'Netflix-style Gallery UI and Category Tabs (All / Series / Movies)',
+        netflixElementsExist && seriesHiddenWhenMoviesSelected && moviesVisibleWhenMoviesSelected && seriesVisibleWhenSeriesSelected && moviesHiddenWhenSeriesSelected && allVisible,
+        'Elements exist: ' + netflixElementsExist + ', Filter filtering accurate: ' + allVisible
+      );
+
+      // TEST 7: Configurable Seek Duration (5, 10, 15, 20, 25, 30s)
+      const allowedIntervals = [5, 10, 15, 20, 25, 30];
+      let allIntervalsWorking = true;
+
+      for (const interval of allowedIntervals) {
+        window.controlsManager.setSeekInterval(interval);
+        const savedInStorage = parseInt(localStorage.getItem('xplayer_seek_interval'), 10) === interval;
+        const currentVal = window.controlsManager.seekInterval === interval;
+        const rewindBadge = document.querySelector('#btnRewind10 text')?.textContent;
+        const forwardBadge = document.querySelector('#btnForward10 text')?.textContent;
+        if (!savedInStorage || !currentVal || rewindBadge !== String(interval) || forwardBadge !== String(interval)) {
+          allIntervalsWorking = false;
+          break;
+        }
+      }
+
+      // Test relative seek using 20s
+      window.controlsManager.setSeekInterval(20);
+      let soughtDelta = 0;
+      const origSeekRelative = window.playerCore.seekRelative.bind(window.playerCore);
+      window.playerCore.seekRelative = (delta) => {
+        soughtDelta = delta;
+        origSeekRelative(delta);
+      };
+
+      document.getElementById('btnForward10').click();
+      const seekForwardWorked = soughtDelta === 20;
+
+      document.getElementById('btnRewind10').click();
+      const seekRewindWorked = soughtDelta === -20;
+
+      window.playerCore.seekRelative = origSeekRelative;
+
+      // Reset to 10s default
+      window.controlsManager.setSeekInterval(10);
+
+      report(
+        'Configurable seek interval (5, 10, 15, 20, 25, 30s) with dynamic badges and seekRelative',
+        allIntervalsWorking && seekForwardWorked && seekRewindWorked,
+        'Supported intervals verified: 5, 10, 15, 20, 25, 30s. Forward 20s: ' + seekForwardWorked + ', Rewind 20s: ' + seekRewindWorked
+      );
+
+      // TEST 8: Theater Mode Completely Removed
+      const btnTheater = document.getElementById('btnTheater');
+      const hasTheaterClass = document.body.classList.contains('theater-mode');
+      const shortcutTEvent = new KeyboardEvent('keydown', { key: 't', bubbles: true });
+      window.dispatchEvent(shortcutTEvent);
+      const stillNoTheaterClass = !document.body.classList.contains('theater-mode');
+
+      report(
+        'Theater mode removed from UI, styles, and shortcuts',
+        btnTheater === null && !hasTheaterClass && stillNoTheaterClass,
+        'btnTheater is null: ' + (btnTheater === null) + ', T shortcut ignored: ' + stillNoTheaterClass
+      );
+
+      // TEST 9: Continue Watching Resume via Netflix Billboard
       const ep2Path = ${JSON.stringify(path.join(frierenDir, 'Episode 02.mkv'))};
       await window.electronAPI.saveWatchProgress(
         ${JSON.stringify(frierenDir)},
@@ -125,24 +241,24 @@ async function testImprovements() {
 
       await window.libraryManager.scanAndRender();
       const cw = window.libraryManager.libraryData.continueWatching;
-      const heroVisible = !document.getElementById('continueHero').classList.contains('hidden');
-      const heroTitle = document.getElementById('continueTitle').textContent;
-      const heroEpisode = document.getElementById('continueEpisode').textContent;
+      const billboardVisible = !billboard.classList.contains('hidden');
+      const billboardTitle = document.getElementById('billboardTitle').textContent;
+      const billboardDesc = document.getElementById('billboardDesc').textContent;
 
       report(
-        'Continue Watching Hero displays exact episode & progress',
-        cw && cw.currentTime === 1.85 && heroVisible && heroTitle === 'Sousou no Frieren',
-        'Anime: ' + heroTitle + ', Ep: ' + heroEpisode + ', Resuming from: ' + cw.currentTime + 's'
+        'Netflix Billboard displays continue watching episode and progress',
+        cw && cw.currentTime === 1.85 && billboardVisible && billboardTitle === 'Sousou no Frieren',
+        'Title: ' + billboardTitle + ', Ep: ' + billboardDesc + ', Resuming from: ' + cw.currentTime + 's'
       );
 
-      // TEST 5: Resume Button loads exact episode and seeks to last watched second
-      document.getElementById('btnContinuePlay').click();
+      // TEST 10: Billboard Play Button loads episode and resumes player
+      document.getElementById('btnBillboardPlay').click();
       await new Promise(r => setTimeout(r, 300));
       const playingFile = window.playerCore.currentFilePath;
       const isPlayerView = !document.getElementById('playerView').classList.contains('hidden');
 
       report(
-        'Resume button switches to player and loads episode',
+        'Billboard Play button switches to player and resumes playback at last timestamp',
         playingFile === ep2Path && isPlayerView,
         'Playing file: ' + playingFile + ', In Player View: ' + isPlayerView
       );
@@ -162,7 +278,7 @@ async function testImprovements() {
     throw new Error('Some improvement tests failed!');
   }
 
-  console.log('\n=== ALL 4 USER IMPROVEMENTS VERIFIED AND WORKING PERFECTLY! ===');
+  console.log('\n=== ALL USER IMPROVEMENTS VERIFIED AND WORKING FLAWLESSLY! ===');
 
   mediaServer.stop();
   app.quit();

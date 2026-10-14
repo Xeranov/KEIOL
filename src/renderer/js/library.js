@@ -1,13 +1,14 @@
 /**
- * Anime Library & Gallery Controller
- * Manages anime collections, episode playlists, continue watching resume,
- * folder scanning, and view switching between Gallery and Video Player.
+ * XPlayer: Netflix-Style Library & Gallery Controller
+ * Manages movies and series detection, continue watching hero,
+ * horizontal category rows, episode playlists, and view switching.
  */
 class LibraryManager {
   constructor(player) {
     this.player = player;
-    this.libraryData = { libraryPath: '', animeList: [], continueWatching: null };
+    this.libraryData = { libraryPath: '', seriesList: [], movies: [], continueWatching: null };
     this.selectedAnime = null;
+    this.activeTab = 'all'; // 'all' | 'series' | 'movies'
     this.searchQuery = '';
     this.autoplayCountdownTimer = null;
     this.autoplaySecondsLeft = 5;
@@ -16,23 +17,39 @@ class LibraryManager {
     this.galleryView = document.getElementById('galleryView');
     this.playerView = document.getElementById('playerView');
 
-    // Gallery Toolbar
+    // Titlebar back button
     this.btnBackToGallery = document.getElementById('btnBackToGallery');
+
+    // Netflix Toolbar
     this.btnChooseFolder = document.getElementById('btnChooseFolder');
     this.libraryFolderText = document.getElementById('libraryFolderText');
     this.btnRefreshLibrary = document.getElementById('btnRefreshLibrary');
     this.inputSearchAnime = document.getElementById('inputSearchAnime');
 
-    // Hero Continue Watching
-    this.continueHero = document.getElementById('continueHero');
-    this.continueTitle = document.getElementById('continueTitle');
-    this.continueEpisode = document.getElementById('continueEpisode');
-    this.continueProgressFill = document.getElementById('continueProgressFill');
-    this.continueTimeText = document.getElementById('continueTimeText');
-    this.btnContinuePlay = document.getElementById('btnContinuePlay');
+    // Tabs
+    this.tabAll = document.getElementById('tabAll');
+    this.tabSeries = document.getElementById('tabSeries');
+    this.tabMovies = document.getElementById('tabMovies');
 
-    // Anime Grid
-    this.animeGrid = document.getElementById('animeGrid');
+    // Netflix Billboard / Hero
+    this.billboardSection = document.getElementById('billboardSection');
+    this.billboardTitle = document.getElementById('billboardTitle');
+    this.billboardDesc = document.getElementById('billboardDesc');
+    this.billboardProgressFill = document.getElementById('billboardProgressFill');
+    this.billboardProgressText = document.getElementById('billboardProgressText');
+    this.btnBillboardPlay = document.getElementById('btnBillboardPlay');
+    this.btnBillboardInfo = document.getElementById('btnBillboardInfo');
+
+    // Netflix Rows Containers
+    this.rowContinue = document.getElementById('rowContinue');
+    this.sliderContinue = document.getElementById('sliderContinue');
+
+    this.rowSeries = document.getElementById('rowSeries');
+    this.sliderSeries = document.getElementById('sliderSeries');
+
+    this.rowMovies = document.getElementById('rowMovies');
+    this.sliderMovies = document.getElementById('sliderMovies');
+
     this.galleryEmpty = document.getElementById('galleryEmpty');
 
     // Episodes Modal
@@ -42,13 +59,14 @@ class LibraryManager {
     this.btnCloseEpisodes = document.getElementById('btnCloseEpisodes');
     this.btnPlayAllEpisodes = document.getElementById('btnPlayAllEpisodes');
 
-    // In-Player Playlist Drawer & Next Autoplay
+    // In-Player Playlist Drawer
     this.playlistDrawer = document.getElementById('playlistDrawer');
     this.playlistDrawerTitle = document.getElementById('playlistDrawerTitle');
     this.playlistDrawerBody = document.getElementById('playlistDrawerBody');
     this.btnClosePlaylistDrawer = document.getElementById('btnClosePlaylistDrawer');
     this.btnTogglePlaylist = document.getElementById('btnTogglePlaylist');
 
+    // Next Episode Autoplay Toast
     this.nextAutoplayToast = document.getElementById('nextAutoplayToast');
     this.nextAutoplayTitle = document.getElementById('nextAutoplayTitle');
     this.btnCancelAutoplay = document.getElementById('btnCancelAutoplay');
@@ -67,6 +85,14 @@ class LibraryManager {
       this.showGalleryView();
     });
 
+    // Brand click returns to Gallery
+    const brandEl = document.querySelector('.brand');
+    if (brandEl) {
+      brandEl.addEventListener('click', () => {
+        this.showGalleryView();
+      });
+    }
+
     // Choose Library Folder
     this.btnChooseFolder.addEventListener('click', async () => {
       if (window.electronAPI) {
@@ -83,24 +109,57 @@ class LibraryManager {
       this.scanAndRender();
     });
 
-    // Search Anime
+    // Search
     this.inputSearchAnime.addEventListener('input', (e) => {
       this.searchQuery = (e.target.value || '').toLowerCase().trim();
-      this.renderAnimeGrid();
+      this.renderRows();
     });
 
-    // Continue Watching Play Button
-    this.btnContinuePlay.addEventListener('click', () => {
+    // Category Tabs
+    const setTab = (tabName) => {
+      this.activeTab = tabName;
+      [this.tabAll, this.tabSeries, this.tabMovies].forEach(btn => {
+        if (btn) btn.classList.toggle('active', btn.dataset.tab === tabName);
+      });
+      this.renderRows();
+    };
+
+    if (this.tabAll) this.tabAll.addEventListener('click', () => setTab('all'));
+    if (this.tabSeries) this.tabSeries.addEventListener('click', () => setTab('series'));
+    if (this.tabMovies) this.tabMovies.addEventListener('click', () => setTab('movies'));
+
+    // Billboard Play Button
+    this.btnBillboardPlay.addEventListener('click', () => {
       const cw = this.libraryData.continueWatching;
       if (cw && cw.episodePath) {
-        // Find corresponding anime in libraryData
-        const anime = this.libraryData.animeList.find(a => a.path === cw.animePath) || {
-          title: cw.animeTitle,
-          path: cw.animePath,
+        const series = (this.libraryData.seriesList || []).find(s => s.path === cw.seriesPath) || {
+          title: cw.title,
+          path: cw.seriesPath,
           episodes: [{ name: cw.episodeName, path: cw.episodePath }]
         };
+        this.playEpisode(series, cw.episodePath, cw.currentTime);
+      } else if (this.libraryData.seriesList && this.libraryData.seriesList.length > 0) {
+        const first = this.libraryData.seriesList[0];
+        if (first.episodes && first.episodes.length > 0) {
+          this.playEpisode(first, first.episodes[0].path, 0);
+        }
+      } else if (this.libraryData.movies && this.libraryData.movies.length > 0) {
+        this.playMovie(this.libraryData.movies[0]);
+      }
+    });
 
-        this.playEpisode(anime, cw.episodePath, cw.currentTime);
+    // Billboard Info Button
+    this.btnBillboardInfo.addEventListener('click', () => {
+      const cw = this.libraryData.continueWatching;
+      if (cw && cw.seriesPath) {
+        const series = (this.libraryData.seriesList || []).find(s => s.path === cw.seriesPath);
+        if (series) {
+          this.openEpisodesModal(series);
+          return;
+        }
+      }
+      if (this.libraryData.seriesList && this.libraryData.seriesList.length > 0) {
+        this.openEpisodesModal(this.libraryData.seriesList[0]);
       }
     });
 
@@ -115,7 +174,7 @@ class LibraryManager {
       }
     });
 
-    // Play All in Episodes Modal
+    // Play All Episodes in modal
     this.btnPlayAllEpisodes.addEventListener('click', () => {
       if (this.selectedAnime && this.selectedAnime.episodes.length > 0) {
         this.closeEpisodesModal();
@@ -142,28 +201,23 @@ class LibraryManager {
       this.executeNextEpisode();
     });
 
-    // Listen to player video end for auto-advancing to next episode
+    // Video end event for next episode countdown
     window.addEventListener('player:ended', () => {
       this.handleEpisodeEnded();
     });
 
-    // Track watching progress periodically (every 2 seconds while playing)
+    // Track watching progress periodically
     let lastSavedTime = 0;
     window.addEventListener('player:timeupdate', (e) => {
       const cur = e.detail.currentTime;
       if (Math.abs(cur - lastSavedTime) >= 2) {
         lastSavedTime = cur;
-        if (this.currentAnime && this.currentEpisodePath) {
+        if (this.currentEpisodePath) {
           const dur = e.detail.duration;
           const epName = this.currentEpisodeName;
+          const seriesPath = this.currentSeries ? this.currentSeries.path : null;
           if (window.electronAPI) {
-            window.electronAPI.saveWatchProgress(
-              this.currentAnime.path,
-              this.currentEpisodePath,
-              epName,
-              cur,
-              dur
-            );
+            window.electronAPI.saveWatchProgress(seriesPath, this.currentEpisodePath, epName, cur, dur);
           }
         }
       }
@@ -176,7 +230,7 @@ class LibraryManager {
       try {
         this.libraryData = await window.electronAPI.scanLibrary();
       } catch (e) {
-        console.error('Failed to scan anime library:', e);
+        console.error('Failed to scan library:', e);
       } finally {
         window.dispatchEvent(new CustomEvent('player:loading', { detail: { isLoading: false } }));
       }
@@ -185,105 +239,190 @@ class LibraryManager {
   }
 
   render() {
-    const rootPath = this.libraryData.libraryPath || 'Pilih Folder Anime';
+    const rootPath = this.libraryData.libraryPath || 'Pilih Folder Film & Series';
     const folderShort = rootPath.split(/[\\/]/).pop() || rootPath;
     this.libraryFolderText.textContent = `Folder: ${folderShort}`;
     this.libraryFolderText.title = rootPath;
 
-    this.renderContinueWatching();
-    this.renderAnimeGrid();
+    this.renderBillboard();
+    this.renderRows();
   }
 
-  renderContinueWatching() {
+  renderBillboard() {
     const cw = this.libraryData.continueWatching;
+
     if (cw && cw.episodePath) {
-      this.continueTitle.textContent = cw.animeTitle;
-      this.continueEpisode.textContent = cw.episodeName;
+      this.billboardTitle.textContent = cw.title;
+      this.billboardDesc.textContent = `${cw.episodeName} • Sedang Ditonton`;
 
       const dur = cw.duration || 0;
       const cur = cw.currentTime || 0;
       const pct = dur > 0 ? Math.min(100, Math.round((cur / dur) * 100)) : 0;
 
-      this.continueProgressFill.style.width = `${pct}%`;
-      this.continueTimeText.textContent = `${this.formatTime(cur)} / ${this.formatTime(dur)} (${pct}%)`;
+      this.billboardProgressFill.style.width = `${pct}%`;
+      this.billboardProgressText.textContent = `${this.formatTime(cur)} / ${this.formatTime(dur)} (${pct}%)`;
 
-      this.continueHero.classList.remove('hidden');
+      this.billboardSection.classList.remove('hidden');
+    } else if (this.libraryData.seriesList && this.libraryData.seriesList.length > 0) {
+      const first = this.libraryData.seriesList[0];
+      this.billboardTitle.textContent = first.title;
+      this.billboardDesc.textContent = `${first.episodesCount} Episode tersedia`;
+      this.billboardProgressFill.style.width = '0%';
+      this.billboardProgressText.textContent = 'Mulai Menonton';
+      this.billboardSection.classList.remove('hidden');
+    } else if (this.libraryData.movies && this.libraryData.movies.length > 0) {
+      const first = this.libraryData.movies[0];
+      this.billboardTitle.textContent = first.title;
+      this.billboardDesc.textContent = 'Film Tunggal';
+      this.billboardProgressFill.style.width = '0%';
+      this.billboardProgressText.textContent = 'Mulai Menonton';
+      this.billboardSection.classList.remove('hidden');
     } else {
-      this.continueHero.classList.add('hidden');
+      this.billboardSection.classList.add('hidden');
     }
   }
 
-  renderAnimeGrid() {
-    this.animeGrid.innerHTML = '';
+  renderRows() {
     const query = this.searchQuery;
-
-    const filtered = (this.libraryData.animeList || []).filter(anime => {
+    const seriesList = (this.libraryData.seriesList || []).filter(s => {
       if (!query) return true;
-      return anime.title.toLowerCase().includes(query);
+      return s.title.toLowerCase().includes(query);
     });
 
-    if (filtered.length === 0) {
+    const moviesList = (this.libraryData.movies || []).filter(m => {
+      if (!query) return true;
+      return m.title.toLowerCase().includes(query);
+    });
+
+    const cw = this.libraryData.continueWatching;
+    const hasAnyContent = seriesList.length > 0 || moviesList.length > 0;
+
+    if (!hasAnyContent) {
       this.galleryEmpty.classList.remove('hidden');
+      this.rowContinue.classList.add('hidden');
+      this.rowSeries.classList.add('hidden');
+      this.rowMovies.classList.add('hidden');
       return;
     }
 
     this.galleryEmpty.classList.add('hidden');
 
-    filtered.forEach(anime => {
-      const card = document.createElement('div');
-      card.className = 'anime-card';
-      card.tabIndex = 0;
-      card.setAttribute('role', 'button');
-      card.setAttribute('aria-label', `Buka anime ${anime.title}`);
+    // 1. Continue Watching Row
+    if (cw && cw.episodePath && this.activeTab === 'all' && !query) {
+      this.rowContinue.classList.remove('hidden');
+      this.sliderContinue.innerHTML = '';
 
-      // Poster or placeholder
-      let thumbContent = '';
-      if (anime.posterPath) {
-        const encodedPoster = encodeURIComponent(anime.posterPath);
-        thumbContent = `<img class="anime-card-poster" src="http://127.0.0.1:${this.player.serverPort}/file?path=${encodedPoster}" alt="${anime.title}">`;
-      } else {
-        const initials = anime.title.slice(0, 2).toUpperCase();
-        thumbContent = `
-          <div class="anime-card-placeholder">
-            <span class="anime-card-initials">${initials}</span>
-          </div>
-        `;
-      }
-
-      const lastEpText = anime.lastWatched ? `Terakhir: ${anime.lastWatched.episodeName}` : `${anime.episodesCount} Episode`;
-
-      card.innerHTML = `
-        <div class="anime-card-thumb">
-          ${thumbContent}
-          <span class="anime-episodes-badge">${anime.episodesCount} Eps</span>
-        </div>
-        <div class="anime-card-body">
-          <div class="anime-card-title">${anime.title}</div>
-          <div class="anime-card-sub">${lastEpText}</div>
-        </div>
-      `;
-
-      card.addEventListener('click', () => {
-        this.openEpisodesModal(anime);
-      });
-
-      card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          this.openEpisodesModal(anime);
+      const card = this.createNetflixCard({
+        title: cw.title,
+        subtitle: cw.episodeName,
+        badgeText: 'Lanjutkan',
+        progressPct: cw.duration > 0 ? (cw.currentTime / cw.duration) * 100 : 0,
+        onClick: () => {
+          const s = (this.libraryData.seriesList || []).find(item => item.path === cw.seriesPath);
+          this.playEpisode(s, cw.episodePath, cw.currentTime);
         }
       });
+      this.sliderContinue.appendChild(card);
+    } else {
+      this.rowContinue.classList.add('hidden');
+    }
 
-      this.animeGrid.appendChild(card);
-    });
+    // 2. Series & Anime Row
+    if ((this.activeTab === 'all' || this.activeTab === 'series') && seriesList.length > 0) {
+      this.rowSeries.classList.remove('hidden');
+      this.sliderSeries.innerHTML = '';
+
+      seriesList.forEach(series => {
+        const card = this.createNetflixCard({
+          title: series.title,
+          subtitle: `${series.episodesCount} Episode`,
+          badgeText: `${series.episodesCount} Eps`,
+          posterPath: series.posterPath,
+          onClick: () => this.openEpisodesModal(series)
+        });
+        this.sliderSeries.appendChild(card);
+      });
+    } else {
+      this.rowSeries.classList.add('hidden');
+    }
+
+    // 3. Movies (Film Tunggal) Row
+    if ((this.activeTab === 'all' || this.activeTab === 'movies') && moviesList.length > 0) {
+      this.rowMovies.classList.remove('hidden');
+      this.sliderMovies.innerHTML = '';
+
+      moviesList.forEach(movie => {
+        const progressPct = movie.duration > 0 ? (movie.currentTime / movie.duration) * 100 : 0;
+        const card = this.createNetflixCard({
+          title: movie.title,
+          subtitle: 'Film',
+          badgeText: 'Film',
+          progressPct,
+          onClick: () => this.playMovie(movie)
+        });
+        this.sliderMovies.appendChild(card);
+      });
+    } else {
+      this.rowMovies.classList.add('hidden');
+    }
   }
 
-  openEpisodesModal(anime) {
-    this.selectedAnime = anime;
-    this.episodesAnimeTitle.textContent = anime.title;
+  createNetflixCard({ title, subtitle, badgeText, posterPath, progressPct = 0, onClick }) {
+    const card = document.createElement('div');
+    card.className = 'netflix-card';
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', title);
+
+    let thumbHtml = '';
+    if (posterPath) {
+      const encodedPoster = encodeURIComponent(posterPath);
+      thumbHtml = `<img class="netflix-card-poster" src="http://127.0.0.1:${this.player.serverPort}/file?path=${encodedPoster}" alt="${title}">`;
+    } else {
+      const initials = title.slice(0, 2).toUpperCase();
+      thumbHtml = `
+        <div class="netflix-card-placeholder">
+          <span class="netflix-card-initials">${initials}</span>
+        </div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="netflix-card-thumb">
+        ${thumbHtml}
+        <div class="netflix-play-hover">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="#ffffff"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+        ${badgeText ? `<span class="netflix-card-badge">${badgeText}</span>` : ''}
+        ${progressPct > 0 ? `
+          <div class="netflix-card-progress">
+            <div class="netflix-card-progress-fill" style="width: ${Math.min(100, Math.round(progressPct))}%"></div>
+          </div>
+        ` : ''}
+      </div>
+      <div class="netflix-card-body">
+        <div class="netflix-card-title">${title}</div>
+        <div class="netflix-card-sub">${subtitle || ''}</div>
+      </div>
+    `;
+
+    card.addEventListener('click', onClick);
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onClick();
+      }
+    });
+
+    return card;
+  }
+
+  openEpisodesModal(series) {
+    this.selectedAnime = series;
+    this.episodesAnimeTitle.textContent = series.title;
     this.episodesList.innerHTML = '';
 
-    anime.episodes.forEach((ep, idx) => {
+    series.episodes.forEach(ep => {
       const item = document.createElement('div');
       item.className = 'episode-item';
       item.tabIndex = 0;
@@ -315,7 +454,7 @@ class LibraryManager {
       item.addEventListener('click', () => {
         this.closeEpisodesModal();
         const startSec = ep.completed ? 0 : (ep.currentTime || 0);
-        this.playEpisode(anime, ep.path, startSec);
+        this.playEpisode(series, ep.path, startSec);
       });
 
       this.episodesList.appendChild(item);
@@ -328,8 +467,23 @@ class LibraryManager {
     this.episodesModal.classList.add('hidden');
   }
 
-  async playEpisode(anime, episodePath, startSeconds = 0) {
-    this.currentAnime = anime;
+  async playMovie(movie) {
+    this.currentSeries = null;
+    this.currentEpisodePath = movie.path;
+    this.currentEpisodeName = movie.name;
+
+    this.showPlayerView();
+    await this.player.loadFile(movie.path);
+
+    if (movie.currentTime > 0 && !movie.completed) {
+      setTimeout(() => {
+        this.player.seek(movie.currentTime);
+      }, 150);
+    }
+  }
+
+  async playEpisode(series, episodePath, startSeconds = 0) {
+    this.currentSeries = series;
     this.currentEpisodePath = episodePath;
     this.currentEpisodeName = episodePath.split(/[\\/]/).pop();
 
@@ -349,14 +503,12 @@ class LibraryManager {
     this.galleryView.classList.remove('hidden');
     this.playerView.classList.add('hidden');
     this.btnBackToGallery.classList.add('hidden');
-    document.getElementById('videoTitleDisplay').textContent = 'Galeri Anime';
+    document.getElementById('videoTitleDisplay').textContent = 'XPlayer';
 
-    // Pause video when leaving player
     if (!this.player.video.paused) {
       this.player.video.pause();
     }
 
-    // Refresh gallery and continue watching
     this.scanAndRender();
   }
 
@@ -374,15 +526,15 @@ class LibraryManager {
   }
 
   renderInPlayerPlaylist() {
-    if (!this.currentAnime) {
-      this.playlistDrawerBody.innerHTML = '<div style="padding: 12px; color: var(--text-muted);">Tidak ada daftar putar anime aktif.</div>';
+    if (!this.currentSeries) {
+      this.playlistDrawerBody.innerHTML = '<div style="padding: 12px; color: var(--text-muted);">Tidak ada daftar putar aktif.</div>';
       return;
     }
 
-    this.playlistDrawerTitle.textContent = this.currentAnime.title;
+    this.playlistDrawerTitle.textContent = this.currentSeries.title;
     this.playlistDrawerBody.innerHTML = '';
 
-    this.currentAnime.episodes.forEach(ep => {
+    this.currentSeries.episodes.forEach(ep => {
       const isCurrent = ep.path === this.currentEpisodePath;
       const item = document.createElement('div');
       item.className = `episode-item ${isCurrent ? 'playing' : ''}`;
@@ -396,7 +548,7 @@ class LibraryManager {
       `;
 
       item.addEventListener('click', () => {
-        this.playEpisode(this.currentAnime, ep.path, 0);
+        this.playEpisode(this.currentSeries, ep.path, 0);
       });
 
       this.playlistDrawerBody.appendChild(item);
@@ -404,9 +556,9 @@ class LibraryManager {
   }
 
   handleEpisodeEnded() {
-    if (!this.currentAnime || !this.currentAnime.episodes) return;
+    if (!this.currentSeries || !this.currentSeries.episodes) return;
 
-    const episodes = this.currentAnime.episodes;
+    const episodes = this.currentSeries.episodes;
     const currentIndex = episodes.findIndex(ep => ep.path === this.currentEpisodePath);
 
     if (currentIndex >= 0 && currentIndex < episodes.length - 1) {
@@ -441,7 +593,7 @@ class LibraryManager {
     if (this.pendingNextEpisode) {
       const next = this.pendingNextEpisode;
       this.cancelAutoplay();
-      this.playEpisode(this.currentAnime, next.path, 0);
+      this.playEpisode(this.currentSeries, next.path, 0);
     }
   }
 

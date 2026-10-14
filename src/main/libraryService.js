@@ -32,8 +32,7 @@ class LibraryService {
       console.warn('Error reading library config:', e.message);
     }
 
-    // Default library path: ./anime in project directory or Videos/Anime
-    const defaultLocal = path.join(process.cwd(), 'anime');
+    const defaultLocal = path.join(process.cwd(), 'media');
     if (!fs.existsSync(defaultLocal)) {
       try {
         fs.mkdirSync(defaultLocal, { recursive: true });
@@ -68,12 +67,12 @@ class LibraryService {
       console.warn('Error reading watch history:', e.message);
     }
     return {
-      animeList: {}, // animePath -> { lastEpisodePath, episodeName, currentTime, duration, lastWatched }
-      episodes: {}   // episodePath -> { currentTime, duration, completed, lastWatched }
+      seriesList: {},
+      episodes: {}
     };
   }
 
-  saveProgress(animePath, episodePath, episodeName, currentTime, duration) {
+  saveProgress(seriesPath, episodePath, episodeName, currentTime, duration) {
     if (!episodePath) return;
 
     const now = Date.now();
@@ -87,9 +86,9 @@ class LibraryService {
       lastWatched: now
     };
 
-    if (animePath) {
-      if (!this.history.animeList) this.history.animeList = {};
-      this.history.animeList[animePath] = {
+    if (seriesPath) {
+      if (!this.history.seriesList) this.history.seriesList = {};
+      this.history.seriesList[seriesPath] = {
         lastEpisodePath: episodePath,
         episodeName: episodeName || path.basename(episodePath),
         currentTime,
@@ -98,7 +97,6 @@ class LibraryService {
       };
     }
 
-    // Save to disk asynchronously
     try {
       fs.writeFileSync(this.historyFile, JSON.stringify(this.history, null, 2));
     } catch (e) {
@@ -107,18 +105,38 @@ class LibraryService {
   }
 
   getContinueWatching() {
-    if (!this.history.animeList) return null;
+    if (!this.history.seriesList && !this.history.episodes) return null;
 
     let latest = null;
     let latestTime = 0;
-    let latestAnimePath = null;
+    let latestSeriesPath = null;
 
-    for (const [animePath, info] of Object.entries(this.history.animeList)) {
-      if (info && info.lastWatched > latestTime) {
-        if (fs.existsSync(info.lastEpisodePath)) {
-          latestTime = info.lastWatched;
-          latest = info;
-          latestAnimePath = animePath;
+    if (this.history.seriesList) {
+      for (const [seriesPath, info] of Object.entries(this.history.seriesList)) {
+        if (info && info.lastWatched > latestTime) {
+          if (fs.existsSync(info.lastEpisodePath)) {
+            latestTime = info.lastWatched;
+            latest = info;
+            latestSeriesPath = seriesPath;
+          }
+        }
+      }
+    }
+
+    if (this.history.episodes) {
+      for (const [epPath, epInfo] of Object.entries(this.history.episodes)) {
+        if (epInfo && epInfo.lastWatched > latestTime) {
+          if (fs.existsSync(epPath)) {
+            latestTime = epInfo.lastWatched;
+            latest = {
+              lastEpisodePath: epPath,
+              episodeName: path.basename(epPath),
+              currentTime: epInfo.currentTime || 0,
+              duration: epInfo.duration || 0,
+              lastWatched: epInfo.lastWatched
+            };
+            latestSeriesPath = path.dirname(epPath);
+          }
         }
       }
     }
@@ -126,8 +144,8 @@ class LibraryService {
     if (!latest) return null;
 
     return {
-      animePath: latestAnimePath,
-      animeTitle: path.basename(latestAnimePath),
+      seriesPath: latestSeriesPath,
+      title: path.basename(latestSeriesPath),
       episodePath: latest.lastEpisodePath,
       episodeName: latest.episodeName,
       currentTime: latest.currentTime || 0,
@@ -136,80 +154,113 @@ class LibraryService {
     };
   }
 
-  getHistory() {
-    return this.history;
-  }
-
   scanLibrary() {
     const rootDir = this.libraryPath;
     if (!fs.existsSync(rootDir)) {
-      return { libraryPath: rootDir, animeList: [] };
+      return { libraryPath: rootDir, seriesList: [], movies: [], animeList: [], continueWatching: null };
     }
 
     const entries = fs.readdirSync(rootDir, { withFileTypes: true });
-    const animeFolders = entries.filter(e => e.isDirectory());
 
-    const animeList = [];
+    const seriesList = [];
+    const movies = [];
 
-    for (const folder of animeFolders) {
+    // 1. Detect standalone video files directly in root as Movies (Film)
+    for (const entry of entries) {
+      if (entry.isFile()) {
+        const ext = path.extname(entry.name).toLowerCase();
+        if (VIDEO_EXTENSIONS.has(ext)) {
+          const filePath = path.join(rootDir, entry.name);
+          const stat = fs.statSync(filePath);
+          const epHist = (this.history.episodes && this.history.episodes[filePath]) || null;
+
+          movies.push({
+            name: entry.name,
+            title: path.parse(entry.name).name,
+            path: filePath,
+            size: stat.size,
+            currentTime: epHist ? epHist.currentTime : 0,
+            duration: epHist ? epHist.duration : 0,
+            completed: epHist ? epHist.completed : false
+          });
+        }
+      }
+    }
+
+    // 2. Detect subdirectories as Series / Anime
+    const subfolders = entries.filter(e => e.isDirectory());
+
+    for (const folder of subfolders) {
       const folderPath = path.join(rootDir, folder.name);
-      const items = fs.readdirSync(folderPath);
-
-      // Find all video episodes
       const episodes = [];
       let posterPath = null;
 
-      for (const item of items) {
-        const itemPath = path.join(folderPath, item);
-        const stat = fs.statSync(itemPath);
-        if (stat.isDirectory()) continue;
+      // Recursive scan of files within subfolder
+      this.collectVideosAndPoster(folderPath, episodes, (img) => {
+        if (!posterPath) posterPath = img;
+      });
 
-        const ext = path.extname(item).toLowerCase();
-
-        if (VIDEO_EXTENSIONS.has(ext)) {
-          const epHistory = (this.history.episodes && this.history.episodes[itemPath]) || null;
-          episodes.push({
-            name: item,
-            title: path.parse(item).name,
-            path: itemPath,
-            size: stat.size,
-            currentTime: epHistory ? epHistory.currentTime : 0,
-            duration: epHistory ? epHistory.duration : 0,
-            completed: epHistory ? epHistory.completed : false
-          });
-        } else if (IMAGE_EXTENSIONS.has(ext) && !posterPath) {
-          const base = path.parse(item).name.toLowerCase();
-          if (['poster', 'cover', 'folder', 'thumb'].includes(base) || !posterPath) {
-            posterPath = itemPath;
-          }
-        }
-      }
-
-      // Natural alphanumeric sort for episodes (e.g. Episode 2 before Episode 10)
+      // Natural alphanumeric sort for episodes
       episodes.sort((a, b) => {
         return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
       });
 
-      const animeHist = (this.history.animeList && this.history.animeList[folderPath]) || null;
-
-      animeList.push({
-        title: folder.name,
-        path: folderPath,
-        posterPath: posterPath ? posterPath.replace(/\\/g, '/') : null,
-        episodesCount: episodes.length,
-        episodes,
-        lastWatched: animeHist || null
-      });
+      if (episodes.length > 0) {
+        const seriesHist = (this.history.seriesList && this.history.seriesList[folderPath]) || null;
+        seriesList.push({
+          title: folder.name,
+          path: folderPath,
+          posterPath: posterPath ? posterPath.replace(/\\/g, '/') : null,
+          episodesCount: episodes.length,
+          episodes,
+          lastWatched: seriesHist || null
+        });
+      }
     }
 
-    // Sort anime by title
-    animeList.sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));
+    // Natural sort series by title
+    seriesList.sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));
+    movies.sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));
 
     return {
       libraryPath: rootDir,
-      animeList,
+      seriesList,
+      movies,
+      animeList: seriesList, // Backwards compatibility alias
       continueWatching: this.getContinueWatching()
     };
+  }
+
+  collectVideosAndPoster(dir, episodes, onPosterFound) {
+    try {
+      const items = fs.readdirSync(dir, { withFileTypes: true });
+
+      for (const item of items) {
+        const fullPath = path.join(dir, item.name);
+        if (item.isDirectory()) {
+          this.collectVideosAndPoster(fullPath, episodes, onPosterFound);
+        } else if (item.isFile()) {
+          const ext = path.extname(item.name).toLowerCase();
+          if (VIDEO_EXTENSIONS.has(ext)) {
+            const stat = fs.statSync(fullPath);
+            const epHist = (this.history.episodes && this.history.episodes[fullPath]) || null;
+            episodes.push({
+              name: item.name,
+              title: path.parse(item.name).name,
+              path: fullPath,
+              size: stat.size,
+              currentTime: epHist ? epHist.currentTime : 0,
+              duration: epHist ? epHist.duration : 0,
+              completed: epHist ? epHist.completed : false
+            });
+          } else if (IMAGE_EXTENSIONS.has(ext)) {
+            onPosterFound(fullPath);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`Error reading dir ${dir}:`, err.message);
+    }
   }
 }
 

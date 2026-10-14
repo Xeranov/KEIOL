@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VidPlayer - YouTube Style Anime Player</title>
+  <title>XPlayer</title>
   <link rel="stylesheet" href="styles/player.css">
   <link rel="stylesheet" href="styles/modals.css">
   <link rel="stylesheet" href="styles/gallery.css">
@@ -11,27 +11,24 @@
 <body class="theme-dark">
   <div id="appContainer" class="app-container">
 
-    <!-- Custom Titlebar -->
+    <!-- Custom Semi-Transparent Titlebar -->
     <header class="titlebar" id="titleBar">
       <div class="titlebar-drag-region">
-        <div class="brand">
-          <svg class="youtube-logo-icon" viewBox="0 0 28 20" width="24" height="18" fill="none">
-            <path d="M27.4 3.1c-.3-1.2-1.3-2.1-2.5-2.4C22.7 0 14 0 14 0S5.3 0 3.1.7C1.9 1 1 1.9.6 3.1 0 5.3 0 10 0 10s0 4.7.6 6.9c.3 1.2 1.3 2.1 2.5 2.4 2.2.7 10.9.7 10.9.7s8.7 0 10.9-.7c1.2-.3 2.1-1.2 2.5-2.4.6-2.2.6-6.9.6-6.9s0-4.7-.6-6.9z" fill="#FF0000"/>
-            <path d="M11.2 14.3L18.4 10l-7.2-4.3v8.6z" fill="#FFFFFF"/>
-          </svg>
-          <span class="brand-title">VidPlayer</span>
+        <div class="brand" id="brandLogo">
+          <span class="brand-x">X</span>
+          <span class="brand-title">Player</span>
         </div>
 
         <!-- Back to Gallery Button (appears when in player mode) -->
-        <button id="btnBackToGallery" class="btn-action hidden" title="Kembali ke Beranda Galeri Anime" aria-label="Kembali ke Galeri">
+        <button id="btnBackToGallery" class="btn-action hidden" title="Kembali ke Galeri" aria-label="Kembali ke Galeri">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
           </svg>
-          <span>Beranda</span>
+          <span>Galeri</span>
         </button>
 
         <div class="video-meta-info" id="videoMetaInfo">
-          <span id="videoTitleDisplay" class="video-title-text">Galeri Anime</span>
+          <span id="videoTitleDisplay" class="video-title-text">XPlayer</span>
           <span id="codecBadge" class="badge codec-badge hidden">Direct</span>
         </div>
       </div>
@@ -49,7 +46,7 @@
           </svg>
           <span>Subtitle</span>
         </button>
-        <button id="btnShortcutsHelp" class="btn-icon" title="Daftar Shortcut YouTube (?)" aria-label="Shortcut Bantuan">
+        <button id="btnShortcutsHelp" class="btn-icon" title="Daftar Shortcut XPlayer (?)" aria-label="Shortcut Bantuan">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/>
           </svg>
@@ -68,24 +65,32 @@
       </div>
     </header>
 
-    <!-- VIEW 1: ANIME GALLERY / BERANDA -->
+    <!-- VIEW 1: NETFLIX-STYLE GALLERY / BERANDA -->
     <section class="view-panel" id="galleryView">
       
-      <!-- Toolbar -->
-      <div class="gallery-toolbar">
-        <div class="gallery-search-box">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-          </svg>
-          <input type="text" id="inputSearchAnime" placeholder="Cari judul anime..." aria-label="Cari anime">
+      <!-- Netflix Toolbar -->
+      <div class="netflix-toolbar">
+        <div class="netflix-nav-left">
+          <div class="netflix-tabs">
+            <button class="netflix-tab-btn active" id="tabAll" data-tab="all">Semua</button>
+            <button class="netflix-tab-btn" id="tabSeries" data-tab="series">Series & Anime</button>
+            <button class="netflix-tab-btn" id="tabMovies" data-tab="movies">Film</button>
+          </div>
+
+          <div class="netflix-search-box">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="#808080">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <input type="text" id="inputSearchAnime" placeholder="Cari judul..." aria-label="Cari judul film atau series">
+          </div>
         </div>
 
-        <div class="gallery-toolbar-actions">
-          <button id="btnChooseFolder" class="btn-library-folder" title="Ganti Folder Anime Library">
+        <div class="netflix-nav-right">
+          <button id="btnChooseFolder" class="btn-netflix-folder" title="Pilih Folder Utama Media">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
               <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
             </svg>
-            <span id="libraryFolderText">Folder Anime</span>
+            <span id="libraryFolderText">Folder Media</span>
           </button>
 
           <button id="btnRefreshLibrary" class="btn-icon" title="Pindai Ulang Folder" aria-label="Pindai Ulang">
@@ -96,49 +101,65 @@
         </div>
       </div>
 
-      <!-- Scrollable Gallery Content -->
-      <div class="gallery-content">
+      <!-- Scrollable Netflix Content -->
+      <div class="netflix-content">
 
-        <!-- Continue Watching Hero Banner -->
-        <div id="continueHero" class="continue-hero hidden">
-          <div class="continue-left">
-            <div class="continue-thumb-box">
-              <span class="continue-thumb-placeholder">🎬</span>
+        <!-- Netflix Billboard / Hero Section -->
+        <div id="billboardSection" class="netflix-billboard hidden">
+          <div class="billboard-backdrop" id="billboardBackdrop"></div>
+          <div class="billboard-gradient"></div>
+          <div class="billboard-content">
+            <div class="billboard-badge">
+              <span>★</span>
+              <span>Lanjutkan Menonton</span>
             </div>
-            <div class="continue-info">
-              <span class="continue-badge">Lanjutkan Terakhir Nonton</span>
-              <div id="continueTitle" class="continue-title">Nama Anime</div>
-              <div id="continueEpisode" class="continue-episode">Episode 01</div>
-              <div class="continue-progress-bar">
-                <div id="continueProgressFill" class="continue-progress-fill"></div>
+            <h1 id="billboardTitle" class="billboard-title">Nama Judul</h1>
+            <p id="billboardDesc" class="billboard-desc">Episode 01</p>
+            <div class="billboard-progress-container">
+              <div class="billboard-progress-bar">
+                <div id="billboardProgressFill" class="billboard-progress-fill"></div>
               </div>
-              <span id="continueTimeText" class="continue-time-text">0:00 / 0:00</span>
+              <span id="billboardProgressText" class="billboard-progress-text">0:00 / 0:00</span>
+            </div>
+            <div class="billboard-actions">
+              <button id="btnBillboardPlay" class="btn-netflix-play">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                <span>Putar</span>
+              </button>
+              <button id="btnBillboardInfo" class="btn-netflix-info">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                <span>Episode</span>
+              </button>
             </div>
           </div>
-          <button id="btnContinuePlay" class="btn-continue-play" aria-label="Lanjutkan Menonton">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-            <span>Lanjutkan</span>
-          </button>
         </div>
 
-        <!-- Anime Grid Section -->
-        <div class="anime-section">
-          <div class="section-title">
-            <span>Koleksi Anime</span>
-          </div>
+        <!-- Row 1: Continue Watching -->
+        <div id="rowContinue" class="netflix-row hidden">
+          <h3 class="netflix-row-title">Lanjutkan Menonton</h3>
+          <div id="sliderContinue" class="netflix-row-slider"></div>
+        </div>
 
-          <div id="animeGrid" class="anime-grid">
-            <!-- Dynamically populated anime cards -->
-          </div>
+        <!-- Row 2: Series & Anime -->
+        <div id="rowSeries" class="netflix-row hidden">
+          <h3 class="netflix-row-title">Series & Anime</h3>
+          <div id="sliderSeries" class="netflix-row-slider"></div>
+        </div>
 
-          <!-- Empty State when folder has no anime -->
-          <div id="galleryEmpty" class="gallery-empty hidden">
-            <svg viewBox="0 0 24 24" width="56" height="56" fill="#717171">
-              <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
-            </svg>
-            <h3>Belum Ada Folder Anime</h3>
-            <p>Masukkan folder anime ke folder library atau pilih folder anime Anda.</p>
-          </div>
+        <!-- Row 3: Movies (Film Tunggal) -->
+        <div id="rowMovies" class="netflix-row hidden">
+          <h3 class="netflix-row-title">Film (Movies)</h3>
+          <div id="sliderMovies" class="netflix-row-slider"></div>
+        </div>
+
+        <!-- Empty State when folder has no media -->
+        <div id="galleryEmpty" class="netflix-empty-container hidden">
+          <svg viewBox="0 0 24 24" width="64" height="64" fill="#e50914">
+            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+          </svg>
+          <h2 class="netflix-empty-title">Folder Media Masih Kosong</h2>
+          <p class="netflix-empty-desc">Pilih folder tempat Anda menyimpan film dan anime. Subfolder di dalamnya akan otomatis dideteksi sebagai Series/Anime, dan file video langsung akan dideteksi sebagai Film.</p>
+          <button onclick="document.getElementById('btnChooseFolder').click()" class="btn-primary" style="margin-top: 10px;">Pilih Folder Media</button>
         </div>
 
       </div>
@@ -222,30 +243,18 @@
         <section id="emptyState" class="empty-state hidden">
           <div class="empty-state-card">
             <div class="empty-state-icon">
-              <svg viewBox="0 0 24 24" width="64" height="64" fill="#FF0000">
+              <svg viewBox="0 0 24 24" width="64" height="64" fill="#e50914">
                 <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
               </svg>
             </div>
-            <h2 class="empty-state-title">Putar Video Apa Saja</h2>
-            <p class="empty-state-desc">Tarik dan lepaskan file video ke sini, atau klik tombol di bawah untuk memilih file dari komputer Anda.</p>
+            <h2 class="empty-state-title">Putar Media</h2>
+            <p class="empty-state-desc">Tarik dan lepaskan file video ke sini, atau klik tombol di bawah.</p>
             <button id="btnEmptyBrowse" class="btn-primary" aria-label="Pilih File Video">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
               </svg>
               <span>Pilih File Video</span>
             </button>
-            <div class="supported-formats-list">
-              <span class="format-tag">MP4</span>
-              <span class="format-tag">MKV</span>
-              <span class="format-tag">AVI</span>
-              <span class="format-tag">MOV</span>
-              <span class="format-tag">WEBM</span>
-              <span class="format-tag">FLV</span>
-              <span class="format-tag">WMV</span>
-              <span class="format-tag">TS / M2TS</span>
-              <span class="format-tag">HEVC / H.265</span>
-              <span class="format-tag">AC3 / DTS Audio</span>
-            </div>
           </div>
         </section>
 
@@ -282,24 +291,18 @@
         </div>
       </aside>
 
-      <!-- YouTube Controls Bar -->
+      <!-- YouTube Style Controls Bar -->
       <nav id="controlsBar" class="controls-bar" aria-label="Kontrol Video">
         
         <!-- Scrubber Progress Bar Container -->
         <div class="progress-bar-container" id="progressBarContainer" tabindex="0" role="slider" aria-label="Waktu pemutaran" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <!-- Hover Time Tooltip -->
           <div id="scrubberTooltip" class="scrubber-tooltip hidden">0:00</div>
           
           <div class="progress-bar-track">
-            <!-- Background base -->
             <div class="progress-bar-bg"></div>
-            <!-- Buffer range -->
             <div id="progressBuffer" class="progress-bar-buffer"></div>
-            <!-- Hover preview -->
             <div id="progressHover" class="progress-bar-hover"></div>
-            <!-- Played red progress -->
             <div id="progressPlayed" class="progress-bar-played"></div>
-            <!-- Scrubber Handle / Knob -->
             <div id="scrubKnob" class="scrub-knob"></div>
           </div>
         </div>
@@ -309,7 +312,6 @@
           
           <!-- Left Controls -->
           <div class="controls-left">
-            <!-- Play / Pause / Replay Button -->
             <button id="btnPlayPause" class="ctrl-btn" title="Putar (k / Spasi)" aria-label="Putar">
               <svg id="iconPlay" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
                 <path d="M8 5v14l11-7z"/>
@@ -322,16 +324,16 @@
               </svg>
             </button>
 
-            <!-- Rewind 10s Button -->
-            <button id="btnRewind10" class="ctrl-btn" title="Mundur 10 detik (j)" aria-label="Mundur 10 detik">
+            <!-- Rewind Button (Dynamic configured seconds) -->
+            <button id="btnRewind10" class="ctrl-btn" title="Mundur 10 detik (j)" aria-label="Mundur detik">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                 <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.2 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
                 <text x="12" y="16.5" font-size="7" font-weight="bold" fill="currentColor" text-anchor="middle">10</text>
               </svg>
             </button>
 
-            <!-- Forward 10s Button -->
-            <button id="btnForward10" class="ctrl-btn" title="Maju 10 detik (l)" aria-label="Maju 10 detik">
+            <!-- Forward Button (Dynamic configured seconds) -->
+            <button id="btnForward10" class="ctrl-btn" title="Maju 10 detik (l)" aria-label="Maju detik">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                 <path d="M11.5 8c2.65 0 5.05.99 6.9 2.6L22 7v9h-9l3.62-3.62c-1.39-1.2-3.16-1.88-5.12-1.88-3.54 0-6.55 2.31-7.6 5.5l-2.37-.78C2.92 11.03 6.85 8 11.5 8z"/>
                 <text x="12" y="16.5" font-size="7" font-weight="bold" fill="currentColor" text-anchor="middle">10</text>
@@ -402,13 +404,6 @@
               </svg>
             </button>
 
-            <!-- Theater Mode Button -->
-            <button id="btnTheater" class="ctrl-btn" title="Mode Teater (t)" aria-label="Mode Teater">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-                <path d="M19 6H5c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H5V8h14v8z"/>
-              </svg>
-            </button>
-
             <!-- Fullscreen Button -->
             <button id="btnFullscreen" class="ctrl-btn" title="Layar Penuh (f)" aria-label="Layar Penuh">
               <svg id="iconEnterFullscreen" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
@@ -437,9 +432,7 @@
           </div>
           <button id="btnCloseEpisodes" class="btn-close-modal" aria-label="Tutup Daftar Episode">&times;</button>
         </div>
-        <div class="episodes-list" id="episodesList">
-          <!-- Populated dynamically -->
-        </div>
+        <div class="episodes-list" id="episodesList"></div>
       </div>
     </div>
 
@@ -461,6 +454,21 @@
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
           </div>
         </button>
+
+        <!-- Configurable Seek Duration Menu Item (5, 10, 15, 20, 25, 30s) -->
+        <button class="settings-item" id="btnSettingsSeek" role="menuitem">
+          <div class="settings-item-label">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+            </svg>
+            <span>Durasi Lompat</span>
+          </div>
+          <div class="settings-item-value">
+            <span id="settingsCurrentSeekText">10s</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+          </div>
+        </button>
+
         <button class="settings-item" id="btnSettingsAudio" role="menuitem">
           <div class="settings-item-label">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
@@ -498,7 +506,7 @@
         </button>
       </div>
 
-      <!-- Speed Submenu View (Supports up to 4x) -->
+      <!-- Speed Submenu View -->
       <div id="settingsSpeedView" class="settings-view hidden">
         <div class="settings-header">
           <button class="btn-settings-back" id="btnBackFromSpeed" aria-label="Kembali ke Setelan">
@@ -506,15 +514,26 @@
           </button>
           <span>Kecepatan Pemutaran</span>
         </div>
-        <div class="speed-options-list" id="speedOptionsList">
-          <!-- Populated dynamically via JS: 0.25x up to 4.0x -->
-        </div>
+        <div class="speed-options-list" id="speedOptionsList"></div>
         <div class="custom-speed-section">
           <div class="custom-speed-label">
             <span>Kustom:</span>
             <span id="customSpeedVal">1.00x</span>
           </div>
           <input type="range" id="customSpeedSlider" min="0.25" max="4.0" step="0.05" value="1.0" class="custom-speed-slider" aria-label="Slider Kecepatan Kustom">
+        </div>
+      </div>
+
+      <!-- Configurable Seek Submenu View (5, 10, 15, 20, 25, 30 detik) -->
+      <div id="settingsSeekView" class="settings-view hidden">
+        <div class="settings-header">
+          <button class="btn-settings-back" id="btnBackFromSeek" aria-label="Kembali ke Setelan">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </button>
+          <span>Durasi Lompat Maju & Mundur</span>
+        </div>
+        <div class="speed-options-list" id="seekOptionsList">
+          <!-- Populated dynamically via JS: 5, 10, 15, 20, 25, 30s -->
         </div>
       </div>
 
@@ -526,9 +545,7 @@
           </button>
           <span>Trek Audio</span>
         </div>
-        <div class="audio-options-list" id="audioOptionsList">
-          <!-- Populated dynamically -->
-        </div>
+        <div class="audio-options-list" id="audioOptionsList"></div>
       </div>
 
       <!-- Subtitles Submenu View -->
@@ -539,18 +556,16 @@
           </button>
           <span>Subtitle / Teks</span>
         </div>
-        <div class="sub-options-list" id="subOptionsList">
-          <!-- Populated dynamically -->
-        </div>
+        <div class="sub-options-list" id="subOptionsList"></div>
       </div>
 
     </div>
 
-    <!-- YouTube Shortcuts Cheatsheet Modal -->
+    <!-- Shortcuts Cheatsheet Modal -->
     <div id="shortcutsModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="shortcuts-card">
         <div class="shortcuts-header">
-          <h2 id="modalTitle">Pintasan Keyboard (YouTube Shortcuts)</h2>
+          <h2 id="modalTitle">Pintasan Keyboard (XPlayer)</h2>
           <button id="btnCloseShortcuts" class="btn-close-modal" aria-label="Tutup Dialog Shortcut">&times;</button>
         </div>
         <div class="shortcuts-grid">
@@ -586,20 +601,12 @@
           <div class="shortcut-col">
             <h4 class="shortcut-cat-title">Navigasi Waktu (Seeking)</h4>
             <div class="shortcut-row">
-              <span class="shortcut-desc">Mundur 10 detik</span>
-              <span class="shortcut-keys"><kbd>j</kbd></span>
+              <span class="shortcut-desc">Mundur sesuai setting detik</span>
+              <span class="shortcut-keys"><kbd>j</kbd> atau <kbd>&larr;</kbd></span>
             </div>
             <div class="shortcut-row">
-              <span class="shortcut-desc">Maju 10 detik</span>
-              <span class="shortcut-keys"><kbd>l</kbd></span>
-            </div>
-            <div class="shortcut-row">
-              <span class="shortcut-desc">Mundur 5 detik</span>
-              <span class="shortcut-keys"><kbd>&larr;</kbd></span>
-            </div>
-            <div class="shortcut-row">
-              <span class="shortcut-desc">Maju 5 detik</span>
-              <span class="shortcut-keys"><kbd>&rarr;</kbd></span>
+              <span class="shortcut-desc">Maju sesuai setting detik</span>
+              <span class="shortcut-keys"><kbd>l</kbd> atau <kbd>&rarr;</kbd></span>
             </div>
             <div class="shortcut-row">
               <span class="shortcut-desc">Lompat ke 0% - 90% video</span>
@@ -628,10 +635,6 @@
             <div class="shortcut-row">
               <span class="shortcut-desc">Layar Penuh (Fullscreen)</span>
               <span class="shortcut-keys"><kbd>f</kbd></span>
-            </div>
-            <div class="shortcut-row">
-              <span class="shortcut-desc">Mode Teater</span>
-              <span class="shortcut-keys"><kbd>t</kbd></span>
             </div>
             <div class="shortcut-row">
               <span class="shortcut-desc">Miniplayer (PiP)</span>

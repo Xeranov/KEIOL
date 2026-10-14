@@ -108,35 +108,39 @@ class ShortcutsEngine {
         return;
       }
 
-      // j: Seek -10 seconds
+      // j: Seek backward by configured seconds
       if (e.key === 'j' || e.key === 'J') {
         e.preventDefault();
-        this.player.seekRelative(-10);
-        window.gesturesEngine.showSeekRipple('left');
+        const sec = this.controls.seekInterval;
+        this.player.seekRelative(-sec);
+        window.gesturesEngine.showSeekRipple('left', sec);
         return;
       }
 
-      // l: Seek +10 seconds
+      // l: Seek forward by configured seconds
       if (e.key === 'l' || e.key === 'L') {
         e.preventDefault();
-        this.player.seekRelative(10);
-        window.gesturesEngine.showSeekRipple('right');
+        const sec = this.controls.seekInterval;
+        this.player.seekRelative(sec);
+        window.gesturesEngine.showSeekRipple('right', sec);
         return;
       }
 
-      // Left Arrow: Seek -5 seconds
+      // Left Arrow: Seek backward by configured seconds
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        this.player.seekRelative(-5);
-        this.controls.showToast('-5 detik');
+        const sec = this.controls.seekInterval;
+        this.player.seekRelative(-sec);
+        this.controls.showToast(`-${sec} detik`);
         return;
       }
 
-      // Right Arrow: Seek +5 seconds
+      // Right Arrow: Seek forward by configured seconds
       if (e.key === 'ArrowRight') {
         e.preventDefault();
-        this.player.seekRelative(5);
-        this.controls.showToast('+5 detik');
+        const sec = this.controls.seekInterval;
+        this.player.seekRelative(sec);
+        this.controls.showToast(`+${sec} detik`);
         return;
       }
 
@@ -168,13 +172,6 @@ class ShortcutsEngine {
       if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
         this.controls.toggleFullscreen();
-        return;
-      }
-
-      // t: Theater Mode toggle
-      if (e.key === 't' || e.key === 'T') {
-        e.preventDefault();
-        document.body.classList.toggle('theater-mode');
         return;
       }
 

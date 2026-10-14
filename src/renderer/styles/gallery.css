@@ -1,6 +1,15 @@
 /* ==========================================================================
-   VidPlayer: Anime Gallery & Playlist Stylesheet
+   XPlayer: Netflix-Style Gallery & Library Stylesheet
    ========================================================================== */
+
+:root {
+  --netflix-red: #e50914;
+  --netflix-dark: #141414;
+  --netflix-card-bg: #181818;
+  --netflix-card-hover: #232323;
+  --netflix-text: #ffffff;
+  --netflix-muted: #808080;
+}
 
 /* Main View Switcher */
 .view-panel {
@@ -10,6 +19,7 @@
   overflow: hidden;
   height: calc(100vh - var(--titlebar-height));
   position: relative;
+  background-color: var(--netflix-dark);
 }
 
 body.is-fullscreen .view-panel {
@@ -17,250 +27,315 @@ body.is-fullscreen .view-panel {
 }
 
 /* ==========================================================================
-   Gallery Top Toolbar
+   Netflix Navbar & Toolbar
    ========================================================================== */
-.gallery-toolbar {
-  padding: 12px 24px;
-  background-color: var(--bg-primary);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.netflix-toolbar {
+  padding: 10px 36px;
+  background: linear-gradient(to bottom, rgba(20, 20, 20, 0.95) 0%, rgba(20, 20, 20, 0.7) 70%, transparent 100%);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 20px;
   flex-shrink: 0;
+  z-index: 20;
 }
 
-.gallery-search-box {
+.netflix-nav-left {
   display: flex;
   align-items: center;
-  background-color: #121212;
+  gap: 24px;
+}
+
+.netflix-tabs {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.netflix-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--netflix-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color var(--transition-fast);
+}
+
+.netflix-tab-btn:hover,
+.netflix-tab-btn.active {
+  color: #ffffff;
+}
+
+.netflix-search-box {
+  display: flex;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.65);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 20px;
   padding: 6px 14px;
-  width: 320px;
+  width: 280px;
   gap: 8px;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), width var(--transition-fast);
 }
 
-.gallery-search-box:focus-within {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 1px var(--accent-blue);
+.netflix-search-box:focus-within {
+  border-color: #ffffff;
+  width: 320px;
 }
 
-.gallery-search-box input {
+.netflix-search-box input {
   background: transparent;
   border: none;
-  color: var(--text-primary);
+  color: #ffffff;
   font-family: inherit;
   font-size: 13px;
   width: 100%;
   outline: none;
 }
 
-.gallery-toolbar-actions {
+.netflix-nav-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.btn-library-folder {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background-color: #212121;
-  color: var(--text-primary);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 6px 14px;
-  border-radius: 18px;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.btn-library-folder:hover {
-  background-color: #2f2f2f;
-}
-
-/* ==========================================================================
-   Gallery Scrollable Content
-   ========================================================================== */
-.gallery-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
-
-/* Continue Watching Hero Banner */
-.continue-hero {
-  background: linear-gradient(135deg, #1f1f1f 0%, #141414 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-left: 4px solid var(--accent-red);
-  border-radius: 12px;
-  padding: 18px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-}
-
-.continue-left {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  flex: 1;
-  overflow: hidden;
-}
-
-.continue-thumb-box {
-  width: 120px;
-  height: 68px;
-  border-radius: 6px;
-  background-color: #2a2a2a;
-  overflow: hidden;
-  position: relative;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.continue-thumb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.continue-thumb-placeholder {
-  font-size: 24px;
-}
-
-.continue-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow: hidden;
-}
-
-.continue-badge {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--accent-red);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.continue-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.continue-episode {
-  font-size: 13px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.continue-progress-bar {
-  width: 200px;
-  height: 4px;
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-top: 4px;
-}
-
-.continue-progress-fill {
-  height: 100%;
-  background-color: var(--accent-red);
-  width: 0%;
-}
-
-.continue-time-text {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.btn-continue-play {
+.btn-netflix-folder {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: var(--accent-red);
+  background-color: rgba(255, 255, 255, 0.1);
   color: #ffffff;
-  border: none;
-  padding: 10px 22px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  flex-shrink: 0;
-  transition: background-color var(--transition-fast), transform var(--transition-fast);
+  transition: background-color var(--transition-fast);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.btn-continue-play:hover {
-  background-color: #cc0000;
-}
-
-.btn-continue-play:active {
-  transform: scale(0.96);
+.btn-netflix-folder:hover {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 /* ==========================================================================
-   Anime Cards Grid
+   Netflix Scrollable Content
    ========================================================================== */
-.section-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.anime-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 20px;
-}
-
-.anime-card {
-  background-color: #1a1a1a;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  cursor: pointer;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+.netflix-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 0 60px 0;
   display: flex;
   flex-direction: column;
+  gap: 32px;
 }
 
-.anime-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
+/* Netflix Billboard / Hero Section */
+.netflix-billboard {
+  position: relative;
+  min-height: 380px;
+  background: linear-gradient(135deg, #1c0506 0%, #141414 70%);
+  display: flex;
+  align-items: center;
+  padding: 30px 48px;
+  box-shadow: inset 0 -80px 80px var(--netflix-dark);
+}
+
+.billboard-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center 20%;
+  opacity: 0.35;
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.billboard-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to right, rgba(20, 20, 20, 0.95) 0%, rgba(20, 20, 20, 0.6) 50%, transparent 100%),
+              linear-gradient(to top, rgba(20, 20, 20, 1) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.billboard-content {
+  position: relative;
+  z-index: 5;
+  max-width: 580px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.billboard-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--netflix-red);
+  letter-spacing: 1px;
+}
+
+.billboard-title {
+  font-size: 38px;
+  font-weight: 900;
+  line-height: 1.15;
+  color: #ffffff;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.8);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.billboard-desc {
+  font-size: 14px;
+  line-height: 1.45;
+  color: #cccccc;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.billboard-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.billboard-progress-bar {
+  width: 260px;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.billboard-progress-fill {
+  height: 100%;
+  background-color: var(--netflix-red);
+  width: 0%;
+}
+
+.billboard-progress-text {
+  font-size: 11px;
+  color: var(--netflix-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.billboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.btn-netflix-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #ffffff;
+  color: #000000;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-netflix-play:hover {
+  background-color: rgba(255, 255, 255, 0.85);
+  transform: scale(1.02);
+}
+
+.btn-netflix-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(109, 109, 110, 0.7);
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background-color var(--transition-fast);
+}
+
+.btn-netflix-info:hover {
+  background-color: rgba(109, 109, 110, 0.4);
+}
+
+/* ==========================================================================
+   Netflix Rows / Carousels
+   ========================================================================== */
+.netflix-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 48px;
+}
+
+.netflix-row-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.netflix-row-slider {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+/* Netflix Video Card */
+.netflix-card {
+  background-color: var(--netflix-card-bg);
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.25s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.netflix-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7);
+  z-index: 10;
   border-color: rgba(255, 255, 255, 0.25);
 }
 
-.anime-card-thumb {
+.netflix-card-thumb {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+  background: linear-gradient(135deg, #2b2b2b 0%, #181818 100%);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -268,85 +343,125 @@ body.is-fullscreen .view-panel {
   justify-content: center;
 }
 
-.anime-card-poster {
+.netflix-card-poster {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.anime-card-placeholder {
+.netflix-card-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  color: var(--text-muted);
 }
 
-.anime-card-initials {
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--accent-red);
+.netflix-card-initials {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--netflix-red);
   letter-spacing: 1px;
 }
 
-.anime-episodes-badge {
+.netflix-play-hover {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  width: 44px;
+  height: 44px;
+  background-color: rgba(229, 9, 20, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+.netflix-card:hover .netflix-play-hover {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+.netflix-card-badge {
   position: absolute;
   bottom: 8px;
   right: 8px;
   background-color: rgba(0, 0, 0, 0.85);
   color: #ffffff;
   font-size: 11px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 4px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
 }
 
-.anime-card-body {
-  padding: 12px 14px;
+/* Card Bottom Progress Bar for Watched Items */
+.netflix-card-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.netflix-card-progress-fill {
+  height: 100%;
+  background-color: var(--netflix-red);
+}
+
+.netflix-card-body {
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1;
 }
 
-.anime-card-title {
-  font-size: 14px;
+.netflix-card-title {
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #ffffff;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  line-height: 1.35;
+  line-height: 1.3;
 }
 
-.anime-card-sub {
-  font-size: 12px;
-  color: var(--text-secondary);
+.netflix-card-sub {
+  font-size: 11px;
+  color: var(--netflix-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-top: 2px;
 }
 
-/* Empty Gallery View */
-.gallery-empty {
+/* Empty State */
+.netflix-empty-container {
+  padding: 80px 48px;
   text-align: center;
-  padding: 60px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  color: var(--text-secondary);
+  gap: 16px;
 }
 
-.gallery-empty h3 {
-  font-size: 18px;
-  color: var(--text-primary);
+.netflix-empty-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.netflix-empty-desc {
+  font-size: 14px;
+  color: var(--netflix-muted);
+  max-width: 480px;
+  line-height: 1.5;
 }
 
 /* ==========================================================================
-   Anime Detail & Episode List Modal
+   Episodes Modal (Netflix Style)
    ========================================================================== */
 .episodes-modal {
   position: fixed;
@@ -354,22 +469,22 @@ body.is-fullscreen .view-panel {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 110;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 }
 
 .episodes-card {
-  width: 820px;
+  width: 860px;
   max-width: 92vw;
   max-height: 85vh;
-  background-color: #1a1a1a;
+  background-color: #181818;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.9);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -381,7 +496,7 @@ body.is-fullscreen .view-panel {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background-color: #212121;
+  background-color: #1f1f1f;
 }
 
 .episodes-header-left {
@@ -392,8 +507,8 @@ body.is-fullscreen .view-panel {
 
 .episodes-anime-title {
   font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary);
+  font-weight: 800;
+  color: #ffffff;
 }
 
 .episodes-list {
@@ -408,9 +523,9 @@ body.is-fullscreen .view-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  background-color: rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
+  padding: 12px 16px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
   border: 1px solid transparent;
   cursor: pointer;
   transition: background-color var(--transition-fast), border-color var(--transition-fast);
@@ -418,12 +533,12 @@ body.is-fullscreen .view-panel {
 
 .episode-item:hover {
   background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .episode-item.playing {
-  border-color: var(--accent-red);
-  background-color: rgba(255, 0, 0, 0.1);
+  border-color: var(--netflix-red);
+  background-color: rgba(229, 9, 20, 0.12);
 }
 
 .episode-item-left {
@@ -435,7 +550,7 @@ body.is-fullscreen .view-panel {
 }
 
 .episode-icon {
-  color: var(--accent-red);
+  color: var(--netflix-red);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -444,7 +559,7 @@ body.is-fullscreen .view-panel {
 .episode-title-text {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -460,7 +575,7 @@ body.is-fullscreen .view-panel {
 
 .episode-watched-fill {
   height: 100%;
-  background-color: var(--accent-red);
+  background-color: var(--netflix-red);
 }
 
 /* ==========================================================================
@@ -477,7 +592,7 @@ body.is-fullscreen .view-panel {
   z-index: 65;
   display: flex;
   flex-direction: column;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
   animation: slideInRight 0.2s ease-out;
 }
 
@@ -512,14 +627,14 @@ body.is-fullscreen .view-panel {
   right: 24px;
   background-color: rgba(18, 18, 18, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-left: 4px solid var(--accent-red);
-  border-radius: 8px;
-  padding: 12px 16px;
+  border-left: 4px solid var(--netflix-red);
+  border-radius: 6px;
+  padding: 12px 18px;
   display: flex;
   align-items: center;
   gap: 14px;
   z-index: 70;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(8px);
 }
 
@@ -531,7 +646,7 @@ body.is-fullscreen .view-panel {
 
 .next-autoplay-label {
   font-size: 11px;
-  color: var(--accent-red);
+  color: var(--netflix-red);
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -539,7 +654,7 @@ body.is-fullscreen .view-panel {
 .next-autoplay-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #ffffff;
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -549,7 +664,7 @@ body.is-fullscreen .view-panel {
 .btn-cancel-autoplay {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.3);
-  color: var(--text-primary);
+  color: #ffffff;
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 11px;
