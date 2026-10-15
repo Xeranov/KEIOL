@@ -1,127 +1,146 @@
 # KEIOL
 
 <div align="center">
-  <img src="build/icon.png" width="128" height="128" alt="KEIOL Logo" />
-  <h3>Modern Desktop Video Player & Anime Streaming Hub</h3>
-  <p>Pemutar video desktop modern dengan kontrol khas YouTube, akselerasi kecepatan hingga 4x, integrasi Windows System Tray, serta katalog streaming anime universal.</p>
+  <img src="build/icon.png" width="120" height="120" alt="KEIOL Logo" />
+  <h2>KEIOL Video Player</h2>
+  <p><strong>Pemutar Video Desktop Modern dengan Kontrol Khas YouTube & Hub Streaming Anime</strong></p>
 
-  [![Release](https://img.shields.io/github/v/release/Xeranov/KEIOL?color=E50914&label=KEIOL%20Release)](https://github.com/Xeranov/KEIOL/releases)
-  [![Platform](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/Xeranov/KEIOL)
-  [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+  <p>
+    <a href="https://github.com/Xeranov/KEIOL/releases/latest">
+      <img src="https://img.shields.io/badge/Download-KEIOL%20untuk%20Windows-E50914?style=for-the-badge&logo=windows&logoColor=white" alt="Download KEIOL" />
+    </a>
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/github/v/release/Xeranov/KEIOL?color=E50914&label=Versi%20Terbaru" alt="Versi Terbaru" />
+    <img src="https://img.shields.io/badge/OS-Windows%2010%20%2F%2011-blue" alt="Windows 10 / 11" />
+    <img src="https://img.shields.io/badge/Lisensi-Gratis-green" alt="Gratis" />
+  </p>
 </div>
 
 ---
 
-## 📸 Preview Aplikasi
+## 📥 Cara Download dan Install (Windows)
 
-> Taruh screenshot antarmuka KEIOL Anda di sini (misal: di folder `docs/screenshots/`):
+Menginstall KEIOL di komputer atau laptop Windows sangat mudah:
 
-![KEIOL Interface Preview](build/icon.png)
+1. **Unduh File Instalasi**:
+   Buka halaman rilis terbaru di [Halaman Download KEIOL](https://github.com/Xeranov/KEIOL/releases/latest), lalu unduh file bernama **`KEIOL-Setup-x.x.x.exe`**.
+2. **Jalankan Installer**:
+   Klik dua kali pada file `.exe` yang baru saja diunduh.
+3. **Ikuti Panduan di Layar**:
+   Pilih lokasi folder pemasangan dan klik **Install**. Shortcut KEIOL akan otomatis muncul di Desktop dan Start Menu Anda.
+4. **Selesai**:
+   Buka KEIOL dan aplikasi langsung siap memutar video apa pun!
 
-*(Silakan tambahkan tangkapan layar tampilan Beranda Netflix-style, Video Player, dan Popup Update Anda di sini)*
-
----
-
-## ✨ Fitur Utama
-
-### 1. 🎬 Universal Codec & Playback (Bertenaga FFmpeg)
-- Mendukung pemutaran langsung file lokal tanpa hambatan: **MKV, MP4, AVI, WEBM, MOV, TS, FLV**.
-- Transmuxing otomatis untuk video 10-bit / HEVC / audio surround 5.1 tanpa lag.
-- Dukungan subtitle eksternal maupun internal (.srt, .vtt, .ass).
-
-### 2. ⚡ Kontrol Khas YouTube & Hold-to-Boost
-- **Akselerasi 2x Instan**: Tahan tombol `Spasi` atau `Klik Kiri` mouse untuk memutar 2x lebih cepat, lepaskan untuk kembali ke kecepatan normal.
-- **Kecepatan Variabel**: Ubah kecepatan dari `0.25x` hingga `4.0x` menggunakan shortcut `Shift + >` / `Shift + <`.
-- **Navigasi Waktu Instan**: Lompat maju/mundur dengan `J` / `L` atau `←` / `→`.
-- **Frame-by-frame seeking**: Telusuri frame demi frame saat jeda dengan tombol `.` dan `,`.
-
-### 3. 🛡️ Windows System Tray Integration
-- Icon aktif di Windows Taskbar notification area (System Tray).
-- Klik icon tray untuk menampilkan atau menyembunyikan jendela pemutar.
-- Menu klik kanan cepat: *Buka KEIOL*, *Putar / Jeda*, *Pengaturan*, dan *Keluar*.
-- Opsi switch di Pengaturan: Pilih apakah tombol Close `(X)` menutup aplikasi sepenuhnya atau meminimalkannya ke Tray agar audio/unduhan tetap berjalan di latar belakang.
-
-### 4. 🔄 Sistem Pembaruan Otomatis & Force Update Darurat
-- Pengecekan versi otomatis saat aplikasi pertama kali dibuka.
-- **Normal Update**: Popup pemberitahuan rilis baru lengkap dengan catatan perubahan (*changelog*), tombol *Update Sekarang*, *Nanti Saja*, dan *Lewati Versi Ini*.
-- **Emergency Force Update**: Mekanisme pemblokir wajib update yang dapat diaktifkan langsung melalui file `version.json` di GitHub tanpa perlu mengubah binary lama, berguna jika rilis sebelumnya memiliki bug kritis.
-- **Background Download**: Unduhan berjalan di latar belakang dengan indikator progress bar dan prompt *Pasang & Restart*.
-
-### 5. 🎌 Integrasi Anime & Streaming Web
-- Katalog anime berkelanjutan (*ongoing*), jadwal rilis harian, dan pencarian episode Otakudesu langsung di dalam aplikasi.
-- **AniSkip**: Deteksi otomatis dan lewati intro/ending lagu anime dengan satu tombol (`S`).
-- **Download Manager**: Unduh episode dan batch anime dengan monitoring progress real-time.
+> [!TIP]
+> **Catatan Windows SmartScreen**:
+> Jika Windows menampilkan jendela *"Windows protected your PC"* saat pertama kali membuka installer, klik teks **"More info"** (Info selengkapnya), lalu klik tombol **"Run anyway"** (Tetap jalankan). Hal ini normal untuk aplikasi baru yang belum memiliki sertifikat komersial berbayar.
 
 ---
 
-## ⌨️ Daftar Pintasan Keyboard (Shortcuts)
+## 📸 Tampilan Antarmuka (Preview)
 
-| Shortcut | Aksi |
+> Letakkan gambar tangkapan layar tampilan KEIOL Anda di sini:
+
+![Preview KEIOL](build/icon.png)
+
+*(Tampilan antarmuka gelap yang nyaman untuk mata, dengan tata letak modern bergaya galeri serial dan pemutar video YouTube).*
+
+---
+
+## ✨ Fitur & Cara Kerja Sistem KEIOL
+
+### 1. Putar Segala Format Video Tanpa Ribet
+Anda tidak perlu lagi menginstall codec pihak ketiga. KEIOL sudah dibekali mesin pemutar video canggih (FFmpeg) bawaan yang mampu memutar semua jenis video secara mulus:
+- **Format yang Didukung**: MKV, MP4, AVI, WEBM, MOV, TS, FLV, dan lainnya.
+- **Kualitas Tinggi**: Mampu memutar video anime 10-bit (Hi10P), resolusi 4K, hingga audio surround 5.1 tanpa jeda atau layar hitam.
+- **Subtitle Lengkap**: Mendukung subtitle bawaan di dalam video maupun file eksternal (.srt, .vtt, .ass) dengan penataan gaya yang rapi.
+
+### 2. Kontrol Playback Khas YouTube
+Menonton video terasa sangat alami dan cepat:
+- **Akselerasi 2x Instan (Hold-to-Boost)**: Tahan tombol `Spasi` pada keyboard atau tahan `Klik Kiri` mouse di layar video untuk mempercepat putaran menjadi 2x. Lepaskan untuk kembali ke kecepatan normal.
+- **Lompat Waktu (Seeking)**: Tekan tombol `J` untuk mundur 10 detik, atau `L` untuk maju 10 detik (bisa juga menggunakan tombol panah kiri / kanan).
+- **Atur Kecepatan Bebas**: Atur kecepatan putar dari sangat lambat (0.25x) hingga super cepat (4.0x) dengan shortcut `Shift + >` dan `Shift + <`.
+- **Cek Detil Frame demi Frame**: Saat video sedang di-pause, tekan tombol titik `.` untuk maju satu frame, atau koma `,` untuk mundur satu frame.
+
+### 3. Pengatur Ukuran Tampilan (Zoom Layar)
+Sama seperti di browser web, Anda bisa menyesuaikan skala antarmuka KEIOL dengan sangat fleksibel:
+- **Perbesar Layar (Zoom In)**: Tekan **`Ctrl + +`** atau **`Ctrl + =`** (bisa langsung ditekan tanpa perlu tombol Shift).
+- **Perkecil Layar (Zoom Out)**: Tekan **`Ctrl + -`**.
+- **Kembalikan Normal (100%)**: Tekan **`Ctrl + 0`**.
+- **Zoom Cepat**: Tahan tombol `Ctrl` lalu gulirkan roda mouse (*mouse wheel*) ke atas atau ke bawah.
+
+### 4. Berjalan di Latar Belakang (Windows System Tray)
+Ketika Anda sedang memutar lagu atau mengunduh episode anime, Anda bisa menutup jendela aplikasi tanpa memutus suaranya:
+- Saat tombol silang `(X)` diklik, KEIOL akan otomatis mengecil ke area notifikasi di pojok kanan bawah taskbar Windows (System Tray).
+- Klik icon KEIOL di pojok kanan bawah untuk membuka kembali jendela aplikasi.
+- Klik kanan pada icon tray untuk menu instan: *Buka KEIOL*, *Putar / Jeda*, *Buka Pengaturan*, atau *Keluar*.
+- *Ingin tombol (X) langsung mematikan aplikasi?* Anda bisa mengubahnya kapan saja melalui menu **Pengaturan** di dalam aplikasi.
+
+### 5. Sistem Update Otomatis & Pembaruan Darurat
+Anda tidak perlu repot mengecek situs web secara manual untuk mendapatkan fitur baru:
+- **Notifikasi Otomatis**: Setiap kali aplikasi dibuka, KEIOL akan memeriksa rilis terbaru secara otomatis di latar belakang.
+- **Pilihan Fleksibel**: Saat ada versi baru, popup rilis akan muncul beserta ringkasan pembaruan. Anda bisa memilih:
+  - **Update Sekarang**: Aplikasi langsung mengunduh versi terbaru dan siap dipasang.
+  - **Nanti Saja**: Tutup pemberitahuan jika Anda sedang sibuk menonton, dan aplikasi akan mengingatkan kembali saat dibuka nanti.
+  - **Lewati Versi Ini**: Jika Anda tidak ingin memperbarui ke versi tersebut, pilih lewati dan notifikasi tidak akan mengganggu Anda lagi untuk nomor versi itu.
+- **Sistem Perlindungan Darurat (Force Update)**: Jika terjadi kesalahan teknis atau bug kritis pada versi tertentu, sistem akan menampilkan pemberitahuan pembaruan wajib demi keamanan dan kenyamanan pengguna.
+
+### 6. Galeri & Streaming Anime
+Bagi penggemar anime, KEIOL menyediakan tab khusus untuk menonton dan mengunduh anime:
+- **Jadwal & Sedang Tayang**: Pantau episode terbaru yang rilis setiap harinya.
+- **Lewati Lagu Pembuka (AniSkip)**: Cukup tekan tombol **`S`** pada keyboard untuk langsung melompat melewati intro lagu opening anime tanpa perlu menggeser slider secara manual.
+- **Download Manager**: Unduh episode favorit untuk ditonton secara offline saat bepergian.
+
+---
+
+## ⌨️ Daftar Tombol Pintasan Cepat (Keyboard Shortcuts)
+
+| Tombol Pintasan | Fungsi |
 |---|---|
-| `Spasi` / `K` | Putar / Jeda (Play / Pause) |
-| **Tahan `Spasi` / Klik** | **2x Speed Hold-to-Boost** |
-| `J` / `←` | Mundur 10 detik |
-| `L` / `→` | Maju 10 detik |
-| `↑` / `↓` | Volume naik / turun 5% |
-| `M` | Matikan / Bunyikan suara (Mute) |
-| `F` | Layar penuh (Fullscreen) |
-| `Shift + >` / `<` | Kecepatan playback (+0.25x / -0.25x) |
-| `0` s/d `9` | Lompat ke 0% - 90% durasi video |
-| `.` / `,` | Frame maju / mundur (saat jeda) |
-| `S` | Lewati Intro Anime (AniSkip) |
-| `Ctrl + O` | Buka file video lokal |
-| `Ctrl + +` / `Ctrl + =` | Perbesar Tampilan (Zoom In) |
-| `Ctrl + -` | Perkecil Tampilan (Zoom Out) |
-| `Ctrl + 0` | Reset Tampilan Normal (100%) |
-| `Ctrl + Scroll Mouse` | Perbesar / Perkecil Tampilan (Smooth Zoom) |
+| `Spasi` atau `K` | Putar / Jeda video (Play / Pause) |
+| **Tahan `Spasi`** / **Tahan Klik Mouse** | **Akselerasi 2x Lipat Cepat (Hold-to-Boost)** |
+| `J` atau `Panah Kiri` | Mundur 10 detik |
+| `L` atau `Panah Kanan` | Maju 10 detik |
+| `Panah Atas` / `Panah Bawah` | Tambah / Kurangi volume suara sebesar 5% |
+| `M` | Matikan suara / Senyap (Mute) |
+| `F` | Masuk / Keluar layar penuh (Fullscreen) |
+| `I` | Mode Miniplayer (Picture-in-Picture) |
+| `C` | Hidupkan / Matikan subtitle |
+| `S` | Lewati intro pembuka anime (AniSkip) |
+| `Shift + >` / `Shift + <` | Tambah / Kurangi kecepatan putar (+0.25x hingga 4x) |
+| `0` sampai `9` | Lompat ke 0% hingga 90% durasi video |
+| `.` / `,` | Lompat maju / mundur satu frame (saat video dijeda) |
+| `Ctrl + O` | Buka file video dari komputer |
+| `Ctrl + +` atau `Ctrl + =` | Perbesar tampilan aplikasi (Zoom In) |
+| `Ctrl + -` | Perkecil tampilan aplikasi (Zoom Out) |
+| `Ctrl + 0` | Kembalikan ukuran tampilan ke ukuran normal (100%) |
+| `Ctrl + Scroll Mouse` | Perbesar / perkecil tampilan dengan roda mouse |
+| `?` | Buka menu bantuan pintasan keyboard |
+| `Esc` | Tutup dialog / keluar dari menu |
 
 ---
 
-## 🚀 Memulai (Development)
+## ❓ Pertanyaan yang Sering Diajukan (FAQ)
 
-### Prasyarat
-- [Node.js](https://nodejs.org/) (versi 18 ke atas)
-- [Python](https://python.org/) & Pillow (untuk generator icon)
+**Q: Apakah KEIOL gratis?**  
+A: Ya, KEIOL sepenuhnya gratis untuk digunakan.
 
-### Menjalankan secara Lokal
-```bash
-# Clone repository
-git clone https://github.com/Xeranov/KEIOL.git
-cd KEIOL
+**Q: Apakah saya bisa memutar video offline tanpa internet?**  
+A: Tentu saja! Anda bisa memutar semua file film atau video pribadi yang tersimpan di harddisk komputer Anda tanpa memerlukan koneksi internet sama sekali.
 
-# Install dependencies
-npm install
+**Q: Bagaimana cara memasukkan subtitle sendiri?**  
+A: Anda bisa menekan tombol **Subtitle** di bilah atas aplikasi, atau langsung menarik (*drag-and-drop*) file `.srt` atau `.ass` dari folder komputer Anda ke atas layar video.
 
-# Jalankan aplikasi
-npm start
-```
+**Q: Kenapa jendela aplikasi tidak tertutup saat saya menekan tombol X?**  
+A: Secara default, KEIOL mengecil ke System Tray di pojok kanan taskbar agar video/musik atau proses download Anda tidak terhenti. Jika Anda ingin tombol X langsung menutup aplikasi total, buka tab **Pengaturan** di dalam aplikasi dan nonaktifkan opsi *"Minimalkan ke System Tray saat tombol Tutup (X) diklik"*.
 
-### Menjalankan Test Suite
-```bash
-npm test
-# atau
-node src/test/verify_all.js
-```
+**Q: Bagaimana cara keluar total dari aplikasi jika ada di System Tray?**  
+A: Klik kanan pada icon KEIOL di pojok kanan bawah taskbar Windows, lalu pilih **Keluar**.
 
 ---
 
-## 📦 Panduan Rilis Baru ke GitHub (CI/CD)
-
-Aplikasi ini telah dilengkapi dengan workflow otomatis **GitHub Actions** (`.github/workflows/release.yml`). Untuk mem-publish versi baru:
-
-1. Perbarui versi di `package.json` dan `version.json` (misal menjadi `1.0.1`).
-2. Buat git commit dan tag baru:
-   ```bash
-   git add package.json version.json
-   git commit -m "Release KEIOL v1.0.1"
-   git tag v1.0.1
-   git push origin main --tags
-   ```
-3. GitHub Actions akan secara otomatis meng-compile dan mengunggah file installer `KEIOL-Setup-1.0.1.exe` dan `latest.yml` ke halaman **GitHub Releases**.
-4. Seluruh pengguna KEIOL akan otomatis mendeteksi pembaruan ini saat membuka aplikasi!
-
----
-
-## 📄 Lisensi
-Didistribusikan di bawah Lisensi MIT. Lihat `LICENSE` untuk informasi lebih lanjut.
-
+<div align="center">
+  <p>Dibuat dengan ❤️ oleh <a href="https://github.com/Xeranov">Xeranov</a></p>
+</div>
