@@ -17,6 +17,7 @@ build/latest*.yml
 
 # Local Media & Personal User Data
 anime/
+downloads/
 test-media/
 watch_history.json
 library_config.json

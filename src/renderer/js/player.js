@@ -157,6 +157,29 @@ class VidPlayerCore {
     window.dispatchEvent(new CustomEvent('player:loading', { detail: { isLoading: true } }));
 
     try {
+      // Jika file berupa arsip (.rar, .zip, .7z), otomatis ekstrak dan putar video pertama
+      if (window.electronAPI && typeof window.electronAPI.isArchive === 'function') {
+        try {
+          const isArc = await window.electronAPI.isArchive(filePath);
+          if (isArc) {
+            const rawName = filePath.split(/[\\/]/).pop();
+            window.dispatchEvent(new CustomEvent('player:medialoaded', {
+              detail: { fileName: `📦 Mengekstrak ${rawName}...`, mediaInfo: { duration: 0 }, playbackMode: 'direct' }
+            }));
+
+            const extractResult = await window.electronAPI.extractArchive(filePath, null, { deleteArchiveAfter: true });
+            if (extractResult && extractResult.firstVideoPath) {
+              filePath = extractResult.firstVideoPath;
+              this.currentFilePath = filePath;
+            } else {
+              throw new Error('Tidak ditemukan file video (.mp4, .mkv) di dalam arsip batch.');
+            }
+          }
+        } catch (arcErr) {
+          console.warn('Gagal memeriksa/mengekstrak arsip:', arcErr);
+        }
+      }
+
       if (window.electronAPI) {
         this.mediaInfo = await window.electronAPI.probeFile(filePath);
         this.playbackMode = this.mediaInfo.playbackMode || 'direct';

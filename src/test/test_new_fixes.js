@@ -132,7 +132,7 @@ console.log('\n--- TEST 3: Download Manager Resolution & Direct Stream Recommend
 const downloadManagerPath = path.join(__dirname, '../main/downloadManager.js');
 const downloadManagerCode = fs.readFileSync(downloadManagerPath, 'utf8');
 
-assert.ok(downloadManagerCode.includes('mega\\.nz|acefile\\.co|gofile\\.io'), 'downloadManager checks for external locker domains');
+assert.ok(downloadManagerCode.includes('mega\\.nz') && downloadManagerCode.includes('gofile\\.io'), 'downloadManager checks for external locker domains');
 assert.ok(downloadManagerCode.includes('pixeldrain.com/api/file/'), 'downloadManager resolves pixeldrain API');
 
 const otakudesuJsPath = path.join(__dirname, '../renderer/js/otakudesu.js');

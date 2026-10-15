@@ -73,7 +73,7 @@ class LibraryService {
         const text = fs.readFileSync(this.configFile, 'utf-8').trim();
         if (text) {
           const data = JSON.parse(text);
-          if (data.downloadPath && fs.existsSync(data.downloadPath)) {
+          if (data.downloadPath && fs.existsSync(data.downloadPath) && data.downloadPath !== data.libraryPath) {
             return data.downloadPath;
           }
         }
@@ -81,7 +81,13 @@ class LibraryService {
     } catch (e) {
       console.warn('Error reading download config:', e.message);
     }
-    return this.libraryPath;
+
+    // Default folder khusus unduhan terpisah dari library lokal
+    const defaultDl = path.join(process.cwd(), 'downloads');
+    if (!fs.existsSync(defaultDl)) {
+      try { fs.mkdirSync(defaultDl, { recursive: true }); } catch (err) {}
+    }
+    return defaultDl;
   }
 
   setDownloadPath(newPath) {
@@ -103,7 +109,7 @@ class LibraryService {
   }
 
   getDownloadPath() {
-    return this.downloadPath || this.libraryPath;
+    return this.downloadPath || this.loadDownloadPath();
   }
 
   loadHistory() {
@@ -255,8 +261,15 @@ class LibraryService {
   }
 
   scanLibrary() {
-    const rootDir = this.libraryPath;
-    if (!fs.existsSync(rootDir)) {
+    return this.scanDirectory(this.libraryPath);
+  }
+
+  scanDownloads() {
+    return this.scanDirectory(this.getDownloadPath());
+  }
+
+  scanDirectory(rootDir) {
+    if (!rootDir || !fs.existsSync(rootDir)) {
       return { libraryPath: rootDir, seriesList: [], movies: [], animeList: [], continueWatching: null };
     }
 

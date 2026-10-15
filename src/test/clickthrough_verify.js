@@ -41,6 +41,12 @@ async function runInteractiveVerification() {
   ipcMain.handle('download:start', () => ({ downloadId: 'dl_test', status: 'started' }));
   ipcMain.handle('download:cancel', () => true);
   ipcMain.handle('download:getActive', () => []);
+  ipcMain.handle('library:scanDownloads', () => ({ items: [], seriesCount: 0, moviesCount: 0, episodesCount: 0, downloadPath: '' }));
+  ipcMain.handle('archive:isArchive', () => false);
+  ipcMain.handle('archive:extract', () => ({ success: true }));
+  ipcMain.handle('settings:get-close-to-tray', () => false);
+  ipcMain.handle('settings:set-close-to-tray', () => true);
+  ipcMain.handle('shell:openExternal', () => true);
 
   const win = new BrowserWindow({
     show: false,
@@ -144,11 +150,11 @@ async function runInteractiveVerification() {
       // Restore default 10s
       window.controlsManager.setSeekInterval(10);
 
-      // 11. YouTube Music Circular Player Logo check (YouTube Music logo present, without name text)
-      const ytMusicLogo = document.querySelector('.brand-ytmusic svg.ytmusic-logo-svg');
+      // 11. KEIOL Player Logo check
+      const keiolLogo = document.querySelector('.brand-keiol svg.keiol-logo-svg');
       const brandText = document.querySelector('.brand')?.textContent?.trim() || '';
-      const isYTMusicLogo = ytMusicLogo !== null && brandText === '';
-      report('YouTube Music player logo verification (no name text)', 'Logo present: ' + (ytMusicLogo !== null) + ', Text: "' + brandText + '"', isYTMusicLogo);
+      const isKeiolLogo = keiolLogo !== null && brandText === '';
+      report('KEIOL player logo verification (no name text)', 'Logo present: ' + (keiolLogo !== null) + ', Text: "' + brandText + '"', isKeiolLogo);
 
       // 12. Theater mode removed check
       const btnTheaterGone = document.getElementById('btnTheater') === null;

@@ -56,6 +56,12 @@ async function testImprovements() {
   ipcMain.handle('library:setDownloadPath', (_e, p) => p);
   ipcMain.handle('library:chooseDownloadFolder', () => null);
   ipcMain.handle('library:openDownloadFolder', () => true);
+  ipcMain.handle('library:scanDownloads', () => ({ items: [], seriesCount: 0, moviesCount: 0, episodesCount: 0, downloadPath: '' }));
+  ipcMain.handle('archive:isArchive', () => false);
+  ipcMain.handle('archive:extract', () => ({ success: true }));
+  ipcMain.handle('settings:get-close-to-tray', () => false);
+  ipcMain.handle('settings:set-close-to-tray', () => true);
+  ipcMain.handle('shell:openExternal', () => true);
   ipcMain.handle('otakudesu:getOngoing', () => ({ animeList: [] }));
   ipcMain.handle('otakudesu:getSchedule', () => []);
   ipcMain.handle('otakudesu:getGenres', () => []);
@@ -109,14 +115,14 @@ async function testImprovements() {
         'BG: ' + titlebarBg + ', Backdrop: ' + titlebarBackdrop
       );
 
-      // TEST 3: YouTube Music Circular Player Logo (No Name Text)
-      const ytMusicLogo = document.querySelector('.brand-ytmusic svg.ytmusic-logo-svg');
+      // TEST 3: KEIOL Player Logo (No Name Text)
+      const keiolLogo = document.querySelector('.brand-keiol svg.keiol-logo-svg');
       const brandText = document.querySelector('.brand')?.textContent?.trim() || '';
-      const isYTMusicBranded = ytMusicLogo !== null && brandText === '';
+      const isKeiolBranded = keiolLogo !== null && brandText === '';
       report(
-        'YouTube Music circular logo active (without name text)',
-        isYTMusicBranded,
-        'YTMusic Logo present: ' + (ytMusicLogo !== null) + ', Brand text: "' + brandText + '"'
+        'KEIOL circular logo active (without name text)',
+        isKeiolBranded,
+        'KEIOL Logo present: ' + (keiolLogo !== null) + ', Brand text: "' + brandText + '"'
       );
 
       // TEST 4: 2X Speed Boost Pop-up Auto-Hides After 800ms

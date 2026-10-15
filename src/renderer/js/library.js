@@ -975,7 +975,7 @@ class LibraryManager {
       const currentEp = this.currentOnlinePlaylist.currentEpisode;
       const nextEpisode = this.findNextOnlineEpisode(episodes, currentEp);
       if (nextEpisode) {
-        this.startNextEpisodeCountdown(nextEpisode, true);
+        this.playInstantNextEpisode(nextEpisode, true);
       }
       return;
     }
@@ -988,47 +988,26 @@ class LibraryManager {
 
     if (currentIndex >= 0 && currentIndex < episodes.length - 1) {
       const nextEpisode = episodes[currentIndex + 1];
-      this.startNextEpisodeCountdown(nextEpisode, false);
+      this.playInstantNextEpisode(nextEpisode, false);
     }
   }
 
-  findNextOnlineEpisode(episodes, currentEp) {
-    if (!Array.isArray(episodes) || episodes.length === 0 || !currentEp) return null;
+  playInstantNextEpisode(nextEpisode, isOnline = false) {
+    if (!nextEpisode) return;
+    this.cancelAutoplay();
 
-    const epRegex = /(?:Episode|Eps?\.?)\s*(\d+)/i;
-    const currentNumMatch = (currentEp.title || '').match(epRegex);
-    if (currentNumMatch) {
-      const targetNum = parseInt(currentNumMatch[1], 10) + 1;
-      const foundNext = episodes.find(e => {
-        const m = (e.title || '').match(epRegex);
-        return m && parseInt(m[1], 10) === targetNum;
-      });
-      if (foundNext) return foundNext;
+    if (isOnline && this.currentOnlinePlaylist && typeof this.currentOnlinePlaylist.onSelectEpisode === 'function') {
+      this.currentOnlinePlaylist.currentEpisode = nextEpisode;
+      this.currentOnlinePlaylist.onSelectEpisode(nextEpisode);
+      this.renderInPlayerPlaylist();
+    } else if (this.currentSeries && nextEpisode.path) {
+      this.playEpisode(this.currentSeries, nextEpisode.path, 0);
     }
-
-    // Fallback index jika Otakudesu diurutkan dari terbaru ke terlama (descending: Ep 3, Ep 2, Ep 1)
-    const curIdx = episodes.findIndex(e => e.url === currentEp.url || e.slug === currentEp.slug);
-    if (curIdx > 0) {
-      return episodes[curIdx - 1];
-    }
-    return null;
   }
 
   startNextEpisodeCountdown(nextEpisode, isOnline = false) {
-    this.pendingNextEpisode = nextEpisode;
-    this.isPendingNextEpisodeOnline = isOnline;
-    this.autoplaySecondsLeft = 5;
-    this.nextAutoplayTitle.textContent = nextEpisode.title || nextEpisode.name;
-    this.nextAutoplayToast.classList.remove('hidden');
-
-    clearInterval(this.autoplayCountdownTimer);
-    this.autoplayCountdownTimer = setInterval(() => {
-      this.autoplaySecondsLeft--;
-      if (this.autoplaySecondsLeft <= 0) {
-        clearInterval(this.autoplayCountdownTimer);
-        this.executeNextEpisode();
-      }
-    }, 1000);
+    // Backward compatibility: langsung eksekusi instan tanpa cooldown
+    this.playInstantNextEpisode(nextEpisode, isOnline);
   }
 
   cancelAutoplay() {

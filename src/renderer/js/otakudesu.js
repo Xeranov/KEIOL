@@ -28,6 +28,9 @@ class OtakudesuManager {
       search: {}
     };
 
+    this.searchSourceFilter = 'all'; // 'all' | 'otakudesu' | 'kusonime'
+    this.lastSearchResults = { otakudesu: [], kusonime: [], query: '' };
+
     this.selectedAnime = null;
     this.activeDownloads = new Map();
 
@@ -867,18 +870,118 @@ class OtakudesuManager {
     }
   }
 
+  normalizeAnimeTitle(t) {
+    return (t || '')
+      .toLowerCase()
+      .replace(/batch|subtitle|indonesia|sub\s*indo|bd|season|\(tv\)|\.hack/gi, (m) => m === '.hack' ? 'hack' : '')
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  mergeAnimeLists(otakuGroups, kusoGroups) {
+    const otakuTitleSet = new Set();
+    const mergedMap = new Map();
+
+    // 1. Masukkan semua anime dari Otakudesu terlebih dahulu
+    (otakuGroups || []).forEach(g => {
+      let letter = (g.letter || '#').trim().toUpperCase();
+      if (!/^[A-Z]$/.test(letter)) letter = '#';
+
+      if (!mergedMap.has(letter)) {
+        mergedMap.set(letter, []);
+      }
+      const groupItems = mergedMap.get(letter);
+
+      (g.items || []).forEach(it => {
+        const norm = this.normalizeAnimeTitle(it.title);
+        if (norm) otakuTitleSet.add(norm);
+        groupItems.push({
+          title: it.title,
+          url: it.url,
+          slug: it.slug,
+          source: 'otakudesu'
+        });
+      });
+    });
+
+    // 2. Tambahkan anime Kusonime HANYA jika belum ada di Otakudesu (hindari duplikat)
+    (kusoGroups || []).forEach(g => {
+      let letter = (g.letter || '#').trim().toUpperCase();
+      if (!/^[A-Z]$/.test(letter)) letter = '#';
+
+      if (!mergedMap.has(letter)) {
+        mergedMap.set(letter, []);
+      }
+      const groupItems = mergedMap.get(letter);
+
+      (g.items || []).forEach(it => {
+        const norm = this.normalizeAnimeTitle(it.title);
+        if (!norm || otakuTitleSet.has(norm)) {
+          return; // Sudah ada di Otakudesu, lewati agar tidak dobel
+        }
+        otakuTitleSet.add(norm); // Cegah duplikat antar postingan Kusonime sendiri
+        groupItems.push({
+          title: it.title,
+          url: it.url,
+          slug: it.slug,
+          source: 'kusonime'
+        });
+      });
+    });
+
+    const sortedLetters = Array.from(mergedMap.keys()).sort((a, b) => {
+      if (a === '#') return -1;
+      if (b === '#') return 1;
+      return a.localeCompare(b);
+    });
+
+    const result = [];
+    for (const letter of sortedLetters) {
+      const items = mergedMap.get(letter).sort((a, b) => a.title.localeCompare(b.title));
+      if (items.length > 0) {
+        result.push({
+          letter,
+          items
+        });
+      }
+    }
+
+    return result;
+  }
+
   /**
    * 4. Sub-Tab: Daftar Anime A-Z
+   * Menggabungkan direktori Otakudesu dan Kusonime (khusus anime yang belum ada di Otakudesu)
    */
   async loadAnimeList() {
     if (this.webBillboard) this.webBillboard.classList.add('hidden');
-    this.showLoading('Memuat direktori anime A-Z...');
+    this.showLoading('Memuat direktori anime A-Z gabungan (Otakudesu + Kusonime)...');
 
     try {
       if (!this.cache.animeList) {
+        let otakuGroups = [];
+        let kusoGroups = [];
+
+        const fetchPromises = [];
         if (window.electronAPI && typeof window.electronAPI.otakudesuGetAnimeList === 'function') {
-          this.cache.animeList = await window.electronAPI.otakudesuGetAnimeList();
+          fetchPromises.push(
+            window.electronAPI.otakudesuGetAnimeList()
+              .then(res => { otakuGroups = res || []; })
+              .catch(err => console.warn('Otakudesu anime list error:', err.message))
+          );
         }
+
+        if (window.electronAPI && typeof window.electronAPI.kusonimeGetAnimeList === 'function') {
+          fetchPromises.push(
+            window.electronAPI.kusonimeGetAnimeList()
+              .then(res => { kusoGroups = res || []; })
+              .catch(err => console.warn('Kusonime anime list error:', err.message))
+          );
+        }
+
+        await Promise.all(fetchPromises);
+
+        // Gabungkan dan filter duplikat
+        this.cache.animeList = this.mergeAnimeLists(otakuGroups, kusoGroups);
       }
 
       const groups = this.cache.animeList || [];
@@ -887,12 +990,15 @@ class OtakudesuManager {
         return;
       }
 
+      let totalAnimeCount = 0;
+      groups.forEach(g => { totalAnimeCount += (g.items ? g.items.length : 0); });
+
       let html = `
         <div class="alphabet-nav-wrap">
           <div class="web-grid-header">
             <div>
               <h2 class="web-section-heading">Direktori Lengkap Anime (A - Z)</h2>
-              <span class="web-section-count">${groups.length} Grup Abjad</span>
+              <span class="web-section-count">${groups.length} Grup Abjad • ${totalAnimeCount.toLocaleString('id-ID')} Anime (Otakudesu + Kusonime Batch)</span>
             </div>
           </div>
           <div class="alphabet-index-bar" id="alphabetIndexBar" role="tablist">
@@ -974,10 +1080,14 @@ class OtakudesuManager {
     `;
 
     items.forEach(item => {
+      const isKuso = item.source === 'kusonime';
       html += `
-        <div class="alphabet-anime-card" data-url="${item.url}" data-slug="${item.slug}" tabindex="0" role="button" aria-label="${item.title}">
-          <div class="alphabet-monogram">${letter}</div>
-          <div class="alphabet-card-title" title="${item.title}">${item.title}</div>
+        <div class="alphabet-anime-card ${isKuso ? 'card-kuso-batch' : ''}" data-url="${item.url}" data-slug="${item.slug}" data-source="${item.source || 'otakudesu'}" tabindex="0" role="button" aria-label="${item.title}">
+          <div class="alphabet-monogram ${isKuso ? 'monogram-kuso' : ''}">${letter}</div>
+          <div class="alphabet-card-details">
+            <div class="alphabet-card-title" title="${item.title}">${item.title}</div>
+            ${isKuso ? '<span class="alphabet-kuso-tag">📦 Kusonime Batch</span>' : ''}
+          </div>
         </div>
       `;
     });
@@ -986,15 +1096,22 @@ class OtakudesuManager {
     container.innerHTML = html;
 
     container.querySelectorAll('.alphabet-anime-card').forEach(card => {
-      card.addEventListener('click', () => {
+      const handleAction = () => {
         const url = card.dataset.url;
-        if (url) this.openAnimeDetail(url);
-      });
+        const slug = card.dataset.slug;
+        const source = card.dataset.source;
+        if (source === 'kusonime') {
+          this.openKusonimeDetail(url || slug);
+        } else {
+          this.openAnimeDetail(url || slug);
+        }
+      };
+
+      card.addEventListener('click', handleAction);
       card.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          const url = card.dataset.url;
-          if (url) this.openAnimeDetail(url);
+          handleAction();
         }
       });
     });
@@ -1009,7 +1126,9 @@ class OtakudesuManager {
 
     try {
       let libraryResult = null;
-      if (window.electronAPI && typeof window.electronAPI.scanLibrary === 'function') {
+      if (window.electronAPI && typeof window.electronAPI.scanDownloads === 'function') {
+        libraryResult = await window.electronAPI.scanDownloads();
+      } else if (window.electronAPI && typeof window.electronAPI.scanLibrary === 'function') {
         libraryResult = await window.electronAPI.scanLibrary();
       }
 
@@ -1027,15 +1146,15 @@ class OtakudesuManager {
         }
       }
 
-      const currentPath = this.downloadPath || (libraryResult && libraryResult.libraryPath) || 'anime';
+      const currentPath = (libraryResult && libraryResult.libraryPath) || this.downloadPath || 'downloads';
       const totalFiles = seriesList.reduce((acc, s) => acc + (s.episodesCount || 0), 0) + movies.length;
 
       let html = `
         <div class="web-grid-header">
           <div>
-            <h2 class="web-section-heading">Anime Tersimpan (Downloaded)</h2>
+            <h2 class="web-section-heading">Anime Hasil Unduhan Web (Downloaded)</h2>
             <div class="downloaded-folder-info">
-              <span>Lokasi Penyimpanan: <code>${currentPath}</code></span>
+              <span>Folder Khusus Unduhan Web: <code>${currentPath}</code></span>
             </div>
           </div>
           <div class="downloaded-header-actions">
@@ -1056,7 +1175,7 @@ class OtakudesuManager {
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>
             </div>
             <div class="stat-meta">
-              <span class="stat-label">Total Koleksi Anime</span>
+              <span class="stat-label">Total Koleksi Unduhan</span>
               <span class="stat-value">${seriesList.length} Serial / Anime</span>
             </div>
           </div>
@@ -1074,7 +1193,7 @@ class OtakudesuManager {
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
             </div>
             <div class="stat-meta">
-              <span class="stat-label">Folder Aktif</span>
+              <span class="stat-label">Folder Unduhan</span>
               <span class="stat-value" title="${currentPath}">${currentPath.split(/[\\/]/).pop() || currentPath}</span>
             </div>
           </div>
@@ -1087,8 +1206,8 @@ class OtakudesuManager {
             <svg viewBox="0 0 24 24" width="64" height="64" fill="#e50914">
               <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
             </svg>
-            <h3 class="empty-title">Belum Ada Anime yang Diunduh</h3>
-            <p class="empty-subtitle">Pilih episode anime dari tab Sedang Tayang, Jadwal, atau Genre, lalu klik tombol "Download" untuk menyimpannya ke folder player.</p>
+            <h3 class="empty-title">Belum Ada Unduhan dari Web</h3>
+            <p class="empty-subtitle">Koleksi anime lokal komputer Anda berada di tab <b>Beranda</b>. Tab ini khusus menampilkan anime yang diunduh langsung melalui pemutar ini.</p>
             <button class="btn-netflix-play" id="btnExploreFromDownloaded">Jelajahi Anime Sekarang</button>
           </div>
         `;
@@ -1240,44 +1359,51 @@ class OtakudesuManager {
   }
 
   /**
-   * 6. Pencarian Anime Otakudesu
+   * 6. Pencarian Anime Gabungan (Otakudesu & Kusonime Smart Fallback)
    */
-  async executeSearch(query) {
+  async executeSearch(query, forceSource = null) {
     if (this.webBillboard) this.webBillboard.classList.add('hidden');
-    this.showLoading(`Mencari "${query}" di Otakudesu...`);
+    this.showLoading(`Mencari "${query}" di Otakudesu & Kusonime...`);
+    this.searchQuery = query;
 
     try {
-      let results = [];
+      const promises = [];
       if (window.electronAPI && typeof window.electronAPI.otakudesuSearch === 'function') {
-        results = await window.electronAPI.otakudesuSearch(query);
+        promises.push(window.electronAPI.otakudesuSearch(query).catch(err => {
+          console.warn('Otakudesu search failed:', err);
+          return [];
+        }));
+      } else {
+        promises.push(Promise.resolve([]));
       }
 
-      if (!results || results.length === 0) {
-        this.webDynamicContainer.innerHTML = `
-          <div class="web-empty-notice">
-            Tidak ada anime yang cocok dengan kata kunci "<b>${query}</b>". Silakan coba kata kunci lain.
-          </div>
-        `;
-        return;
+      if (window.electronAPI && typeof window.electronAPI.kusonimeSearch === 'function') {
+        promises.push(window.electronAPI.kusonimeSearch(query).catch(err => {
+          console.warn('Kusonime search failed:', err);
+          return [];
+        }));
+      } else {
+        promises.push(Promise.resolve([]));
       }
 
-      let html = `
-        <div class="web-grid-header">
-          <div>
-            <h2 class="web-section-heading">Hasil Pencarian: "${query}"</h2>
-            <span class="web-section-count">${results.length} Anime Ditemukan</span>
-          </div>
-        </div>
-        <div class="netflix-poster-grid">
-      `;
+      const [otakuResults, kusoResults] = await Promise.all(promises);
 
-      results.forEach(anime => {
-        html += this.renderAnimeCard(anime);
-      });
+      this.lastSearchResults = {
+        otakudesu: otakuResults || [],
+        kusonime: kusoResults || [],
+        query
+      };
 
-      html += '</div>';
-      this.webDynamicContainer.innerHTML = html;
-      this.bindCardClicks();
+      // Smart fallback: Jika Otakudesu kosong tapi Kusonime memiliki hasil
+      if (forceSource) {
+        this.searchSourceFilter = forceSource;
+      } else if ((!otakuResults || otakuResults.length === 0) && (kusoResults && kusoResults.length > 0)) {
+        this.searchSourceFilter = 'kusonime';
+      } else if (!this.searchSourceFilter) {
+        this.searchSourceFilter = 'all';
+      }
+
+      this.renderSearchResults();
 
     } catch (err) {
       console.error('Error executing search:', err);
@@ -1285,12 +1411,99 @@ class OtakudesuManager {
     }
   }
 
+  renderSearchResults() {
+    const { otakudesu, kusonime, query } = this.lastSearchResults || { otakudesu: [], kusonime: [], query: '' };
+    const totalCount = (otakudesu ? otakudesu.length : 0) + (kusonime ? kusonime.length : 0);
+
+    if (totalCount === 0) {
+      this.webDynamicContainer.innerHTML = `
+        <div class="web-empty-notice">
+          Tidak ada anime yang cocok dengan kata kunci "<b>${query}</b>" baik di Otakudesu maupun Kusonime. Silakan coba kata kunci lain.
+        </div>
+      `;
+      return;
+    }
+
+    const otakuCount = otakudesu ? otakudesu.length : 0;
+    const kusoCount = kusonime ? kusonime.length : 0;
+    const isFallbackMode = otakuCount === 0 && kusoCount > 0;
+
+    let html = `
+      <div class="web-grid-header search-results-header">
+        <div>
+          <h2 class="web-section-heading">Hasil Pencarian: "${query}"</h2>
+          <span class="web-section-count">${totalCount} Anime Ditemukan</span>
+        </div>
+        <div class="search-source-filter-tabs" role="tablist">
+          <button class="source-filter-btn ${this.searchSourceFilter === 'all' ? 'active' : ''}" data-source="all">
+            Semua (${totalCount})
+          </button>
+          <button class="source-filter-btn ${this.searchSourceFilter === 'otakudesu' ? 'active' : ''}" data-source="otakudesu">
+            Otakudesu - Streaming (${otakuCount})
+          </button>
+          <button class="source-filter-btn ${this.searchSourceFilter === 'kusonime' ? 'active' : ''}" data-source="kusonime">
+            📦 Kusonime - Download Batch (${kusoCount})
+          </button>
+        </div>
+      </div>
+    `;
+
+    if (isFallbackMode) {
+      html += `
+        <div class="search-fallback-notice">
+          <div class="fallback-icon">💡</div>
+          <div class="fallback-text">
+            <strong>Anime tidak ditemukan di Otakudesu.</strong>
+            <span>Menampilkan hasil download batch dari <b>Kusonime</b> di bawah ini (khusus unduhan paket lengkap, bukan streaming).</span>
+          </div>
+        </div>
+      `;
+    }
+
+    let itemsToDisplay = [];
+    if (this.searchSourceFilter === 'otakudesu') {
+      itemsToDisplay = otakudesu || [];
+    } else if (this.searchSourceFilter === 'kusonime') {
+      itemsToDisplay = kusonime || [];
+    } else {
+      // 'all'
+      itemsToDisplay = [...(otakudesu || []), ...(kusonime || [])];
+    }
+
+    if (itemsToDisplay.length === 0) {
+      html += `
+        <div class="web-empty-notice">
+          Tidak ada hasil untuk kategori sumber "${this.searchSourceFilter}". Silakan pilih tab sumber lainnya di atas.
+        </div>
+      `;
+    } else {
+      html += '<div class="netflix-poster-grid">';
+      itemsToDisplay.forEach(anime => {
+        html += this.renderAnimeCard(anime);
+      });
+      html += '</div>';
+    }
+
+    this.webDynamicContainer.innerHTML = html;
+
+    // Pasang listener pada tombol filter tab sumber
+    this.webDynamicContainer.querySelectorAll('.source-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.searchSourceFilter = btn.dataset.source;
+        this.renderSearchResults();
+      });
+    });
+
+    this.bindCardClicks();
+  }
+
   /**
    * Helper: Merender satu kartu poster anime dengan 2:3 aspect ratio dan hover panel
    */
   renderAnimeCard(anime) {
     const slug = anime.slug;
-    const historyEntry = this.onlineHistory[slug];
+    const isKusonime = anime.source === 'kusonime' || anime.isBatchOnly;
+    const historyEntry = !isKusonime ? this.onlineHistory[slug] : null;
     let progressPercent = 0;
     let watchedBadgeText = '';
 
@@ -1303,18 +1516,22 @@ class OtakudesuManager {
       }
     }
 
-    const badgeTop = anime.episode || (anime.rating ? `★ ${anime.rating}` : '') || (anime.status ? `● ${anime.status}` : 'Ongoing');
-    const badgeBottom = anime.day ? `${anime.day} • ${anime.date || ''}` : (anime.genres || 'Anime');
-    const scoreText = anime.rating ? `★ ${anime.rating}` : (historyEntry ? 'Terakhir Ditonton' : '★ 8.5');
-    const statusText = anime.status || 'Ongoing';
+    const badgeTop = isKusonime
+      ? '📦 Kusonime • Batch'
+      : (anime.episode || (anime.rating ? `★ ${anime.rating}` : '') || (anime.status ? `● ${anime.status}` : 'Ongoing'));
+    const badgeBottom = isKusonime
+      ? 'Download Batch'
+      : (anime.day ? `${anime.day} • ${anime.date || ''}` : (anime.genres || 'Anime'));
+    const scoreText = anime.score ? `★ ${anime.score}` : (anime.rating ? `★ ${anime.rating}` : (historyEntry ? 'Terakhir Ditonton' : '★ 8.5'));
+    const statusText = isKusonime ? 'Batch Only' : (anime.status || 'Ongoing');
 
     return `
-      <div class="netflix-card otakudesu-card" data-url="${anime.url}" data-slug="${slug}" tabindex="0" role="article" aria-label="${anime.title}">
+      <div class="netflix-card otakudesu-card ${isKusonime ? 'kusonime-card' : ''}" data-url="${anime.url}" data-slug="${slug}" data-source="${isKusonime ? 'kusonime' : 'otakudesu'}" tabindex="0" role="article" aria-label="${anime.title}">
         <div class="netflix-card-poster-wrap">
           ${anime.poster ? `<img class="netflix-card-poster" src="${anime.poster}" alt="${anime.title}" loading="lazy">` : `<div class="poster-placeholder"><span>${anime.title.charAt(0)}</span></div>`}
           <div class="poster-gradient-overlay"></div>
-          ${badgeTop ? `<span class="card-badge-top">${badgeTop}</span>` : ''}
-          ${badgeBottom ? `<span class="card-badge-bottom">${badgeBottom}</span>` : ''}
+          ${badgeTop ? `<span class="card-badge-top ${isKusonime ? 'badge-kusonime' : ''}">${badgeTop}</span>` : ''}
+          ${badgeBottom ? `<span class="card-badge-bottom ${isKusonime ? 'badge-kusonime-bottom' : ''}">${badgeBottom}</span>` : ''}
           ${progressPercent > 0 ? `
             <div class="card-progress-bar-bg">
               <div class="card-progress-bar-fill" style="width: ${progressPercent}%;"></div>
@@ -1328,10 +1545,16 @@ class OtakudesuManager {
         <div class="netflix-card-hover-panel">
           <div class="hover-action-row">
             <div class="hover-action-left">
-              <button class="btn-card-action btn-card-play btn-card-quick-stream" data-url="${anime.url}" data-slug="${slug}" title="Putar Langsung" aria-label="Putar Langsung">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-              </button>
-              <button class="btn-card-action btn-card-secondary btn-card-quick-info" data-url="${anime.url}" data-slug="${slug}" title="Lihat Detail & Episode" aria-label="Detail Anime">
+              ${isKusonime ? `
+                <button class="btn-card-action btn-card-play btn-card-quick-batch" data-url="${anime.url}" data-slug="${slug}" data-source="kusonime" title="Lihat Paket Batch & Download" aria-label="Lihat Batch">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                </button>
+              ` : `
+                <button class="btn-card-action btn-card-play btn-card-quick-stream" data-url="${anime.url}" data-slug="${slug}" title="Putar Langsung" aria-label="Putar Langsung">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+              `}
+              <button class="btn-card-action btn-card-secondary btn-card-quick-info" data-url="${anime.url}" data-slug="${slug}" data-source="${isKusonime ? 'kusonime' : 'otakudesu'}" title="Lihat Detail & Episode" aria-label="Detail Anime">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
               </button>
             </div>
@@ -1339,8 +1562,8 @@ class OtakudesuManager {
           <div class="hover-card-title">${anime.title}</div>
           <div class="hover-meta-row">
             <span class="hover-score-star">${scoreText}</span>
-            <span class="hover-badge-outline">HD</span>
-            <span class="hover-badge-red">${statusText}</span>
+            <span class="hover-badge-outline">${isKusonime ? 'BATCH' : 'HD'}</span>
+            <span class="${isKusonime ? 'hover-badge-amber' : 'hover-badge-red'}">${statusText}</span>
           </div>
           <div class="hover-tags-row">
             <span>${anime.genres || anime.day || anime.title}</span>
@@ -1454,6 +1677,20 @@ class OtakudesuManager {
       });
     });
 
+    // Quick Batch buttons for Kusonime inside hover panels
+    container.querySelectorAll('.btn-card-quick-batch').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const url = btn.dataset.url;
+        const slug = btn.dataset.slug;
+        if (url) {
+          this.openKusonimeDetail(url);
+        } else if (slug) {
+          this.openKusonimeDetail(slug);
+        }
+      });
+    });
+
     // Quick Play buttons inside hover panels
     container.querySelectorAll('.btn-card-quick-stream').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -1474,6 +1711,12 @@ class OtakudesuManager {
         e.stopPropagation();
         const url = btn.dataset.url;
         const slug = btn.dataset.slug;
+        const source = btn.dataset.source;
+        if (source === 'kusonime') {
+          if (url) this.openKusonimeDetail(url);
+          else if (slug) this.openKusonimeDetail(slug);
+          return;
+        }
         if (url) {
           this.openAnimeDetail(url);
         } else if (slug) {
@@ -1488,6 +1731,12 @@ class OtakudesuManager {
         if (e.target.closest('.btn-card-action')) return;
         const url = card.dataset.url;
         const slug = card.dataset.slug;
+        const source = card.dataset.source;
+        if (source === 'kusonime') {
+          if (url) this.openKusonimeDetail(url);
+          else if (slug) this.openKusonimeDetail(slug);
+          return;
+        }
         if (url) {
           this.openAnimeDetail(url);
         } else if (slug) {
@@ -1500,6 +1749,12 @@ class OtakudesuManager {
           e.preventDefault();
           const url = card.dataset.url;
           const slug = card.dataset.slug;
+          const source = card.dataset.source;
+          if (source === 'kusonime') {
+            if (url) this.openKusonimeDetail(url);
+            else if (slug) this.openKusonimeDetail(slug);
+            return;
+          }
           if (url) {
             this.openAnimeDetail(url);
           } else if (slug) {
@@ -1516,7 +1771,7 @@ class OtakudesuManager {
   async openAnimeDetail(urlOrSlug) {
     if (!this.otakudesuDetailModal) return;
 
-    this.otakudesuDetailModal.classList.remove('hidden');
+    this.otakudesuDetailModal.classList.remove('hidden', 'kusonime-modal-active');
     if (this.otakudesuModalTitle) this.otakudesuModalTitle.textContent = 'Memuat Informasi Anime...';
     if (this.otakudesuJapaneseTitle) this.otakudesuJapaneseTitle.textContent = '';
     if (this.otakudesuSynopsis) this.otakudesuSynopsis.textContent = 'Mengambil detail anime dan daftar episode dari Otakudesu...';
@@ -1683,6 +1938,222 @@ class OtakudesuManager {
     });
   }
 
+  /**
+   * 7b. Modal Detail Anime Khusus Kusonime (Download Batch Only)
+   */
+  async openKusonimeDetail(urlOrSlug) {
+    if (!this.otakudesuDetailModal) return;
+
+    this.otakudesuDetailModal.classList.remove('hidden');
+    this.otakudesuDetailModal.classList.add('kusonime-modal-active');
+    if (this.otakudesuModalTitle) this.otakudesuModalTitle.textContent = 'Memuat Detail Batch Kusonime...';
+    if (this.otakudesuJapaneseTitle) this.otakudesuJapaneseTitle.textContent = '';
+    if (this.otakudesuSynopsis) this.otakudesuSynopsis.textContent = 'Mengambil detail anime dan link batch dari Kusonime...';
+    if (this.otakudesuEpisodesGrid) {
+      this.otakudesuEpisodesGrid.innerHTML = '<div class="web-loading-spinner"><div class="yt-spinner"></div><span>Mengambil link download batch...</span></div>';
+    }
+
+    try {
+      let detail = null;
+      if (window.electronAPI && typeof window.electronAPI.kusonimeGetDetail === 'function') {
+        detail = await window.electronAPI.kusonimeGetDetail(urlOrSlug);
+      }
+
+      if (!detail) throw new Error('Data anime Kusonime tidak ditemukan');
+      this.selectedAnime = detail;
+
+      // Update Modal Elements
+      if (this.otakudesuHeroBackdrop) {
+        this.otakudesuHeroBackdrop.style.backgroundImage = `url("${detail.poster}")`;
+      }
+      if (this.otakudesuModalTitle) this.otakudesuModalTitle.textContent = detail.title;
+      if (this.otakudesuJapaneseTitle) this.otakudesuJapaneseTitle.textContent = detail.japanese || '';
+      if (this.otakudesuStatusBadge) this.otakudesuStatusBadge.textContent = '📦 Batch Download';
+      if (this.otakudesuScoreBadge) this.otakudesuScoreBadge.textContent = detail.score ? `★ ${detail.score}` : '★ 8.0';
+      if (this.otakudesuTypeBadge) this.otakudesuTypeBadge.textContent = detail.type || 'Batch Series';
+      if (this.otakudesuStudio) this.otakudesuStudio.textContent = detail.studio || 'Kusonime';
+      if (this.otakudesuDuration) this.otakudesuDuration.textContent = detail.duration || 'Batch Lengkap';
+      if (this.otakudesuTotalEps) this.otakudesuTotalEps.textContent = `${detail.batchPackages ? detail.batchPackages.length : 1} Paket Batch`;
+      if (this.otakudesuSynopsis) this.otakudesuSynopsis.textContent = detail.synopsis || 'Sinopsis tidak tersedia.';
+
+      // Render Genres
+      if (this.otakudesuGenresWrap) {
+        let gHtml = '';
+        (detail.genres || []).forEach(gName => {
+          gHtml += `<span class="otakudesu-genre-tag">${gName}</span>`;
+        });
+        this.otakudesuGenresWrap.innerHTML = gHtml;
+      }
+
+      // Re-purpose action button to scroll to batch packages
+      if (this.btnOtakudesuStreamFirst) {
+        if (this.txtOtakudesuStreamFirst) {
+          this.txtOtakudesuStreamFirst.textContent = 'Pilih Resolusi & Download Batch';
+        }
+        this.btnOtakudesuStreamFirst.onclick = () => {
+          if (this.otakudesuEpisodesGrid) {
+            this.otakudesuEpisodesGrid.scrollIntoView({ behavior: 'smooth' });
+          }
+        };
+        this.btnOtakudesuStreamFirst.classList.remove('hidden');
+      }
+
+      if (this.btnOtakudesuBatch) {
+        this.btnOtakudesuBatch.classList.add('hidden');
+      }
+
+      // Render Batch Packages inside Grid
+      this.renderKusonimeBatchList(detail);
+
+    } catch (err) {
+      console.error('Error opening kusonime detail:', err);
+      if (this.otakudesuSynopsis) {
+        this.otakudesuSynopsis.textContent = `Gagal memuat detail Kusonime: ${err.message}`;
+      }
+      if (this.otakudesuEpisodesGrid) {
+        this.otakudesuEpisodesGrid.innerHTML = `<div class="web-empty-notice">Gagal memuat link download batch: ${err.message}</div>`;
+      }
+    }
+  }
+
+  /**
+   * Helper pengurutan mirror unduhan berdasarkan prioritas stabilitas & kecepatan
+   */
+  sortMirrorsByPriority(mirrors) {
+    if (!Array.isArray(mirrors) || mirrors.length === 0) return [];
+    return [...mirrors].sort((a, b) => {
+      const getScore = (m) => {
+        const url = (m.url || '').toLowerCase();
+        const host = (m.host || '').toLowerCase();
+
+        // 1. Google Drive Resmi (Direct UC & UUID Auto Confirmation)
+        if (url.includes('drive.google.com') || url.includes('drive.usercontent.google.com')) return 1000;
+        if ((host.includes('google drive') || host.includes('gdrive')) && !url.includes('acefile') && !url.includes('mega')) return 900;
+
+        // 2. Pixeldrain (Direct API)
+        if (url.includes('pixeldrain.com') || host.includes('pixel') || host.includes('pdrain')) return 800;
+
+        // 3. Direct / Media CDN
+        if (url.endsWith('.mp4') || url.endsWith('.mkv') || url.endsWith('.zip') || url.endsWith('.rar')) return 700;
+        if (url.includes('desustream') || host.includes('desu')) return 600;
+        if (url.includes('kraken') || host.includes('kraken')) return 500;
+        if (url.includes('hxfile') || host.includes('hxfile')) return 400;
+
+        // 4. Acefile / Google Sharer
+        if (url.includes('acefile') || host.includes('acefile') || host.includes('sharer')) return 300;
+
+        // 5. Mega / Terabox / Lainnya
+        if (url.includes('mega.nz') || host.includes('mega')) return 200;
+        if (url.includes('terabox') || host.includes('terabox')) return 100;
+
+        return 250;
+      };
+      return getScore(b) - getScore(a);
+    });
+  }
+
+  selectBestMirror(mirrors) {
+    const sorted = this.sortMirrorsByPriority(mirrors);
+    return sorted[0] || null;
+  }
+
+  /**
+   * Render Paket Batch Download Kusonime
+   * Hanya menampilkan pilihan resolusi video (360p, 480p, 720p, 1080p).
+   * Sistem otomatis menentukan mirror server terbaik (Google Drive / Pixeldrain / Fast Server)
+   * dan langsung memulai unduhan latar belakang ke folder penyimpanan.
+   */
+  renderKusonimeBatchList(animeDetail) {
+    if (!this.otakudesuEpisodesGrid) return;
+
+    const packages = animeDetail.batchPackages || [];
+    if (packages.length === 0) {
+      this.otakudesuEpisodesGrid.innerHTML = '<div class="web-empty-notice">Belum ada link unduhan batch yang tersedia untuk anime ini.</div>';
+      return;
+    }
+
+    let html = `
+      <div class="kusonime-batch-banner">
+        <div class="kusonime-banner-icon">📦</div>
+        <div class="kusonime-banner-content">
+          <div class="kusonime-banner-title">Sumber: Kusonime (Download Batch Only • Bukan Streaming)</div>
+          <div class="kusonime-banner-desc">
+            Anime ini disediakan khusus dalam format arsip paket batch (MKV/RAR/ZIP). Cukup pilih resolusi video yang Anda inginkan di bawah; sistem akan otomatis memilih server mirror tercepat dan langsung mengunduh ke komputer Anda.
+          </div>
+        </div>
+      </div>
+      <div class="kusonime-packages-container">
+    `;
+
+    packages.forEach((pkg, pkgIdx) => {
+      html += `
+        <div class="kusonime-package-card">
+          <div class="kusonime-package-header">
+            <span class="kusonime-package-tag">Paket ${pkgIdx + 1}</span>
+            <h4 class="kusonime-package-title">${pkg.title}</h4>
+          </div>
+          <div class="kusonime-resolutions-list">
+      `;
+
+      (pkg.resolutions || []).forEach(res => {
+        const bestMirror = this.selectBestMirror(res.mirrors);
+        const serverHost = bestMirror ? bestMirror.host : 'Otomatis';
+
+        html += `
+          <div class="kusonime-res-row">
+            <div class="kusonime-res-info">
+              <span class="res-badge">${res.quality}</span>
+              <span class="kusonime-auto-badge" title="Sistem otomatis memilih server terbaik: ${serverHost}">
+                ⚡ Auto Mirror (${serverHost})
+              </span>
+            </div>
+            <div class="kusonime-action-wrap">
+              <button class="btn-download-resolution btn-kuso-download-res" data-package-index="${pkgIdx}" data-quality="${res.quality}" title="Unduh resolusi ${res.quality}">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                <span>Unduh ${res.quality}</span>
+              </button>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+    this.otakudesuEpisodesGrid.innerHTML = html;
+
+    // Pasang listener pada tombol unduh resolusi
+    this.otakudesuEpisodesGrid.querySelectorAll('.btn-kuso-download-res').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const pkgIdx = parseInt(btn.dataset.packageIndex, 10);
+        const quality = btn.dataset.quality;
+        const pkg = packages[pkgIdx];
+        const resObj = pkg && (pkg.resolutions || []).find(r => r.quality === quality);
+
+        if (!resObj || !resObj.mirrors || resObj.mirrors.length === 0) {
+          alert('Link unduhan tidak tersedia untuk resolusi ini.');
+          return;
+        }
+
+        const bestMirror = this.selectBestMirror(resObj.mirrors);
+        const sortedMirrors = this.sortMirrorsByPriority(resObj.mirrors);
+
+        await this.triggerDownload({
+          animeTitle: animeDetail.title,
+          episodeTitle: `${pkg.title || animeDetail.title}`,
+          downloadUrl: bestMirror ? bestMirror.url : '',
+          mirrors: sortedMirrors,
+          quality: resObj.quality,
+          mirrorHost: bestMirror ? bestMirror.host : 'Otomatis'
+        });
+      });
+    });
+  }
+
   closeDetailModal() {
     if (this.otakudesuDetailModal) {
       this.otakudesuDetailModal.classList.add('hidden');
@@ -1800,7 +2271,25 @@ class OtakudesuManager {
           this.showDownloadToastNotification('Stream direct default offline. Membuka server alternatif...');
           this.openResolutionPicker(ep, animeDetail);
           if (this.resolutionModalDesc) {
-            this.resolutionModalDesc.innerHTML = '<span style="color:#ffb74d;">⚠️ Server streaming default untuk episode ini sedang offline/kedaluwarsa.</span><br>Silakan pilih mirror unduhan cepat di bawah (atau unduh langsung):';
+            this.resolutionModalDesc.innerHTML = `
+              <span style="color:#ffb74d;">⚠️ Server streaming default untuk episode ini sedang offline/kedaluwarsa.</span><br>
+              Silakan pilih mirror unduhan cepat di bawah (atau unduh langsung):
+              <div style="margin-top: 12px;">
+                <button id="btnSearchKusonimeFallback" class="btn-fallback-kusonime">
+                  📦 Cari Versi Download Batch di Kusonime
+                </button>
+              </div>
+            `;
+            setTimeout(() => {
+              const btnKuso = document.getElementById('btnSearchKusonimeFallback');
+              if (btnKuso) {
+                btnKuso.onclick = () => {
+                  this.closeResolutionPicker();
+                  this.closeDetailModal();
+                  this.executeSearch(animeDetail.title, 'kusonime');
+                };
+              }
+            }, 50);
           }
           return;
         }
@@ -2130,6 +2619,9 @@ class OtakudesuManager {
       item.status = 'error';
       item.error = data.error || (data.item && data.item.error) || 'Gagal mengunduh file';
       item.speedText = 'Gagal';
+      if (data.item && data.item.fallbackUrl) {
+        item.fallbackUrl = data.item.fallbackUrl;
+      }
       this.activeDownloads.set(data.id, item);
       this.updateDownloadBadge();
       this.renderDownloadToast();
@@ -2149,7 +2641,7 @@ class OtakudesuManager {
   updateDownloadBadge() {
     let activeCount = 0;
     this.activeDownloads.forEach(item => {
-      if (item.status === 'downloading' || item.status === 'resolving') {
+      if (item.status === 'downloading' || item.status === 'resolving' || item.status === 'extracting') {
         activeCount++;
       }
     });
@@ -2249,7 +2741,25 @@ class OtakudesuManager {
             <div class="toast-error-text">${item.error || 'Terjadi kesalahan saat mengunduh.'}</div>
             <div class="toast-item-footer">
               <span class="toast-item-anime">${item.animeTitle}</span>
-              <button class="btn-cancel-dl btn-dismiss-dl" data-id="${item.id}">Tutup</button>
+              <div style="display:flex;gap:6px;">
+                ${item.fallbackUrl ? `<button class="btn-cancel-dl btn-open-browser-dl" data-url="${item.fallbackUrl}" style="background:#262626;color:#4fc3f7;border:1px solid rgba(79,195,247,0.4);" title="Buka tautan mirror di browser">🌐 Browser</button>` : ''}
+                <button class="btn-cancel-dl btn-dismiss-dl" data-id="${item.id}">Tutup</button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (status === 'extracting') {
+        html += `
+          <div class="toast-download-item">
+            <div class="toast-item-info">
+              <span class="toast-item-title" title="${item.episodeTitle}">${item.episodeTitle} (${item.quality})</span>
+              <span class="toast-item-speed" style="color:#ffb300;font-weight:600;">📦 Mengekstrak...</span>
+            </div>
+            <div class="toast-progress-bar-bg">
+              <div class="toast-progress-bar-fill" style="width: 100%; background: #ff9800;"></div>
+            </div>
+            <div class="toast-item-footer">
+              <span class="toast-item-anime">${item.animeTitle} • Mengekstrak video batch</span>
             </div>
           </div>
         `;
@@ -2328,6 +2838,15 @@ class OtakudesuManager {
         }
       });
     });
+
+    this.downloadToastBody.querySelectorAll('.btn-open-browser-dl').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const url = btn.dataset.url;
+        if (url && window.electronAPI && typeof window.electronAPI.openExternal === 'function') {
+          window.electronAPI.openExternal(url);
+        }
+      });
+    });
   }
 
   /**
@@ -2345,7 +2864,7 @@ class OtakudesuManager {
     const errorList = [];
 
     this.activeDownloads.forEach(item => {
-      if (item.status === 'downloading' || item.status === 'resolving') {
+      if (item.status === 'downloading' || item.status === 'resolving' || item.status === 'extracting') {
         activeList.push(item);
       } else if (item.status === 'completed') {
         completedList.push(item);
@@ -2447,7 +2966,10 @@ class OtakudesuManager {
                 <span class="dedicated-dl-title">${item.episodeTitle}</span>
                 <span style="font-size:12px;background:#ff4444;color:#fff;padding:2px 8px;border-radius:4px;margin-left:8px;">Gagal</span>
               </div>
-              <button class="btn-dismiss-dl btn-secondary" data-id="${item.id}" style="padding:4px 12px;font-size:12px;">Hapus</button>
+              <div style="display:flex;gap:8px;">
+                ${item.fallbackUrl ? `<button class="btn-open-browser-dl btn-secondary" data-url="${item.fallbackUrl}" style="padding:4px 12px;font-size:12px;color:#4fc3f7;border-color:rgba(79,195,247,0.4);" title="Buka tautan mirror di browser">🌐 Buka di Browser</button>` : ''}
+                <button class="btn-dismiss-dl btn-secondary" data-id="${item.id}" style="padding:4px 12px;font-size:12px;">Hapus</button>
+              </div>
             </div>
             <div style="font-size:12px;color:#ff8a80;">${item.error || 'Terjadi kesalahan saat mengunduh.'}</div>
             <div style="font-size:12px;color:var(--text-muted);">${item.animeTitle}</div>
@@ -2534,6 +3056,15 @@ class OtakudesuManager {
             this.library.showPlayerView();
           }
           await this.player.loadFile(filePath);
+        }
+      });
+    });
+
+    this.downloadsTabBody.querySelectorAll('.btn-open-browser-dl').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const url = btn.dataset.url;
+        if (url && window.electronAPI && typeof window.electronAPI.openExternal === 'function') {
+          window.electronAPI.openExternal(url);
         }
       });
     });

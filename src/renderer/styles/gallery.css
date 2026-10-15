@@ -3196,5 +3196,363 @@ body.app-loading-state *,
   pointer-events: none;
 }
 
+/* ==========================================================================
+   KUSONIME INTEGRATION (Batch Download Source & Hybrid Search)
+   ========================================================================== */
 
+/* Badges on Cards */
+.badge-kusonime {
+  background: rgba(245, 158, 11, 0.95) !important;
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
 
+.badge-kusonime-bottom {
+  background: rgba(15, 23, 42, 0.88) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  font-weight: 700 !important;
+}
+
+.hover-badge-amber {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.btn-card-quick-batch {
+  background: #f59e0b !important;
+  color: #000 !important;
+}
+
+.btn-card-quick-batch:hover {
+  background: #d97706 !important;
+  transform: scale(1.1);
+}
+
+/* Search Source Filter Tabs */
+.search-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.search-source-filter-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.source-filter-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.source-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.source-filter-btn.active {
+  background: #f59e0b;
+  color: #0f172a;
+  border-color: #f59e0b;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+/* Smart Fallback Notice */
+.search-fallback-notice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.08));
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 8px;
+  padding: 12px 18px;
+  margin-bottom: 22px;
+}
+
+.search-fallback-notice .fallback-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.search-fallback-notice .fallback-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: #f1f5f9;
+}
+
+.search-fallback-notice .fallback-text strong {
+  color: #fbbf24;
+}
+
+/* Kusonime Batch Modal Notice Banner */
+.kusonime-batch-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(15, 23, 42, 0.8));
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 22px;
+}
+
+.kusonime-batch-banner .kusonime-banner-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.kusonime-batch-banner .kusonime-banner-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 4px;
+}
+
+.kusonime-batch-banner .kusonime-banner-desc {
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+/* Kusonime Batch Packages and Mirrors */
+.kusonime-packages-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.kusonime-package-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 16px 18px;
+  transition: border-color 0.2s ease;
+}
+
+.kusonime-package-card:hover {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.kusonime-package-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.kusonime-package-tag {
+  background: #f59e0b;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.kusonime-package-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.kusonime-resolutions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kusonime-res-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.kusonime-res-row:last-child {
+  border-bottom: none;
+}
+
+.kusonime-res-label .res-badge {
+  display: inline-block;
+  min-width: 60px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.kusonime-mirrors-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.btn-kuso-mirror {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-kuso-mirror:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: #f59e0b;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.btn-kuso-mirror.btn-mirror-gdrive {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.btn-kuso-mirror.btn-mirror-gdrive:hover {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.btn-fallback-kusonime {
+  background: #f59e0b;
+  color: #0f172a;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-fallback-kusonime:hover {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+/* Kusonime Resolution-Only Download Action */
+.kusonime-res-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.kusonime-auto-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  letter-spacing: 0.2px;
+}
+
+.kusonime-action-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.btn-kuso-download-res {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0f172a;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+}
+
+.btn-kuso-download-res:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+}
+
+.btn-kuso-download-res:active {
+  transform: translateY(0);
+}
+
+/* A-Z Merged Catalog: Kusonime Exclusive Item Styling */
+.alphabet-anime-card.card-kuso-batch {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.04);
+}
+
+.alphabet-anime-card.card-kuso-batch:hover {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  transform: translateY(-2px);
+}
+
+.alphabet-monogram.monogram-kuso {
+  background: linear-gradient(135deg, #f59e0b, #b45309);
+  color: #ffffff;
+}
+
+.alphabet-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.alphabet-kuso-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  width: fit-content;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}

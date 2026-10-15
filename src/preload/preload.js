@@ -19,11 +19,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('library:saveProgress', animePath, episodePath, episodeName, currentTime, duration),
   getContinueWatching: () => ipcRenderer.invoke('library:getContinueWatching'),
 
-  // Download Folder Settings
+  // Download Folder Settings & Downloads Scanner
   getDownloadPath: () => ipcRenderer.invoke('library:getDownloadPath'),
   setDownloadPath: (newPath) => ipcRenderer.invoke('library:setDownloadPath', newPath),
   chooseDownloadFolder: () => ipcRenderer.invoke('library:chooseDownloadFolder'),
   openDownloadFolder: () => ipcRenderer.invoke('library:openDownloadFolder'),
+  scanDownloads: () => ipcRenderer.invoke('library:scanDownloads'),
 
   // Online Watch History (Streaming)
   saveOnlineProgress: (animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster) =>
@@ -41,6 +42,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   otakudesuGetEpisodeStream: (urlOrSlug) => ipcRenderer.invoke('otakudesu:getEpisodeStream', urlOrSlug),
   otakudesuGetBatchDetails: (urlOrSlug) => ipcRenderer.invoke('otakudesu:getBatchDetails', urlOrSlug),
   getAnimeSkipTimes: (animeTitle, episodeNum) => ipcRenderer.invoke('aniskip:getSkipTimes', animeTitle, episodeNum),
+
+  // Kusonime Integration APIs (Batch Download Source)
+  kusonimeSearch: (query) => ipcRenderer.invoke('kusonime:search', query),
+  kusonimeGetDetail: (urlOrSlug) => ipcRenderer.invoke('kusonime:getDetail', urlOrSlug),
+  kusonimeGetAnimeList: () => ipcRenderer.invoke('kusonime:getAnimeList'),
 
   // Background Download Manager
   startDownload: (options) => ipcRenderer.invoke('download:start', options),
@@ -117,5 +123,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resetZoom: () => {
     webFrame.setZoomFactor(1.0);
     return 1.0;
-  }
+  },
+
+  // External Browser Opener
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+
+  // Batch Archive Extractor
+  isArchive: (filePath) => ipcRenderer.invoke('archive:isArchive', filePath),
+  extractArchive: (archivePath, targetDir, options) => ipcRenderer.invoke('archive:extract', archivePath, targetDir, options)
 });

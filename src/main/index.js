@@ -4,7 +4,9 @@ const mediaServer = require('./mediaServer');
 const { probeMedia } = require('./probeService');
 const libraryService = require('./libraryService');
 const otakudesuService = require('./otakudesuService');
+const kusonimeService = require('./kusonimeService');
 const downloadManager = require('./downloadManager');
+const extractorService = require('./extractorService');
 const aniSkipService = require('./aniSkipService');
 const trayManager = require('./trayManager');
 const updateService = require('./updateService');
@@ -240,6 +242,29 @@ ipcMain.handle('library:openDownloadFolder', async () => {
   return false;
 });
 
+// IPC Handler: Scan khusus folder unduhan (terpisah dari library Beranda)
+ipcMain.handle('library:scanDownloads', () => {
+  return libraryService.scanDownloads();
+});
+
+// IPC Handlers: Batch Archive Extractor
+ipcMain.handle('archive:isArchive', (_event, filePath) => {
+  return extractorService.isArchive(filePath);
+});
+
+ipcMain.handle('archive:extract', async (_event, archivePath, targetDir, options) => {
+  return await extractorService.extractArchive(archivePath, targetDir, options);
+});
+
+// IPC Handler: Buka URL di browser sistem default
+ipcMain.handle('shell:openExternal', async (_event, url) => {
+  if (url && typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) {
+    await shell.openExternal(url);
+    return true;
+  }
+  return false;
+});
+
 // IPC Handlers: Online Watch History
 ipcMain.handle('library:saveOnlineProgress', (_event, animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster) => {
   libraryService.saveOnlineProgress(animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster);
@@ -285,6 +310,19 @@ ipcMain.handle('otakudesu:getEpisodeStream', async (_event, urlOrSlug) => {
 
 ipcMain.handle('otakudesu:getBatchDetails', async (_event, urlOrSlug) => {
   return await otakudesuService.getBatchDetails(urlOrSlug);
+});
+
+// IPC Handlers: Kusonime Integration (Batch Download Source)
+ipcMain.handle('kusonime:search', async (_event, query) => {
+  return await kusonimeService.search(query);
+});
+
+ipcMain.handle('kusonime:getDetail', async (_event, urlOrSlug) => {
+  return await kusonimeService.getAnimeDetail(urlOrSlug);
+});
+
+ipcMain.handle('kusonime:getAnimeList', async () => {
+  return await kusonimeService.getAnimeList();
 });
 
 // IPC Handler: AniSkip Precise Skip Times

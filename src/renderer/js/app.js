@@ -216,10 +216,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
     // Sembunyikan tombol transcode ulang untuk streaming web karena tidak relevan
+    const btnFallbackKusonime = document.getElementById('btnFallbackKusonime');
     if (player.remoteStreamUrl && !player.currentFilePath) {
       btnRetryTranscode.classList.add('hidden');
+      if (btnFallbackKusonime && library && library.currentOnlineAnime) {
+        btnFallbackKusonime.classList.remove('hidden');
+        btnFallbackKusonime.onclick = () => {
+          errorState.classList.add('hidden');
+          library.switchNavTab('web');
+          if (otakudesuManager) {
+            otakudesuManager.executeSearch(library.currentOnlineAnime.animeTitle, 'kusonime');
+          }
+        };
+      }
     } else {
       btnRetryTranscode.classList.remove('hidden');
+      if (btnFallbackKusonime) btnFallbackKusonime.classList.add('hidden');
     }
     errorState.classList.remove('hidden');
   });

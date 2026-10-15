@@ -70,10 +70,10 @@ async function runRedesignTests() {
       const logs = [];
       const report = (name, passed, detail) => logs.push({ name, passed, detail });
 
-      // 1. YouTube Music Circular Player Logo check
-      const logoEl = document.querySelector('.brand-ytmusic svg.ytmusic-logo-svg');
+      // 1. KEIOL Player Logo check
+      const logoEl = document.querySelector('.brand-keiol svg.keiol-logo-svg');
       const brandText = document.querySelector('.brand')?.textContent?.trim() || '';
-      report('1. Logo YouTube Music bulat tanpa teks nama', logoEl !== null && brandText === '', 'SVG found: ' + (logoEl !== null) + ', Text: "' + brandText + '"');
+      report('1. Logo KEIOL tanpa teks nama', logoEl !== null && brandText === '', 'SVG found: ' + (logoEl !== null) + ', Text: "' + brandText + '"');
 
       // 2. Folder Button Explorer Integration
       const chooseFolderBtn = document.getElementById('btnChooseFolder');

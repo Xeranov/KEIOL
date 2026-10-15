@@ -6,6 +6,7 @@ const { probeMedia } = require('../main/probeService');
 const libraryService = require('../main/libraryService');
 const otakudesuService = require('../main/otakudesuService');
 const downloadManager = require('../main/downloadManager');
+const extractorService = require('../main/extractorService');
 
 async function runWebIntegrationTest() {
   console.log('=== Starting Otakudesu & Web Tab Integration Verification ===');
@@ -31,6 +32,12 @@ async function runWebIntegrationTest() {
     return true;
   });
   ipcMain.handle('library:getOnlineHistory', () => libraryService.getOnlineHistory());
+  ipcMain.handle('library:scanDownloads', () => libraryService.scanDownloads());
+  ipcMain.handle('archive:isArchive', (_e, fp) => extractorService.isArchive(fp));
+  ipcMain.handle('archive:extract', async (_e, fp, dp) => extractorService.extractArchive(fp, dp));
+  ipcMain.handle('settings:get-close-to-tray', () => false);
+  ipcMain.handle('settings:set-close-to-tray', () => true);
+  ipcMain.handle('shell:openExternal', async (_e, u) => true);
 
   ipcMain.handle('otakudesu:getOngoing', async (_e, page) => otakudesuService.getOngoing(page));
   ipcMain.handle('otakudesu:getSchedule', async () => otakudesuService.getSchedule());

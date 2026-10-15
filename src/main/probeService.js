@@ -1,7 +1,10 @@
+const path = require('path');
 const { execFile } = require('child_process');
 const { ffprobePath } = require('./binHelper');
 
 const FFPROBE_PATH = ffprobePath;
+
+const ARCHIVE_EXTENSIONS = new Set(['.rar', '.zip', '.7z', '.tar', '.gz', '.tgz']);
 
 // Browser-native video & audio codecs in Chromium
 const NATIVE_VIDEO_CODECS = new Set(['h264', 'av1', 'vp9', 'vp8']);
@@ -14,6 +17,14 @@ const NATIVE_CONTAINERS = new Set(['mov,mp4,m4a,3gp,3g2,mj2', 'mp4', 'webm', 'og
  * @returns {Promise<Object>}
  */
 function probeMedia(filePath) {
+  if (!filePath || typeof filePath !== 'string') {
+    return Promise.reject(new Error('Path file tidak valid'));
+  }
+
+  const ext = path.extname(filePath).toLowerCase();
+  if (ARCHIVE_EXTENSIONS.has(ext)) {
+    return Promise.reject(new Error(`File "${path.basename(filePath)}" adalah arsip (${ext.toUpperCase()}), bukan file video langsung.`));
+  }
   return new Promise((resolve, reject) => {
     const args = [
       '-v', 'quiet',
