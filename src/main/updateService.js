@@ -152,9 +152,27 @@ class UpdateService {
       this.cachedManifest = manifest;
       const remoteVer = manifest.version || '1.0.0';
       const minSupportedVer = manifest.minSupportedVersion || '1.0.0';
-      const isForceUpdate = Boolean(manifest.forceUpdate) || (this.compareSemver(this.currentVersion, minSupportedVer) < 0);
 
-      // Check for force update
+      const hasNewerVersion = this.compareSemver(remoteVer, this.currentVersion) > 0;
+      const isBelowMinVersion = this.compareSemver(this.currentVersion, minSupportedVer) < 0;
+
+      // Jika versi saat ini sudah sama atau lebih baru dari rilis remote, jangan tampilkan popup update
+      if (!hasNewerVersion) {
+        if (manual && this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send('update:check-result', {
+            status: 'up-to-date',
+            currentVersion: this.currentVersion,
+            message: `KEIOL sudah menggunakan versi terbaru (v${this.currentVersion}).`
+          });
+        }
+        return;
+      }
+
+      // Ada versi baru (remoteVer > currentVersion).
+      // Cek apakah update ini bersifat wajib (Force Update):
+      // Wajib jika manifest meminta forceUpdate: true ATAU versi saat ini di bawah minSupportedVersion.
+      const isForceUpdate = Boolean(manifest.forceUpdate) || isBelowMinVersion;
+
       if (isForceUpdate) {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.mainWindow.webContents.send('update:force-required', {
@@ -169,19 +187,16 @@ class UpdateService {
         return;
       }
 
-      // Check for normal update
-      if (this.compareSemver(remoteVer, this.currentVersion) > 0) {
-        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-          this.mainWindow.webContents.send('update:available', {
-            currentVersion: this.currentVersion,
-            newVersion: remoteVer,
-            changelog: manifest.changelog || 'Pembaruan versi terbaru KEIOL tersedia.',
-            downloadUrl: manifest.downloadUrl || `https://github.com/${this.repoOwner}/${this.repoName}/releases/latest`,
-            releaseDate: manifest.releaseDate || '',
-            manual: manual
-          });
-        }
-        return;
+      // Pembaruan normal
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.send('update:available', {
+          currentVersion: this.currentVersion,
+          newVersion: remoteVer,
+          changelog: manifest.changelog || 'Pembaruan versi terbaru KEIOL tersedia.',
+          downloadUrl: manifest.downloadUrl || `https://github.com/${this.repoOwner}/${this.repoName}/releases/latest`,
+          releaseDate: manifest.releaseDate || '',
+          manual: manual
+        });
       }
 
       // Already up to date

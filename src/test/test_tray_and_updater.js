@@ -22,15 +22,18 @@ console.log('\nTEST 2: Update & Force-Update Decision Logic...');
 function evaluateUpdateState(currentVer, manifest) {
   const remoteVer = manifest.version || '1.0.0';
   const minSupportedVer = manifest.minSupportedVersion || '1.0.0';
-  const isForceUpdate = Boolean(manifest.forceUpdate) || (updateService.compareSemver(currentVer, minSupportedVer) < 0);
+  const hasNewerVersion = updateService.compareSemver(remoteVer, currentVer) > 0;
+  const isBelowMinVersion = updateService.compareSemver(currentVer, minSupportedVer) < 0;
 
+  if (!hasNewerVersion) {
+    return { type: 'UP_TO_DATE', version: currentVer };
+  }
+
+  const isForceUpdate = Boolean(manifest.forceUpdate) || isBelowMinVersion;
   if (isForceUpdate) {
     return { type: 'FORCE_UPDATE', version: remoteVer };
   }
-  if (updateService.compareSemver(remoteVer, currentVer) > 0) {
-    return { type: 'NORMAL_UPDATE', version: remoteVer };
-  }
-  return { type: 'UP_TO_DATE', version: currentVer };
+  return { type: 'NORMAL_UPDATE', version: remoteVer };
 }
 
 // Case A: Up to date
@@ -53,6 +56,11 @@ console.log('✓ Case C (Force update triggered by minSupportedVersion): OK');
 const stateD = evaluateUpdateState('1.0.0', { version: '1.0.1', minSupportedVersion: '1.0.0', forceUpdate: true });
 assert.strictEqual(stateD.type, 'FORCE_UPDATE');
 console.log('✓ Case D (Force update triggered by forceUpdate: true): OK');
+
+// Case E: Current version matches latest version but manifest has forceUpdate: true
+const stateE = evaluateUpdateState('1.0.1', { version: '1.0.1', minSupportedVersion: '1.0.1', forceUpdate: true });
+assert.strictEqual(stateE.type, 'UP_TO_DATE');
+console.log('✓ Case E (Up to date even if forceUpdate is true because version already matches): OK');
 
 // TEST 3: Tray Settings Persistence
 console.log('\nTEST 3: Tray Settings Persistence...');
