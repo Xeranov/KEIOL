@@ -49,8 +49,25 @@ async function testImprovements() {
   ipcMain.handle('window:setFullScreen', () => false);
   ipcMain.handle('window:minimize', () => {});
   ipcMain.handle('window:maximize', () => {});
-  ipcMain.handle('window:close', () => {});
   ipcMain.handle('window:isMaximized', () => false);
+  ipcMain.handle('library:getOnlineHistory', () => ({}));
+  ipcMain.handle('library:saveOnlineProgress', () => true);
+  ipcMain.handle('library:getDownloadPath', () => libraryService.getDownloadPath());
+  ipcMain.handle('library:setDownloadPath', (_e, p) => p);
+  ipcMain.handle('library:chooseDownloadFolder', () => null);
+  ipcMain.handle('library:openDownloadFolder', () => true);
+  ipcMain.handle('otakudesu:getOngoing', () => ({ animeList: [] }));
+  ipcMain.handle('otakudesu:getSchedule', () => []);
+  ipcMain.handle('otakudesu:getGenres', () => []);
+  ipcMain.handle('otakudesu:getAnimeByGenre', () => ({ animeList: [] }));
+  ipcMain.handle('otakudesu:getAnimeList', () => []);
+  ipcMain.handle('otakudesu:search', () => []);
+  ipcMain.handle('otakudesu:getDetail', () => null);
+  ipcMain.handle('otakudesu:getEpisodeStream', () => null);
+  ipcMain.handle('otakudesu:getBatchDetails', () => null);
+  ipcMain.handle('download:start', () => ({ downloadId: 'dl_test', status: 'started' }));
+  ipcMain.handle('download:cancel', () => true);
+  ipcMain.handle('download:getActive', () => []);
 
   const win = new BrowserWindow({
     show: false,
@@ -92,15 +109,14 @@ async function testImprovements() {
         'BG: ' + titlebarBg + ', Backdrop: ' + titlebarBackdrop
       );
 
-      // TEST 3: XPlayer Text Branding (No YouTube Logo)
-      const brandX = document.querySelector('.brand-x');
-      const brandTitle = document.querySelector('.brand-title');
-      const hasYoutubeSvg = !!document.querySelector('.titlebar-left svg path[d*="23.498"]');
-      const isXPlayerBranded = brandX && brandX.textContent === 'X' && brandTitle && brandTitle.textContent === 'Player' && !hasYoutubeSvg;
+      // TEST 3: YouTube Music Circular Player Logo (No Name Text)
+      const ytMusicLogo = document.querySelector('.brand-ytmusic svg.ytmusic-logo-svg');
+      const brandText = document.querySelector('.brand')?.textContent?.trim() || '';
+      const isYTMusicBranded = ytMusicLogo !== null && brandText === '';
       report(
-        'XPlayer branding active (YouTube logo replaced)',
-        isXPlayerBranded,
-        'Brand: ' + (brandX ? brandX.textContent : '') + (brandTitle ? brandTitle.textContent : '') + ', YouTube SVG present: ' + hasYoutubeSvg
+        'YouTube Music circular logo active (without name text)',
+        isYTMusicBranded,
+        'YTMusic Logo present: ' + (ytMusicLogo !== null) + ', Brand text: "' + brandText + '"'
       );
 
       // TEST 4: 2X Speed Boost Pop-up Auto-Hides After 800ms
@@ -148,30 +164,26 @@ async function testImprovements() {
 
       // TEST 6: Netflix-Style Gallery UI Elements & Category Filter Tabs
       const billboard = document.getElementById('billboardSection');
-      const tabAll = document.getElementById('tabAll');
-      const tabSeries = document.getElementById('tabSeries');
-      const tabMovies = document.getElementById('tabMovies');
-      const rowSeries = document.getElementById('rowSeries');
-      const rowMovies = document.getElementById('rowMovies');
+      const tabHome = document.getElementById('tabHome');
+      const tabWeb = document.getElementById('tabWeb');
+      const webSection = document.getElementById('webSection');
+      const netflixContent = document.querySelector('.netflix-content');
+      const rowMedia = document.getElementById('rowMedia');
+      const searchBox = document.getElementById('inputSearchAnime');
 
-      const netflixElementsExist = !!billboard && !!tabAll && !!tabSeries && !!tabMovies && !!rowSeries && !!rowMovies;
+      const elementsExist = !!billboard && !!tabHome && !!tabWeb && !!webSection && !!rowMedia && !!searchBox;
 
-      // Test Category Filtering
-      tabMovies.click();
-      const seriesHiddenWhenMoviesSelected = rowSeries.classList.contains('hidden');
-      const moviesVisibleWhenMoviesSelected = !rowMovies.classList.contains('hidden');
+      // Test Tab Switching between Beranda and Web
+      tabWeb.click();
+      const webVisible = !webSection.classList.contains('hidden') && netflixContent.classList.contains('hidden');
 
-      tabSeries.click();
-      const seriesVisibleWhenSeriesSelected = !rowSeries.classList.contains('hidden');
-      const moviesHiddenWhenSeriesSelected = rowMovies.classList.contains('hidden');
-
-      tabAll.click();
-      const allVisible = !rowSeries.classList.contains('hidden') && !rowMovies.classList.contains('hidden');
+      tabHome.click();
+      const homeVisible = webSection.classList.contains('hidden') && !netflixContent.classList.contains('hidden');
 
       report(
-        'Netflix-style Gallery UI and Category Tabs (All / Series / Movies)',
-        netflixElementsExist && seriesHiddenWhenMoviesSelected && moviesVisibleWhenMoviesSelected && seriesVisibleWhenSeriesSelected && moviesHiddenWhenSeriesSelected && allVisible,
-        'Elements exist: ' + netflixElementsExist + ', Filter filtering accurate: ' + allVisible
+        'Netflix-style Gallery UI and Navigation Tabs (Beranda & Web)',
+        elementsExist && webVisible && homeVisible,
+        'Elements exist: ' + elementsExist + ', WebVisible: ' + webVisible + ', HomeVisible: ' + homeVisible
       );
 
       // TEST 7: Configurable Seek Duration (5, 10, 15, 20, 25, 30s)
@@ -182,9 +194,9 @@ async function testImprovements() {
         window.controlsManager.setSeekInterval(interval);
         const savedInStorage = parseInt(localStorage.getItem('xplayer_seek_interval'), 10) === interval;
         const currentVal = window.controlsManager.seekInterval === interval;
-        const rewindBadge = document.querySelector('#btnRewind10 text')?.textContent;
-        const forwardBadge = document.querySelector('#btnForward10 text')?.textContent;
-        if (!savedInStorage || !currentVal || rewindBadge !== String(interval) || forwardBadge !== String(interval)) {
+        const rewindTitle = document.getElementById('btnRewind10')?.title || '';
+        const forwardTitle = document.getElementById('btnForward10')?.title || '';
+        if (!savedInStorage || !currentVal || !rewindTitle.includes(String(interval)) || !forwardTitle.includes(String(interval))) {
           allIntervalsWorking = false;
           break;
         }

@@ -95,17 +95,19 @@
   background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Options Lists (Speed, Audio, Subtitle) */
+/* Options Lists (Speed, Audio, Subtitle, Quality) */
 .speed-options-list,
 .audio-options-list,
-.sub-options-list {
+.sub-options-list,
+.quality-options-list {
   max-height: 240px;
   overflow-y: auto;
 }
 
 .speed-option-btn,
 .audio-option-btn,
-.sub-option-btn {
+.sub-option-btn,
+.quality-option-btn {
   width: 100%;
   display: flex;
   align-items: center;
@@ -122,13 +124,15 @@
 
 .speed-option-btn:hover,
 .audio-option-btn:hover,
-.sub-option-btn:hover {
+.sub-option-btn:hover,
+.quality-option-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
 .speed-option-btn.active,
 .audio-option-btn.active,
-.sub-option-btn.active {
+.sub-option-btn.active,
+.quality-option-btn.active {
   color: var(--accent-red);
   font-weight: 700;
 }
@@ -362,5 +366,273 @@ kbd {
 .stats-val {
   color: #ffffff;
   font-weight: 600;
+}
+
+/* ==========================================================================
+   KEIOL: Update Modal & Settings Additions
+   ========================================================================== */
+
+.update-modal-card {
+  width: 540px;
+  max-width: 92vw;
+  background: #18181c;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85);
+}
+
+.update-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px 14px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.update-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.update-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(229, 9, 20, 0.2);
+  color: #ff4d4f;
+  border: 1px solid rgba(229, 9, 20, 0.35);
+}
+
+.update-badge.badge-force {
+  background: #e50914;
+  color: #ffffff;
+  border-color: #ff3333;
+}
+
+.update-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.update-modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  max-height: 55vh;
+}
+
+.force-update-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(229, 9, 20, 0.15);
+  border: 1px solid rgba(229, 9, 20, 0.4);
+  border-radius: 8px;
+  color: #ff6b6b;
+}
+
+.force-update-text strong {
+  display: block;
+  font-size: 13px;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.force-update-text p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #e0e0e0;
+}
+
+.update-version-diff {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.version-diff-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.diff-label {
+  font-size: 11px;
+  color: #a0a0a0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.diff-value {
+  font-size: 15px;
+  color: #ffffff;
+}
+
+.version-diff-item.highlight .diff-value {
+  color: #e50914;
+}
+
+.version-diff-arrow {
+  font-size: 16px;
+  color: #888888;
+}
+
+.changelog-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.changelog-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #bbbbbb;
+  margin-bottom: 6px;
+}
+
+.changelog-content {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #dddddd;
+  white-space: pre-wrap;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.update-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.update-progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #cccccc;
+}
+
+.update-progress-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.update-progress-fill {
+  height: 100%;
+  background: #e50914;
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
+
+.update-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Settings Toggle and App Version Styling */
+.setting-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.setting-toggle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.setting-toggle-label span:first-child {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.setting-toggle-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.toggle-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: #e50914;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.app-version-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.app-version-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+.app-version-tag {
+  font-size: 14px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.update-feedback-msg {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #dddddd;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.update-feedback-msg.feedback-success {
+  background: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+  border-color: rgba(46, 204, 113, 0.3);
+}
+
+.update-feedback-msg.feedback-error {
+  background: rgba(229, 9, 20, 0.15);
+  color: #ff4d4f;
+  border-color: rgba(229, 9, 20, 0.3);
 }
 

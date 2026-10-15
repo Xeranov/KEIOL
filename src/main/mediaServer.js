@@ -1,8 +1,13 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { spawn } = require('child_process');
 const ffmpegStatic = require('ffmpeg-static');
+let electronApp = null;
+try {
+  electronApp = require('electron').app;
+} catch (e) {}
 
 class MediaServer {
   constructor() {
@@ -65,6 +70,8 @@ class MediaServer {
         this.handleFfmpegStream(parsedUrl, req, res);
       } else if (pathname === '/subtitle') {
         this.handleSubtitleExtract(parsedUrl, req, res);
+      } else if (pathname === '/thumbnail') {
+        this.handleThumbnail(parsedUrl, req, res);
       } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Not Found');
@@ -127,7 +134,7 @@ class MediaServer {
       });
 
       file.pipe(res);
-      req.on('close', () => {
+      req.socket?.on('close', () => {
         file.destroy();
       });
     } else {
@@ -139,7 +146,7 @@ class MediaServer {
 
       const file = fs.createReadStream(filePath);
       file.pipe(res);
-      req.on('close', () => {
+      req.socket?.on('close', () => {
         file.destroy();
       });
     }
@@ -154,7 +161,9 @@ class MediaServer {
     const mode = url.searchParams.get('mode') || 'transmux';
     const audioIndex = url.searchParams.get('audio') || '0';
 
-    if (!filePath || !fs.existsSync(filePath)) {
+    const isRemote = filePath && (filePath.startsWith('http://') || filePath.startsWith('https://'));
+
+    if (!filePath || (!isRemote && !fs.existsSync(filePath))) {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('File not found');
       return;
@@ -167,6 +176,27 @@ class MediaServer {
     // Seeking before input for fast keyframe seek
     if (seekSec > 0) {
       args.push('-ss', seekSec.toString());
+    }
+
+    if (isRemote) {
+      if (filePath.includes('vidcache.net') || filePath.includes('yourupload.com')) {
+        args.push(
+          '-referer', 'https://www.yourupload.com/',
+          '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          '-headers', 'Referer: https://www.yourupload.com/\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n'
+        );
+      } else if (filePath.includes('vidhide') || filePath.includes('dramiyos') || filePath.includes('acek')) {
+        args.push(
+          '-referer', 'https://odvidhide.com/',
+          '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          '-headers', 'Referer: https://odvidhide.com/\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n'
+        );
+      } else {
+        args.push(
+          '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        );
+      }
+      args.push('-reconnect', '1', '-reconnect_at_eof', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '2');
     }
 
     args.push('-i', filePath);
@@ -231,12 +261,14 @@ class MediaServer {
       } catch (e) {}
     };
 
-    req.on('close', cleanup);
+    req.socket?.on('close', cleanup);
     res.on('finish', cleanup);
+    res.on('close', cleanup);
     ffmpegProc.on('exit', () => {
       this.activeProcesses.delete(reqId);
     });
-    ffmpegProc.on('error', () => {
+    ffmpegProc.on('error', (err) => {
+      console.error('[MediaServer FFmpeg error]:', err);
       cleanup();
     });
   }
@@ -273,10 +305,129 @@ class MediaServer {
 
     ffmpegProc.stdout.pipe(res);
 
-    req.on('close', () => {
+    const killSub = () => {
       try {
         if (!ffmpegProc.killed) ffmpegProc.kill('SIGKILL');
       } catch (e) {}
+    };
+    req.socket?.on('close', killSub);
+    res.on('close', killSub);
+    res.on('finish', killSub);
+  }
+
+  getCacheDir() {
+    if (electronApp && typeof electronApp.getPath === 'function') {
+      try {
+        return electronApp.getPath('userData');
+      } catch (e) {}
+    }
+    return path.join(process.cwd(), '.cache');
+  }
+
+  /**
+   * Generates or serves cached video thumbnail (16:9 frame)
+   */
+  handleThumbnail(url, req, res) {
+    const filePath = url.searchParams.get('path');
+    if (!filePath || !fs.existsSync(filePath)) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('File not found');
+      return;
+    }
+
+    const ext = path.extname(filePath).toLowerCase();
+    // If it's already an image file (e.g. poster.jpg), serve directly
+    if (['.jpg', '.jpeg', '.png', '.webp', '.svg'].includes(ext)) {
+      const mime = ext === '.png' ? 'image/png' : (ext === '.webp' ? 'image/webp' : (ext === '.svg' ? 'image/svg+xml' : 'image/jpeg'));
+      res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'public, max-age=86400' });
+      fs.createReadStream(filePath).pipe(res);
+      return;
+    }
+
+    const cacheDir = path.join(this.getCacheDir(), 'thumbnails');
+    if (!fs.existsSync(cacheDir)) {
+      try {
+        fs.mkdirSync(cacheDir, { recursive: true });
+      } catch (e) {}
+    }
+
+    const stat = fs.statSync(filePath);
+    const rawTime = url.searchParams.get('time');
+    let timePos = '00:00:03';
+    let timeKey = 'default';
+
+    if (rawTime) {
+      const parsedNum = parseFloat(rawTime);
+      if (!isNaN(parsedNum) && parsedNum >= 0) {
+        timeKey = String(Math.floor(parsedNum));
+        timePos = parsedNum.toFixed(2);
+      } else {
+        timeKey = rawTime;
+        timePos = rawTime;
+      }
+    }
+
+    const width = url.searchParams.get('width') || '480';
+    const hash = crypto.createHash('md5').update(`${filePath}:${stat.size}:${stat.mtimeMs}:${timeKey}:${width}`).digest('hex');
+    const thumbPath = path.join(cacheDir, `${hash}.jpg`);
+
+    if (fs.existsSync(thumbPath)) {
+      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400' });
+      fs.createReadStream(thumbPath).pipe(res);
+      return;
+    }
+
+    // Extract frame with ffmpeg-static at specified timestamp or 00:00:03
+    const ffmpegProc = spawn(ffmpegStatic, [
+      '-ss', timePos,
+      '-i', filePath,
+      '-vframes', '1',
+      '-q:v', '3',
+      '-vf', `scale=${width}:-1`,
+      thumbPath,
+      '-y'
+    ], {
+      windowsHide: true
+    });
+
+    ffmpegProc.on('close', (code) => {
+      if (code === 0 && fs.existsSync(thumbPath)) {
+        res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400' });
+        fs.createReadStream(thumbPath).pipe(res);
+      } else {
+        // Fallback: try early frame 00:00:00.500
+        const fallbackProc = spawn(ffmpegStatic, [
+          '-ss', '00:00:00.500',
+          '-i', filePath,
+          '-vframes', '1',
+          '-q:v', '3',
+          '-vf', `scale=${width}:-1`,
+          thumbPath,
+          '-y'
+        ], {
+          windowsHide: true
+        });
+
+        fallbackProc.on('close', (fCode) => {
+          if (fCode === 0 && fs.existsSync(thumbPath)) {
+            res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400' });
+            fs.createReadStream(thumbPath).pipe(res);
+          } else {
+            if (!res.headersSent) {
+              res.writeHead(500, { 'Content-Type': 'text/plain' });
+              res.end('Failed to generate thumbnail');
+            }
+          }
+        });
+      }
+    });
+
+    ffmpegProc.on('error', (err) => {
+      console.error('Thumbnail generation error:', err);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Thumbnail error');
+      }
     });
   }
 }

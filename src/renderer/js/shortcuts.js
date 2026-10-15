@@ -56,6 +56,25 @@ class ShortcutsEngine {
 
   initListeners() {
     window.addEventListener('keydown', (e) => {
+      // Never capture or prevent default on Alt keys (e.g. Alt+Tab, Alt+F4)
+      if (e.altKey) return;
+
+      // When player is locked, suppress all shortcuts except unlock keys (L / Escape)
+      if (this.controls && this.controls.isLocked) {
+        if (e.key === 'l' || e.key === 'L' || e.key === 'Escape') {
+          e.preventDefault();
+          this.controls.setLock(false);
+        }
+        return;
+      }
+
+      // Toggle lock with Ctrl+L or Shift+L
+      if ((e.ctrlKey && (e.key === 'l' || e.key === 'L')) || (e.shiftKey && (e.key === 'L' || e.key === 'l'))) {
+        e.preventDefault();
+        this.controls.toggleLock();
+        return;
+      }
+
       // Ignore if user is currently typing inside an input element
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
         if (e.key === 'Escape') {
@@ -98,7 +117,7 @@ class ShortcutsEngine {
       }
 
       // The following shortcuts require a video file loaded
-      if (!this.player.currentFilePath) return;
+      if (!this.player.hasMedia()) return;
 
       // k: Play / Pause
       if (e.key === 'k' || e.key === 'K') {
@@ -124,6 +143,15 @@ class ShortcutsEngine {
         this.player.seekRelative(sec);
         window.gesturesEngine.showSeekRipple('right', sec);
         return;
+      }
+
+      // s: Skip Intro
+      if ((e.key === 's' || e.key === 'S') && !e.ctrlKey && !e.metaKey) {
+        if (this.controls && typeof this.controls.triggerSkipIntro === 'function') {
+          e.preventDefault();
+          this.controls.triggerSkipIntro();
+          return;
+        }
       }
 
       // Left Arrow: Seek backward by configured seconds

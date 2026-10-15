@@ -3,12 +3,39 @@
    ========================================================================== */
 
 :root {
-  --netflix-red: #e50914;
-  --netflix-dark: #141414;
-  --netflix-card-bg: #181818;
-  --netflix-card-hover: #232323;
-  --netflix-text: #ffffff;
-  --netflix-muted: #808080;
+  --bg-primary: #0B0B0F;
+  --bg-secondary: #141419;
+  --bg-elevated: #1C1C24;
+  --text-primary: #FFFFFF;
+  --text-secondary: #B3B3BD;
+  --text-muted: #777782;
+  --accent-red: #E50914;
+  --accent-red-hover: #F6121D;
+  --border-color: #292932;
+
+  --netflix-red: #E50914;
+  --netflix-dark: #0B0B0F;
+  --netflix-card-bg: #1C1C24;
+  --netflix-card-hover: #262630;
+  --netflix-text: #FFFFFF;
+  --netflix-muted: #777782;
+}
+
+/* ==========================================================================
+   Universal Scrollbar Suppression (All Views, Modals, Sliders, and Lists)
+   ========================================================================== */
+*, *::before, *::after, html, body {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+*::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 
 /* Main View Switcher */
@@ -102,28 +129,55 @@ body.is-fullscreen .view-panel {
   gap: 12px;
 }
 
+.folder-action-group {
+  display: flex;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.folder-action-group:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
 .btn-netflix-folder {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: rgba(255, 255, 255, 0.1);
+  background: transparent;
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 6px 16px;
-  border-radius: 4px;
+  border: none;
+  padding: 6px 14px;
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color var(--transition-fast);
-  max-width: 300px;
+  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.btn-netflix-folder:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+.btn-netflix-folder-change {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: color 0.18s ease, background-color 0.18s ease;
+}
+
+.btn-netflix-folder-change:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* ==========================================================================
@@ -312,30 +366,55 @@ body.is-fullscreen .view-panel {
   gap: 16px;
 }
 
-/* Netflix Video Card */
+/* Netflix Video & Anime Card System */
 .netflix-card {
-  background-color: var(--netflix-card-bg);
-  border-radius: 6px;
+  background-color: var(--bg-surface, #181818);
+  border-radius: 4px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.25s ease;
+  transition: transform 0.28s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.28s ease, border-color 0.28s ease;
   position: relative;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.netflix-card:hover {
-  transform: scale(1.05);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7);
-  z-index: 10;
-  border-color: rgba(255, 255, 255, 0.25);
+.netflix-card:focus-visible {
+  outline: 2px solid var(--accent-red, #E50914);
+  outline-offset: 2px;
+}
+
+.netflix-card:hover,
+.netflix-card:focus-within {
+  transform: scale(1.08) translateY(-4px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.88), 0 0 0 1px rgba(255, 255, 255, 0.2);
+  z-index: 30;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Card Poster Wrappers */
+.netflix-card-poster-wrap {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  background: linear-gradient(135deg, #242424 0%, #141414 100%);
+  position: relative;
+  overflow: hidden;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Continue Watching 16:9 Thumbnail Override */
+.continue-watching-card .netflix-card-poster-wrap {
+  aspect-ratio: 16 / 9;
 }
 
 .netflix-card-thumb {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, #2b2b2b 0%, #181818 100%);
+  background: linear-gradient(135deg, #242424 0%, #141414 100%);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -347,6 +426,34 @@ body.is-fullscreen .view-panel {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.35s cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.netflix-card:hover .netflix-card-poster {
+  transform: scale(1.04);
+}
+
+.poster-gradient-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to top, rgba(20, 20, 20, 0.85) 0%, rgba(20, 20, 20, 0.2) 40%, transparent 100%);
+  pointer-events: none;
+}
+
+.poster-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #282832 0%, #18181e 100%);
+  color: var(--accent-red, #E50914);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 1px;
 }
 
 .netflix-card-placeholder {
@@ -363,59 +470,222 @@ body.is-fullscreen .view-panel {
   letter-spacing: 1px;
 }
 
-.netflix-play-hover {
+/* Card Badges */
+.card-badge-top {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.7);
-  width: 44px;
-  height: 44px;
-  background-color: rgba(229, 9, 20, 0.9);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: transform var(--transition-fast), opacity var(--transition-fast);
+  top: 8px;
+  left: 8px;
+  background: rgba(15, 15, 15, 0.85);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  z-index: 5;
 }
 
-.netflix-card:hover .netflix-play-hover {
-  transform: translate(-50%, -50%) scale(1);
-  opacity: 1;
-}
-
-.netflix-card-badge {
+.card-badge-bottom {
   position: absolute;
   bottom: 8px;
   right: 8px;
-  background-color: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
   color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 10px;
+  font-weight: 600;
   padding: 2px 6px;
   border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 5;
 }
 
-/* Card Bottom Progress Bar for Watched Items */
-.netflix-card-progress {
+.badge-red {
+  background: var(--accent-red, #E50914) !important;
+  border-color: var(--accent-red, #E50914) !important;
+  color: #ffffff !important;
+}
+
+/* Card Bottom Progress Bar */
+.netflix-card-progress,
+.card-progress-bar-bg {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background-color: rgba(255, 255, 255, 0.2);
+  height: 4px;
+  background-color: var(--progress-track, #595959);
+  z-index: 6;
+  overflow: hidden;
 }
 
-.netflix-card-progress-fill {
+.netflix-card-progress-fill,
+.card-progress-bar-fill {
   height: 100%;
-  background-color: var(--netflix-red);
+  background-color: var(--progress-fill, #E50914);
+  transition: width 0.3s ease;
 }
 
+/* Card Static Body Info */
+.netflix-card-info,
 .netflix-card-body {
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  background-color: var(--bg-surface, #181818);
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+/* Card Interactive Hover & Focus Preview Panel */
+.netflix-card-hover-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to top, rgba(16, 16, 22, 0.98) 0%, rgba(20, 20, 28, 0.96) 65%, rgba(20, 20, 28, 0.75) 85%, transparent 100%);
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  padding: 30px 12px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 0.22s ease-out, transform 0.22s ease-out;
+  z-index: 20;
+}
+
+.netflix-card:hover .netflix-card-hover-panel,
+.netflix-card:focus-within .netflix-card-hover-panel {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.hover-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.hover-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hover-action-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-card-action {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.btn-card-action:hover {
+  transform: scale(1.12);
+}
+
+.btn-card-action:active {
+  transform: scale(0.96);
+}
+
+/* Play action button: circular white with black icon */
+.btn-card-play {
+  background-color: #ffffff;
+  color: #000000;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.btn-card-play:hover {
+  background-color: #e6e6e6;
+}
+
+/* Secondary circular buttons: transparent with light border */
+.btn-card-secondary {
+  background-color: rgba(35, 35, 35, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #ffffff;
+}
+
+.btn-card-secondary:hover {
+  background-color: rgba(60, 60, 60, 0.9);
+  border-color: #ffffff;
+}
+
+/* Metadata in hover preview */
+.hover-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary, #B3B3B3);
+  font-weight: 600;
+  flex-wrap: wrap;
+}
+
+.hover-match-score {
+  color: #46d369;
+  font-weight: 700;
+}
+
+.hover-score-star {
+  color: #f5a623;
+  font-weight: 700;
+}
+
+.hover-badge-outline {
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 10px;
+  line-height: 1.1;
+  color: #ffffff;
+}
+
+.hover-badge-red {
+  background-color: var(--accent-red, #E50914);
+  color: #ffffff;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.hover-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary, #B3B3B3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hover-tags-dot {
+  color: var(--progress-track, #595959);
 }
 
 .netflix-card-title {
@@ -461,7 +731,7 @@ body.is-fullscreen .view-panel {
 }
 
 /* ==========================================================================
-   Episodes Modal (Netflix Style)
+   Episodes Modal (Netflix Style Series Details & Episodes Gallery)
    ========================================================================== */
 .episodes-modal {
   position: fixed;
@@ -469,56 +739,293 @@ body.is-fullscreen .view-panel {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.88);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 110;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
 }
 
 .episodes-card {
-  width: 860px;
-  max-width: 92vw;
-  max-height: 85vh;
-  background-color: #181818;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.9);
+  width: 920px;
+  max-width: 94vw;
+  max-height: 88vh;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.95);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  position: relative;
+}
+
+.btn-close-modal {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(20, 20, 25, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+.btn-close-modal:hover {
+  background-color: #E50914;
+  border-color: #E50914;
+  transform: scale(1.08);
+}
+
+/* Modal Hero Backdrop Header */
+.episodes-modal-hero {
+  position: relative;
+  min-height: 250px;
+  background-color: var(--bg-elevated);
+  display: flex;
+  align-items: flex-end;
+  padding: 32px 36px;
   overflow: hidden;
 }
 
-.episodes-header {
-  padding: 18px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background-color: #1f1f1f;
+.episodes-hero-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center 30%;
+  opacity: 0.45;
+  filter: blur(1px);
 }
 
-.episodes-header-left {
+.episodes-hero-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to top, var(--bg-secondary) 0%, rgba(20, 20, 25, 0.7) 60%, transparent 100%),
+              linear-gradient(to right, rgba(11, 11, 15, 0.9) 0%, transparent 80%);
+}
+
+.episodes-hero-content {
+  position: relative;
+  z-index: 5;
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.series-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: #E50914;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .episodes-anime-title {
-  font-size: 18px;
+  font-size: 32px;
   font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.episodes-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.episodes-count-badge {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
   color: #ffffff;
 }
 
-.episodes-list {
-  padding: 16px 24px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.episodes-status-text {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
+.episodes-hero-actions {
+  margin-top: 6px;
+}
+
+.episodes-section {
+  padding: 24px 36px 36px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.episodes-section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* Netflix Episode Cards Gallery Grid */
+.episodes-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+  gap: 18px;
+}
+
+.episode-gallery-card {
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.22s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.episode-gallery-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7);
+}
+
+.episode-gallery-card.playing {
+  border-color: #E50914;
+  box-shadow: 0 0 0 1px #E50914;
+}
+
+.ep-gallery-thumb-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #141419;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ep-gallery-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.episode-gallery-card:hover .ep-gallery-thumb-img {
+  transform: scale(1.05);
+}
+
+.ep-gallery-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.episode-gallery-card:hover .ep-gallery-overlay {
+  opacity: 1;
+}
+
+.ep-gallery-play-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  border: 2px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(0.9);
+  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.episode-gallery-card:hover .ep-gallery-play-btn {
+  transform: scale(1);
+  background-color: #E50914;
+  border-color: #E50914;
+}
+
+.ep-gallery-duration {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.ep-gallery-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.ep-gallery-progress-fill {
+  height: 100%;
+  background: #E50914;
+}
+
+.ep-gallery-info {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ep-gallery-header-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ep-gallery-number {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-secondary);
+}
+
+.ep-gallery-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Fallback legacy list styles */
 .episode-item {
   display: flex;
   align-items: center;
@@ -563,6 +1070,18 @@ body.is-fullscreen .view-panel {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.episode-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.episode-date-text {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .episode-watched-bar {
@@ -670,3 +1189,2012 @@ body.is-fullscreen .view-panel {
   font-size: 11px;
   cursor: pointer;
 }
+
+/* ==========================================================================
+   Web Integration (Otakudesu Netflix-Style Showcase)
+   ========================================================================== */
+.web-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--bg-primary, #141414);
+}
+
+/* Sub-Navigation Bar & Pills */
+.web-subnav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 36px;
+  background: rgba(20, 20, 20, 0.94);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 16px;
+}
+
+.web-subnav-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0;
+}
+
+.web-pill-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary, #B3B3B3);
+  border-radius: 20px;
+  padding: 7px 18px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.web-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.web-pill-btn.active {
+  background: var(--accent-red, #E50914);
+  color: #ffffff;
+  border-color: var(--accent-red, #E50914);
+  box-shadow: 0 2px 10px rgba(229, 9, 20, 0.35);
+}
+
+.web-pill-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.badge-count {
+  font-size: 10px;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.5);
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 10px;
+  line-height: 1.2;
+}
+
+.web-subnav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.btn-subnav-action {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-radius: 18px;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.btn-subnav-action:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Web Content Body */
+.web-content-body {
+  padding: 20px 36px 64px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.web-slider-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: visible;
+}
+
+.web-grid-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.web-section-heading {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.2px;
+}
+
+.web-section-count {
+  font-size: 13px;
+  color: var(--text-secondary, #B3B3B3);
+  font-weight: 500;
+  margin-left: 10px;
+}
+
+/* Toggle Grid / Slider Button */
+.btn-toggle-grid {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-toggle-grid:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* Horizontal Sliders */
+.web-slider-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+}
+
+.web-horizontal-slider {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-behavior: smooth;
+  padding: 12px 4px 20px 4px;
+  width: 100%;
+}
+
+.web-horizontal-slider .netflix-card {
+  flex: 0 0 195px;
+  width: 195px;
+}
+
+.web-horizontal-slider .continue-watching-card {
+  flex: 0 0 260px;
+  width: 260px;
+}
+
+/* Slider Arrow Buttons */
+.btn-slider-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(20, 20, 20, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 35;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+}
+
+.btn-slider-arrow:hover {
+  background: var(--accent-red, #E50914);
+  border-color: var(--accent-red, #E50914);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.btn-slider-left {
+  left: -18px;
+}
+
+.btn-slider-right {
+  right: -18px;
+}
+
+/* "Lihat Semua" End Card in Horizontal Slider */
+.card-view-more {
+  flex: 0 0 160px;
+  width: 160px;
+  background-color: var(--bg-surface, #181818);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 24px 16px;
+  text-align: center;
+  transition: all 0.22s ease;
+}
+
+.card-view-more:hover {
+  background-color: var(--bg-elevated, #232323);
+  border-color: var(--accent-red, #E50914);
+  transform: scale(1.04);
+}
+
+.card-view-more-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(229, 9, 20, 0.15);
+  color: var(--accent-red, #E50914);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-view-more-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+/* Netflix Poster Grid (Responsive Multi-column 2:3) */
+.netflix-poster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  gap: 22px 16px;
+  padding-bottom: 24px;
+  overflow: visible;
+}
+
+/* Loading & Empty Notices */
+.web-loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 64px 20px;
+  color: var(--text-secondary, #B3B3B3);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.web-empty-notice {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-secondary, #B3B3B3);
+  background: var(--bg-surface, #181818);
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Jadwal Rilis (Schedule) Day Switcher & Cards Redesign
+   ========================================================================== */
+.schedule-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.schedule-day-tabs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.schedule-tab-btn {
+  background: var(--bg-surface, #181818);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary, #B3B3B3);
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.schedule-tab-btn:hover {
+  background: var(--bg-elevated, #232323);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.schedule-tab-btn.active {
+  background: var(--accent-red, #E50914);
+  color: #ffffff;
+  border-color: var(--accent-red, #E50914);
+  box-shadow: 0 4px 14px rgba(229, 9, 20, 0.4);
+}
+
+.schedule-today-pill {
+  font-size: 10px;
+  font-weight: 800;
+  background: #ffffff;
+  color: #000000;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.schedule-count-pill {
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.schedule-content-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.schedule-day-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--bg-surface, #181818);
+  border-radius: 6px;
+  border-left: 4px solid var(--accent-red, #E50914);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.schedule-day-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-anime-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px 16px;
+  padding-bottom: 30px;
+}
+
+.schedule-landscape-card .netflix-card-poster-wrap {
+  aspect-ratio: 16 / 9;
+}
+
+.schedule-anime-card {
+  background: var(--bg-surface, #181818);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+
+.schedule-anime-card:hover {
+  background: var(--bg-elevated, #232323);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7);
+}
+
+.schedule-card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.schedule-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #2b2b35 0%, #171720 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--accent-red, #E50914);
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.schedule-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.schedule-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.schedule-meta {
+  font-size: 12px;
+  color: var(--text-secondary, #B3B3B3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.schedule-card-action {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.schedule-anime-card:hover .schedule-card-action {
+  background: var(--accent-red, #E50914);
+  border-color: var(--accent-red, #E50914);
+  color: #ffffff;
+  transform: scale(1.08);
+}
+
+/* ==========================================================================
+   Genre View Redesign
+   ========================================================================== */
+.genres-pill-slider {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.genre-chip {
+  background: var(--bg-surface, #181818);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary, #B3B3B3);
+  border-radius: 20px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.genre-chip:hover {
+  background: var(--bg-elevated, #232323);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.genre-chip.active {
+  background: var(--accent-red, #E50914);
+  color: #ffffff;
+  border-color: var(--accent-red, #E50914);
+  box-shadow: 0 4px 14px rgba(229, 9, 20, 0.4);
+}
+
+.genre-anime-grid-container {
+  margin-top: 18px;
+}
+
+.genre-show-more-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 28px 0 36px 0;
+  width: 100%;
+}
+
+.btn-genre-show-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-genre-show-more:hover {
+  background-color: var(--accent-red, #E50914);
+  border-color: var(--accent-red, #E50914);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(229, 9, 20, 0.35);
+}
+
+.btn-genre-show-more:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.genre-end-notice {
+  text-align: center;
+  color: var(--text-muted, #777782);
+  font-size: 13px;
+  padding: 16px 0;
+}
+
+/* ==========================================================================
+   Alphabet Directory (A-Z) View Redesign
+   ========================================================================== */
+.alphabet-nav-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.alphabet-index-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.alphabet-btn {
+  background: var(--bg-surface, #181818);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary, #B3B3B3);
+  border-radius: 6px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.alphabet-btn:hover {
+  background: var(--bg-elevated, #232323);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.alphabet-btn.active {
+  background: var(--accent-red, #E50914);
+  color: #ffffff;
+  border-color: var(--accent-red, #E50914);
+  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.4);
+}
+
+.alphabet-search-box {
+  display: flex;
+  align-items: center;
+  background: var(--bg-surface, #181818);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 8px 14px;
+  max-width: 380px;
+  gap: 10px;
+  transition: border-color 0.2s ease;
+}
+
+.alphabet-search-box:focus-within {
+  border-color: #ffffff;
+}
+
+.alphabet-search-box input {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+}
+
+.alphabet-group-header {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 10px 0 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.alphabet-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.alphabet-anime-card {
+  background: var(--bg-surface, #181818);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.alphabet-anime-card:hover {
+  background: var(--bg-elevated, #232323);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
+}
+
+.alphabet-monogram {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(229, 9, 20, 0.2) 0%, rgba(20, 20, 20, 0.9) 100%);
+  border: 1px solid rgba(229, 9, 20, 0.3);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.alphabet-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+/* ==========================================================================
+   Downloaded Sub-Tab View Redesign
+   ========================================================================== */
+.downloaded-stats-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.downloaded-stat-card {
+  background: var(--bg-surface, #181818);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: rgba(229, 9, 20, 0.15);
+  color: var(--accent-red, #E50914);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-secondary, #B3B3B3);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-size: 17px;
+  font-weight: 800;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.downloaded-folder-info {
+  font-size: 12px;
+  color: var(--text-secondary, #B3B3B3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.downloaded-folder-info code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.downloaded-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.downloaded-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 72px 24px;
+  gap: 16px;
+  background: var(--bg-surface, #181818);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+}
+
+.downloaded-empty-state .empty-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+}
+
+.downloaded-empty-state .empty-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary, #B3B3B3);
+  max-width: 520px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Otakudesu Anime Detail Dialog */
+.otakudesu-dialog {
+  max-width: 900px;
+}
+
+.otakudesu-modal-hero {
+  min-height: 280px;
+}
+
+.otakudesu-badges-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.badge-score {
+  background: #f5a623;
+  color: #0f0f0f;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.badge-type {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.otakudesu-jp-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0 8px;
+  max-width: 650px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.otakudesu-genres-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.otakudesu-genre-tag {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.otakudesu-synopsis {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-height: 84px;
+  overflow-y: auto;
+  margin: 8px 0 16px;
+  max-width: 720px;
+}
+
+.otakudesu-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Episodes Grid in Detail Modal */
+.otakudesu-episodes-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 36px 36px;
+}
+
+.otakudesu-episode-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 16px;
+  gap: 16px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.otakudesu-episode-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ep-card-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ep-number-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.ep-info-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ep-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ep-title-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ep-badge-completed {
+  font-size: 11px;
+  color: #2ba640;
+  background: rgba(43, 166, 64, 0.15);
+  border: 1px solid rgba(43, 166, 64, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.ep-badge-progress {
+  font-size: 11px;
+  color: #3ea6ff;
+  background: rgba(62, 166, 255, 0.15);
+  border: 1px solid rgba(62, 166, 255, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.ep-date-row {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.ep-progress-bar-bg {
+  width: 100%;
+  max-width: 280px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.ep-progress-bar-fill {
+  height: 100%;
+  background: #E50914;
+}
+
+.ep-actions-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-ep-stream {
+  background: #E50914;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.btn-ep-stream:hover {
+  background: #f40612;
+  transform: scale(1.03);
+}
+
+.btn-ep-download {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-ep-download:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+}
+
+/* Resolution & Mirror Picker Modal */
+.resolution-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 120;
+  backdrop-filter: blur(8px);
+}
+
+.resolution-card {
+  width: 540px;
+  max-width: 90vw;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.9);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.resolution-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.resolution-header h4 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.resolution-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.resolution-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resolution-group-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.resolution-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.resolution-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.resolution-size {
+  font-size: 12px;
+  color: #3ea6ff;
+  font-weight: 500;
+}
+
+.mirror-buttons-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn-mirror-download {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f1f1f1;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-mirror-download:hover {
+  background: #E50914;
+  border-color: #E50914;
+  color: #ffffff;
+}
+
+/* Floating Download Manager Toast / Widget */
+.download-manager-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 28px;
+  width: 340px;
+  max-width: 90vw;
+  background-color: #1a1a1f;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85);
+  z-index: 100;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.download-toast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.download-toast-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.download-toast-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-toast-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.btn-toast-icon:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.download-toast-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.toast-download-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.toast-download-item:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.toast-item-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.toast-item-title {
+  color: #ffffff;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 190px;
+}
+
+.toast-item-speed {
+  color: #3ea6ff;
+  font-weight: 500;
+}
+
+.toast-progress-bar-bg {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.toast-progress-bar-fill {
+  height: 100%;
+  background: #E50914;
+  transition: width 0.2s ease;
+}
+
+.toast-item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.toast-item-anime {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.btn-cancel-dl {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-muted);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-cancel-dl:hover {
+  background: rgba(229, 9, 20, 0.2);
+  color: #E50914;
+  border-color: #E50914;
+}
+
+/* ==========================================================================
+   Horizontal Netflix Sliders for Web Tab
+   ========================================================================== */
+.web-slider-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
+.web-slider-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.web-horizontal-slider {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding: 12px 4px 20px 4px;
+  width: 100%;
+}
+
+.web-horizontal-slider .netflix-card {
+  flex: 0 0 190px;
+  width: 190px;
+  min-width: 190px;
+}
+
+.btn-slider-arrow {
+  position: absolute;
+  top: calc(50% - 10px);
+  transform: translateY(-50%);
+  z-index: 20;
+  width: 36px;
+  height: 80px;
+  background: rgba(18, 18, 18, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.web-slider-wrapper:hover .btn-slider-arrow {
+  opacity: 1;
+}
+
+.btn-slider-arrow:hover {
+  background: #E50914;
+  border-color: #E50914;
+  transform: translateY(-50%) scale(1.06);
+}
+
+.btn-slider-left {
+  left: -12px;
+}
+
+.btn-slider-right {
+  right: -12px;
+}
+
+/* Card View More at the end of slider */
+.card-view-more {
+  flex: 0 0 160px;
+  min-width: 160px;
+  min-height: 270px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+  padding: 16px;
+}
+
+.card-view-more:hover {
+  background: rgba(229, 9, 20, 0.12);
+  border-color: #E50914;
+  color: #E50914;
+  transform: scale(1.03);
+}
+
+.card-view-more-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.card-view-more:hover .card-view-more-icon {
+  transform: translateX(4px);
+  background-color: #E50914;
+  color: #ffffff;
+}
+
+.card-view-more-text {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* Toggle Grid / Slider Button */
+.btn-toggle-grid {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.18s ease;
+}
+
+.btn-toggle-grid:hover {
+  color: #ffffff;
+  border-color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Top Navbar Downloads Button */
+.btn-netflix-downloads {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: #ffffff;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.18s ease;
+}
+
+.btn-netflix-downloads:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-netflix-downloads.active-downloading {
+  border-color: #E50914;
+  background: rgba(229, 9, 20, 0.15);
+}
+
+.nav-download-badge {
+  background: #E50914;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 10px;
+  animation: pulse-badge 1.8s infinite;
+}
+
+@keyframes pulse-badge {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(229, 9, 20, 0.6); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(229, 9, 20, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(229, 9, 20, 0); }
+}
+
+/* Direct stream recommended group in modal */
+.resolution-group-card.recommended-group {
+  border-color: rgba(229, 9, 20, 0.4);
+  background: linear-gradient(135deg, rgba(229, 9, 20, 0.08) 0%, rgba(20, 20, 20, 0.6) 100%);
+}
+
+.btn-mirror-direct {
+  background: #E50914 !important;
+  color: #ffffff !important;
+  border-color: #E50914 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(229, 9, 20, 0.4);
+}
+
+.btn-mirror-direct:hover {
+  background: #f40612 !important;
+  transform: translateY(-1px);
+}
+
+/* Toast item status badges */
+.toast-badge-error {
+  color: #ff5252;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.toast-badge-success {
+  color: #4caf50;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.toast-error-text {
+  font-size: 10px;
+  color: #ff8a80;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+/* ==========================================================================
+   Dedicated Tabs: Unduhan & Pengaturan
+   ========================================================================== */
+.downloads-section,
+.settings-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 48px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dedicated-tab-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.dedicated-tab-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.dedicated-tab-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.dedicated-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-netflix-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-netflix-action:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: #ffffff;
+}
+
+.dedicated-tab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Settings Cards Grid */
+.settings-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 20px;
+}
+
+.settings-card {
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.settings-card-header {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.settings-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: rgba(229, 9, 20, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.settings-card-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.settings-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.folder-path-box {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #3ea6ff;
+  word-break: break-all;
+}
+
+.settings-card-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #dddddd;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.settings-select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.settings-select:focus {
+  border-color: #E50914;
+}
+
+.settings-select option {
+  background: #181818;
+  color: #ffffff;
+}
+
+/* Shortcuts Mini Grid */
+.shortcuts-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.shortcut-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.shortcut-pill kbd {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Dedicated Downloads Tab Content */
+.dedicated-downloads-section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.active-download-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dedicated-dl-card {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dedicated-dl-card.card-error {
+  border-color: rgba(255, 82, 82, 0.4);
+}
+
+.dedicated-dl-card.card-completed {
+  border-color: rgba(76, 175, 80, 0.4);
+}
+
+.dedicated-dl-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dedicated-dl-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.dedicated-dl-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Global Loading Cursor & Button Interaction Feedback
+   ========================================================================== */
+body.app-loading-state,
+body.app-loading-state *,
+.app-loading-state button,
+.app-loading-state a,
+.app-loading-state .card,
+.app-loading-state .btn-netflix-play {
+  cursor: wait !important;
+}
+
+/* Button Loading Pulse & Spinner */
+.btn-loading-pulse,
+.btn-ep-stream.is-loading,
+.btn-netflix-play.is-loading,
+.btn-card-quick-stream.is-loading {
+  pointer-events: none !important;
+  opacity: 0.82;
+  position: relative;
+}
+
+.btn-loading-pulse::after,
+.btn-ep-stream.is-loading::after,
+.btn-netflix-play.is-loading::after,
+.btn-card-quick-stream.is-loading::after {
+  content: '';
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-left: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spinnerRotate 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+/* ==========================================================================
+   Stream Loading Overlay (YouTube / Netflix Style Modal)
+   ========================================================================== */
+.stream-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(8, 8, 8, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 120;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.stream-loading-card {
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 22px 28px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stream-loading-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #e50914, #ff5e62, #e50914);
+  background-size: 200% 100%;
+  animation: streamGradientSlide 1.5s linear infinite;
+}
+
+@keyframes streamGradientSlide {
+  0% { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.stream-loading-poster-wrap {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.stream-loading-poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.stream-spinner {
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  border: 3px solid rgba(229, 9, 20, 0.25);
+  border-top-color: #e50914;
+  border-radius: 50%;
+  animation: spinnerRotate 0.75s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.stream-loading-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stream-loading-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stream-loading-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #b3b3b3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stream-loading-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stream-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e50914;
+  box-shadow: 0 0 8px #e50914;
+  animation: pulseDot 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.stream-loading-status-text {
+  font-size: 12px;
+  color: #f1f1f1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-cancel-stream {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-cancel-stream:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Loading Spinner Text in Player View */
+.loading-spinner-text {
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+  text-align: center;
+  letter-spacing: 0.3px;
+  pointer-events: none;
+}
+
+
+

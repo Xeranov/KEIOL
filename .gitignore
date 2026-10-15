@@ -1,5 +1,57 @@
+# Dependencies
 node_modules/
-test-media/
-dist/
-*.log
+package-lock.json.bak
 
+# Production & Build Outputs
+dist/
+out/
+release/
+build/*.exe
+build/*.blockmap
+build/latest*.yml
+*.exe
+*.dmg
+*.deb
+*.AppImage
+*.blockmap
+
+# Local Media & Personal User Data
+anime/
+test-media/
+watch_history.json
+library_config.json
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.ts
+*.webm
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment & Secret Variables
+.env
+.env.*
+!.env.example
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Test artifacts
+src/test/clickthrough_report.json

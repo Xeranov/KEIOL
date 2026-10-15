@@ -9,6 +9,10 @@ class ControlsManager {
 
     // DOM Elements
     this.controlsBar = document.getElementById('controlsBar');
+    this.playerTopBar = document.getElementById('playerTopBar');
+    this.playerTopTitle = document.getElementById('playerTopTitle');
+    this.playerTopEpisode = document.getElementById('playerTopEpisode');
+    this.btnPlayerBack = document.getElementById('btnPlayerBack');
     this.videoWrapper = document.getElementById('videoWrapper');
     this.progressBarContainer = document.getElementById('progressBarContainer');
     this.progressPlayed = document.getElementById('progressPlayed');
@@ -17,8 +21,10 @@ class ControlsManager {
     this.scrubKnob = document.getElementById('scrubKnob');
     this.scrubberTooltip = document.getElementById('scrubberTooltip');
 
+    this.timeDisplay = document.getElementById('timeDisplay');
     this.currentTimeDisplay = document.getElementById('currentTime');
     this.totalDurationDisplay = document.getElementById('totalDuration');
+    this.showRemainingTime = false;
 
     // Transport buttons
     this.btnPlayPause = document.getElementById('btnPlayPause');
@@ -92,6 +98,32 @@ class ControlsManager {
     this.volumeHudText = document.getElementById('volumeHudText');
     this.volumeHudIcon = document.getElementById('volumeHudIcon');
 
+    // Lock Feature
+    this.btnLockPlayer = document.getElementById('btnLockPlayer');
+    this.iconLockOpen = document.getElementById('iconLockOpen');
+    this.iconLockClosed = document.getElementById('iconLockClosed');
+    this.floatingLockBadge = document.getElementById('floatingLockBadge');
+    this.btnFloatingUnlock = document.getElementById('btnFloatingUnlock');
+    this.isLocked = false;
+    this.floatingLockTimer = null;
+
+    // Autoplay, Quality, and Skip Intro Elements
+    this.btnAutoplayToggle = document.getElementById('btnAutoplayToggle');
+    this.isAutoplayEnabled = localStorage.getItem('vidplayer_autoplay') !== 'false';
+
+    this.btnSettingsQuality = document.getElementById('btnSettingsQuality');
+    this.settingsCurrentQualityText = document.getElementById('settingsCurrentQualityText');
+    this.btnBackFromQuality = document.getElementById('btnBackFromQuality');
+    this.settingsQualityView = document.getElementById('settingsQualityView');
+    this.qualityOptionsList = document.getElementById('qualityOptionsList');
+
+    this.btnSettingsAutoSkip = document.getElementById('btnSettingsAutoSkip');
+    this.settingsAutoSkipStatus = document.getElementById('settingsAutoSkipStatus');
+    this.btnSkipIntroOverlay = document.getElementById('btnSkipIntroOverlay');
+    this.txtSkipIntroLabel = document.getElementById('txtSkipIntroLabel');
+    this.isAutoSkipIntro = localStorage.getItem('vidplayer_autoskip_intro') !== 'false';
+    this.hasAutoSkippedCurrentMedia = false;
+
     // Autohide state
     this.autohideTimer = null;
     this.isControlsFaded = false;
@@ -100,9 +132,13 @@ class ControlsManager {
     this.initScrubber();
     this.initTransport();
     this.initVolume();
+    this.initLock();
     this.initSettingsMenu();
     this.initSpeedOptions();
     this.initSeekOptions();
+    this.initAutoplayToggle();
+    this.initAutoSkipIntro();
+    this.initQualityControls();
     this.initAutohide();
     this.initPlayerEvents();
     this.initStats();
@@ -225,6 +261,13 @@ class ControlsManager {
     window.addEventListener('controls:togglefullscreen', () => {
       this.toggleFullscreen();
     });
+
+    if (this.timeDisplay) {
+      this.timeDisplay.addEventListener('click', () => {
+        this.showRemainingTime = !this.showRemainingTime;
+        this.updateTimeDisplay();
+      });
+    }
   }
 
   async toggleFullscreen() {
@@ -268,6 +311,7 @@ class ControlsManager {
 
     // Scroll wheel on volume container or video adjusts volume
     this.videoWrapper.addEventListener('wheel', (e) => {
+      if (this.isLocked) return;
       if (e.target.closest('#settingsMenu') || e.target.closest('#shortcutsModal')) return;
       e.preventDefault();
       const delta = e.deltaY < 0 ? 0.05 : -0.05;
@@ -320,6 +364,68 @@ class ControlsManager {
     this.toastTimer = setTimeout(() => {
       this.toastMessage.classList.add('hidden');
     }, 1200);
+  }
+
+  /* ==========================================================================
+     Lock Player Feature
+     ========================================================================== */
+  initLock() {
+    if (this.btnLockPlayer) {
+      this.btnLockPlayer.addEventListener('click', () => {
+        this.toggleLock();
+        this.btnLockPlayer.blur();
+      });
+    }
+
+    if (this.btnFloatingUnlock) {
+      this.btnFloatingUnlock.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.setLock(false);
+      });
+    }
+  }
+
+  toggleLock() {
+    this.setLock(!this.isLocked);
+  }
+
+  setLock(locked) {
+    this.isLocked = !!locked;
+    if (this.isLocked) {
+      this.closeSettings();
+      clearTimeout(this.autohideTimer);
+      if (this.videoWrapper) {
+        this.videoWrapper.classList.add('is-player-locked');
+        this.videoWrapper.classList.remove('cursor-hidden');
+      }
+      if (this.controlsBar) this.controlsBar.classList.add('faded', 'locked');
+      if (this.iconLockOpen) this.iconLockOpen.classList.add('hidden');
+      if (this.iconLockClosed) this.iconLockClosed.classList.remove('hidden');
+      if (this.btnLockPlayer) this.btnLockPlayer.title = 'Buka Kunci Player';
+      if (this.floatingLockBadge) this.floatingLockBadge.classList.add('hidden');
+
+      this.showToast('Player Terkunci (Klik layar untuk membuka)');
+    } else {
+      if (this.videoWrapper) this.videoWrapper.classList.remove('is-player-locked');
+      if (this.controlsBar) this.controlsBar.classList.remove('locked', 'faded');
+      if (this.iconLockOpen) this.iconLockOpen.classList.remove('hidden');
+      if (this.iconLockClosed) this.iconLockClosed.classList.add('hidden');
+      if (this.btnLockPlayer) this.btnLockPlayer.title = 'Kunci Kontrol Player';
+      if (this.floatingLockBadge) this.floatingLockBadge.classList.add('hidden');
+      this.isControlsFaded = false;
+      this.showToast('Kunci Player Dibuka');
+    }
+  }
+
+  showUnlockButtonBriefly() {
+    if (!this.isLocked || !this.floatingLockBadge) return;
+    this.floatingLockBadge.classList.remove('hidden');
+    clearTimeout(this.floatingLockTimer);
+    this.floatingLockTimer = setTimeout(() => {
+      if (this.isLocked && this.floatingLockBadge) {
+        this.floatingLockBadge.classList.add('hidden');
+      }
+    }, 3000);
   }
 
   /* ==========================================================================
@@ -427,6 +533,25 @@ class ControlsManager {
       this.toggleStats();
     });
 
+    if (this.btnSettingsQuality) {
+      this.btnSettingsQuality.addEventListener('click', () => {
+        this.renderQualityOptions();
+        this.showSubView(this.settingsQualityView);
+      });
+    }
+
+    if (this.btnBackFromQuality) {
+      this.btnBackFromQuality.addEventListener('click', () => {
+        this.showSubView(this.settingsMainView);
+      });
+    }
+
+    if (this.btnSettingsAutoSkip) {
+      this.btnSettingsAutoSkip.addEventListener('click', () => {
+        this.toggleAutoSkipIntro();
+      });
+    }
+
     // Close settings when clicking outside
     window.addEventListener('click', (e) => {
       if (!this.settingsMenu.contains(e.target) && e.target !== this.btnSettings && e.target !== this.btnSpeedQuick) {
@@ -517,10 +642,185 @@ class ControlsManager {
   }
 
   showSubView(viewEl) {
-    [this.settingsMainView, this.settingsSpeedView, this.settingsAudioView, this.settingsSubView, this.settingsSeekView].forEach(v => {
+    [
+      this.settingsMainView,
+      this.settingsSpeedView,
+      this.settingsAudioView,
+      this.settingsSubView,
+      this.settingsSeekView,
+      this.settingsQualityView
+    ].forEach(v => {
       if (v) v.classList.add('hidden');
     });
     if (viewEl) viewEl.classList.remove('hidden');
+  }
+
+  initQualityControls() {
+    window.addEventListener('player:qualitiesupdated', (e) => {
+      const { availableQualities, currentQuality } = e.detail;
+      if (this.settingsCurrentQualityText) {
+        this.settingsCurrentQualityText.textContent = currentQuality || '720p HD';
+      }
+      if (this.btnSettingsQuality) {
+        if (Array.isArray(availableQualities) && availableQualities.length > 0) {
+          this.btnSettingsQuality.classList.remove('hidden');
+        } else {
+          this.btnSettingsQuality.classList.add('hidden');
+        }
+      }
+    });
+
+    window.addEventListener('player:qualitychanged', (e) => {
+      const { quality } = e.detail;
+      if (this.settingsCurrentQualityText) {
+        this.settingsCurrentQualityText.textContent = quality || '720p HD';
+      }
+      this.showToast(`Kualitas video: ${quality}`);
+    });
+
+    window.addEventListener('player:toast', (e) => {
+      if (e.detail && e.detail.message) {
+        this.showToast(e.detail.message);
+      }
+    });
+  }
+
+  renderQualityOptions() {
+    if (!this.qualityOptionsList) return;
+    this.qualityOptionsList.innerHTML = '';
+    const qualities = this.player.availableQualities || [];
+
+    if (qualities.length === 0) {
+      this.qualityOptionsList.innerHTML = '<div style="padding: 12px; color: var(--text-muted); font-size: 12px;">Hanya resolusi default / lokal</div>';
+      return;
+    }
+
+    qualities.forEach(q => {
+      const isCurrent = (this.player.currentQuality === q.quality) || (!this.player.currentQuality && q.isDefault);
+      const btn = document.createElement('button');
+      btn.className = `quality-option-btn ${isCurrent ? 'active' : ''}`;
+      btn.innerHTML = `
+        <span>${q.label || q.quality}</span>
+        ${isCurrent ? '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>' : ''}
+      `;
+
+      btn.addEventListener('click', async () => {
+        this.closeSettings();
+        this.showToast(`Mengubah kualitas ke ${q.quality}...`);
+        await this.player.switchQuality(q.streamUrl, q.quality);
+      });
+
+      this.qualityOptionsList.appendChild(btn);
+    });
+  }
+
+  /* ==========================================================================
+     YouTube-Style Autoplay Toggle
+     ========================================================================== */
+  initAutoplayToggle() {
+    this.updateAutoplayUI();
+    if (this.btnAutoplayToggle) {
+      this.btnAutoplayToggle.addEventListener('click', () => {
+        this.toggleAutoplay();
+        this.btnAutoplayToggle.blur();
+      });
+    }
+  }
+
+  toggleAutoplay() {
+    this.isAutoplayEnabled = !this.isAutoplayEnabled;
+    localStorage.setItem('vidplayer_autoplay', this.isAutoplayEnabled ? 'true' : 'false');
+    this.updateAutoplayUI();
+    this.showToast(`Putar otomatis: ${this.isAutoplayEnabled ? 'Aktif' : 'Nonaktif'}`);
+    window.dispatchEvent(new CustomEvent('player:autoplaytoggle', { detail: { enabled: this.isAutoplayEnabled } }));
+  }
+
+  updateAutoplayUI() {
+    if (!this.btnAutoplayToggle) return;
+    const playIcon = this.btnAutoplayToggle.querySelector('.yt-switch-play-icon');
+    const pauseIcon = this.btnAutoplayToggle.querySelector('.yt-switch-pause-icon');
+
+    if (this.isAutoplayEnabled) {
+      this.btnAutoplayToggle.classList.add('active');
+      this.btnAutoplayToggle.title = 'Putar otomatis episode berikutnya aktif';
+      if (playIcon) playIcon.classList.remove('hidden');
+      if (pauseIcon) pauseIcon.classList.add('hidden');
+    } else {
+      this.btnAutoplayToggle.classList.remove('active');
+      this.btnAutoplayToggle.title = 'Putar otomatis episode berikutnya nonaktif';
+      if (playIcon) playIcon.classList.add('hidden');
+      if (pauseIcon) pauseIcon.classList.remove('hidden');
+    }
+  }
+
+  /* ==========================================================================
+     Auto-Skip Intro & Floating Skip Button
+     ========================================================================== */
+  initAutoSkipIntro() {
+    this.updateAutoSkipUI();
+    if (this.btnSettingsAutoSkip) {
+      this.btnSettingsAutoSkip.addEventListener('click', () => {
+        this.toggleAutoSkipIntro();
+      });
+    }
+
+    if (this.btnSkipIntroOverlay) {
+      this.btnSkipIntroOverlay.addEventListener('click', () => {
+        this.triggerSkipIntro();
+      });
+    }
+
+    window.addEventListener('player:medialoaded', () => {
+      this.hasAutoSkippedCurrentMedia = false;
+      if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
+    });
+  }
+
+  toggleAutoSkipIntro() {
+    this.isAutoSkipIntro = !this.isAutoSkipIntro;
+    localStorage.setItem('vidplayer_autoskip_intro', this.isAutoSkipIntro ? 'true' : 'false');
+    this.updateAutoSkipUI();
+    this.showToast(`Auto-Skip Intro: ${this.isAutoSkipIntro ? 'Aktif' : 'Nonaktif'}`);
+  }
+
+  updateAutoSkipUI() {
+    if (this.settingsAutoSkipStatus) {
+      this.settingsAutoSkipStatus.textContent = this.isAutoSkipIntro ? 'Aktif' : 'Nonaktif';
+    }
+  }
+
+  triggerSkipIntro() {
+    const intervals = this.player.getSkipIntervals();
+    if (intervals && intervals.op && intervals.op.endTime) {
+      this.player.seek(intervals.op.endTime);
+    } else {
+      this.player.seekRelative(85);
+    }
+    if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
+    this.showToast('Intro anime dilewati');
+  }
+
+  handleTimeUpdateForSkip(currentTime) {
+    const intervals = this.player.getSkipIntervals();
+
+    if (intervals && intervals.op) {
+      const { startTime, endTime } = intervals.op;
+      if (currentTime >= startTime && currentTime < endTime) {
+        if (this.isAutoSkipIntro && !this.hasAutoSkippedCurrentMedia) {
+          this.hasAutoSkippedCurrentMedia = true;
+          this.player.seek(endTime);
+          this.showToast('Intro anime dilewati (Auto-Skip)');
+          if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
+        } else {
+          if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.remove('hidden');
+        }
+        return;
+      }
+    }
+
+    if (this.btnSkipIntroOverlay && !this.btnSkipIntroOverlay.classList.contains('hidden')) {
+      this.btnSkipIntroOverlay.classList.add('hidden');
+    }
   }
 
   renderAudioTracks() {
@@ -615,8 +915,16 @@ class ControlsManager {
      ========================================================================== */
   initAutohide() {
     const resetTimer = () => {
+      if (this.isLocked) {
+        if (this.videoWrapper) {
+          this.videoWrapper.classList.remove('cursor-hidden');
+        }
+        return;
+      }
+
       if (this.isControlsFaded) {
         this.controlsBar.classList.remove('faded');
+        if (this.playerTopBar) this.playerTopBar.classList.remove('faded');
         this.videoWrapper.classList.remove('cursor-hidden');
         this.isControlsFaded = false;
       }
@@ -628,6 +936,7 @@ class ControlsManager {
         this.autohideTimer = setTimeout(() => {
           if (!this.player.video.paused && !this.isDraggingScrubber && this.settingsMenu.classList.contains('hidden')) {
             this.controlsBar.classList.add('faded');
+            if (this.playerTopBar) this.playerTopBar.classList.add('faded');
             this.videoWrapper.classList.add('cursor-hidden');
             this.isControlsFaded = true;
           }
@@ -638,6 +947,17 @@ class ControlsManager {
     window.addEventListener('mousemove', resetTimer);
     window.addEventListener('keydown', resetTimer);
     window.addEventListener('player:statechange', resetTimer);
+  }
+
+  setTopBarInfo(title, episode = '') {
+    const titleEl = document.getElementById('videoTitleDisplay');
+    if (titleEl) {
+      titleEl.textContent = title ? (episode ? `${title} • ${episode}` : title) : '';
+    }
+    if (this.playerTopTitle) this.playerTopTitle.textContent = title || '';
+    if (this.playerTopEpisode) {
+      this.playerTopEpisode.textContent = episode ? `• ${episode}` : '';
+    }
   }
 
   /* ==========================================================================
@@ -714,10 +1034,10 @@ class ControlsManager {
       if (!this.isDraggingScrubber) {
         this.progressPlayed.style.width = `${progress * 100}%`;
         this.scrubKnob.style.left = `${progress * 100}%`;
-        this.currentTimeDisplay.textContent = this.formatTime(currentTime);
-        this.totalDurationDisplay.textContent = this.formatTime(duration);
+        this.updateTimeDisplay(currentTime, duration);
         this.progressBarContainer.setAttribute('aria-valuenow', Math.round(progress * 100));
       }
+      this.handleTimeUpdateForSkip(currentTime);
     });
 
     window.addEventListener('player:bufferupdate', (e) => {
@@ -739,6 +1059,24 @@ class ControlsManager {
       this.btnPlayPause.title = 'Putar Ulang';
       this.btnPlayPause.setAttribute('aria-label', 'Putar Ulang');
     });
+  }
+
+  updateTimeDisplay(curTime, durTime) {
+    if (curTime !== undefined) this.lastCurrentTime = curTime;
+    if (durTime !== undefined) this.lastDuration = durTime;
+
+    const cur = curTime !== undefined ? curTime : (this.lastCurrentTime !== undefined ? this.lastCurrentTime : this.player.getCurrentTime());
+    const dur = durTime !== undefined ? durTime : (this.lastDuration !== undefined ? this.lastDuration : this.player.getDuration());
+    this.currentTimeDisplay.textContent = this.formatTime(cur);
+
+    if (this.showRemainingTime) {
+      const remaining = Math.max(0, dur - cur);
+      this.totalDurationDisplay.textContent = `-${this.formatTime(remaining)}`;
+      if (this.timeDisplay) this.timeDisplay.title = 'Waktu tersisa (klik untuk beralih ke total durasi)';
+    } else {
+      this.totalDurationDisplay.textContent = this.formatTime(dur);
+      if (this.timeDisplay) this.timeDisplay.title = 'Total durasi (klik untuk beralih ke sisa waktu)';
+    }
   }
 
   formatTime(totalSec) {

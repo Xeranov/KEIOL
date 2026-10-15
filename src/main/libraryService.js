@@ -17,28 +17,32 @@ class LibraryService {
     this.historyFile = path.join(this.userDataPath, 'watch_history.json');
 
     this.libraryPath = this.loadLibraryPath();
+    this.downloadPath = this.loadDownloadPath();
     this.history = this.loadHistory();
   }
 
   loadLibraryPath() {
     try {
       if (fs.existsSync(this.configFile)) {
-        const data = JSON.parse(fs.readFileSync(this.configFile, 'utf-8'));
-        if (data.libraryPath && fs.existsSync(data.libraryPath)) {
-          return data.libraryPath;
+        const text = fs.readFileSync(this.configFile, 'utf-8').trim();
+        if (text) {
+          const data = JSON.parse(text);
+          if (data.libraryPath && fs.existsSync(data.libraryPath)) {
+            return data.libraryPath;
+          }
         }
       }
     } catch (e) {
       console.warn('Error reading library config:', e.message);
     }
 
-    const defaultLocal = path.join(process.cwd(), 'media');
-    if (!fs.existsSync(defaultLocal)) {
+    const defaultAnime = path.join(process.cwd(), 'anime');
+    if (!fs.existsSync(defaultAnime)) {
       try {
-        fs.mkdirSync(defaultLocal, { recursive: true });
+        fs.mkdirSync(defaultAnime, { recursive: true });
       } catch (err) {}
     }
-    return defaultLocal;
+    return defaultAnime;
   }
 
   setLibraryPath(newPath) {
@@ -47,7 +51,12 @@ class LibraryService {
     }
     this.libraryPath = newPath;
     try {
-      fs.writeFileSync(this.configFile, JSON.stringify({ libraryPath: newPath }, null, 2));
+      let config = {};
+      if (fs.existsSync(this.configFile)) {
+        try { config = JSON.parse(fs.readFileSync(this.configFile, 'utf-8')); } catch (e) {}
+      }
+      config.libraryPath = newPath;
+      fs.writeFileSync(this.configFile, JSON.stringify(config, null, 2));
     } catch (e) {
       console.error('Error saving library config:', e);
     }
@@ -58,17 +67,62 @@ class LibraryService {
     return this.libraryPath;
   }
 
+  loadDownloadPath() {
+    try {
+      if (fs.existsSync(this.configFile)) {
+        const text = fs.readFileSync(this.configFile, 'utf-8').trim();
+        if (text) {
+          const data = JSON.parse(text);
+          if (data.downloadPath && fs.existsSync(data.downloadPath)) {
+            return data.downloadPath;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading download config:', e.message);
+    }
+    return this.libraryPath;
+  }
+
+  setDownloadPath(newPath) {
+    if (!newPath || !fs.existsSync(newPath)) {
+      throw new Error('Folder download tidak ditemukan');
+    }
+    this.downloadPath = newPath;
+    try {
+      let config = {};
+      if (fs.existsSync(this.configFile)) {
+        try { config = JSON.parse(fs.readFileSync(this.configFile, 'utf-8')); } catch (e) {}
+      }
+      config.downloadPath = newPath;
+      fs.writeFileSync(this.configFile, JSON.stringify(config, null, 2));
+    } catch (e) {
+      console.error('Error saving download config:', e);
+    }
+    return this.downloadPath;
+  }
+
+  getDownloadPath() {
+    return this.downloadPath || this.libraryPath;
+  }
+
   loadHistory() {
     try {
       if (fs.existsSync(this.historyFile)) {
-        return JSON.parse(fs.readFileSync(this.historyFile, 'utf-8'));
+        const text = fs.readFileSync(this.historyFile, 'utf-8').trim();
+        if (text) {
+          const parsed = JSON.parse(text);
+          if (!parsed.onlineHistory) parsed.onlineHistory = {};
+          return parsed;
+        }
       }
     } catch (e) {
       console.warn('Error reading watch history:', e.message);
     }
     return {
       seriesList: {},
-      episodes: {}
+      episodes: {},
+      onlineHistory: {}
     };
   }
 
@@ -102,6 +156,52 @@ class LibraryService {
     } catch (e) {
       console.error('Error saving watch history:', e);
     }
+  }
+
+  saveOnlineProgress(animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster = null) {
+    if (!animeSlug || !episodeUrl) return;
+    const now = Date.now();
+    const completed = duration > 0 ? (currentTime / duration >= 0.90) : false;
+
+    if (!this.history.onlineHistory) this.history.onlineHistory = {};
+    if (!this.history.onlineHistory[animeSlug]) {
+      this.history.onlineHistory[animeSlug] = {
+        animeSlug,
+        animeTitle: animeTitle || animeSlug,
+        poster: poster || null,
+        episodes: {}
+      };
+    }
+
+    const animeEntry = this.history.onlineHistory[animeSlug];
+    if (poster && !animeEntry.poster) animeEntry.poster = poster;
+    if (animeTitle) animeEntry.animeTitle = animeTitle;
+    if (!animeEntry.episodes) animeEntry.episodes = {};
+
+    animeEntry.episodes[episodeUrl] = {
+      episodeUrl,
+      episodeTitle: episodeTitle || 'Episode',
+      currentTime,
+      duration,
+      completed,
+      lastWatched: now
+    };
+
+    animeEntry.lastEpisodeUrl = episodeUrl;
+    animeEntry.lastEpisodeTitle = episodeTitle;
+    animeEntry.currentTime = currentTime;
+    animeEntry.duration = duration;
+    animeEntry.lastWatched = now;
+
+    try {
+      fs.writeFileSync(this.historyFile, JSON.stringify(this.history, null, 2));
+    } catch (e) {
+      console.error('Error saving online watch history:', e);
+    }
+  }
+
+  getOnlineHistory() {
+    return (this.history && this.history.onlineHistory) || {};
   }
 
   getContinueWatching() {
@@ -210,7 +310,7 @@ class LibraryService {
         seriesList.push({
           title: folder.name,
           path: folderPath,
-          posterPath: posterPath ? posterPath.replace(/\\/g, '/') : null,
+          posterPath: posterPath ? posterPath.replace(/\\/g, '/') : (episodes[0] ? episodes[0].path.replace(/\\/g, '/') : null),
           episodesCount: episodes.length,
           episodes,
           lastWatched: seriesHist || null

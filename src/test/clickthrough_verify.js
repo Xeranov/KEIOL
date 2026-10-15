@@ -22,8 +22,25 @@ async function runInteractiveVerification() {
   ipcMain.handle('window:setFullScreen', () => false);
   ipcMain.handle('window:minimize', () => {});
   ipcMain.handle('window:maximize', () => {});
-  ipcMain.handle('window:close', () => {});
   ipcMain.handle('window:isMaximized', () => false);
+  ipcMain.handle('library:getOnlineHistory', () => ({}));
+  ipcMain.handle('library:saveOnlineProgress', () => true);
+  ipcMain.handle('library:getDownloadPath', () => libraryService.getDownloadPath());
+  ipcMain.handle('library:setDownloadPath', (_e, p) => p);
+  ipcMain.handle('library:chooseDownloadFolder', () => null);
+  ipcMain.handle('library:openDownloadFolder', () => true);
+  ipcMain.handle('otakudesu:getOngoing', () => ({ animeList: [] }));
+  ipcMain.handle('otakudesu:getSchedule', () => []);
+  ipcMain.handle('otakudesu:getGenres', () => []);
+  ipcMain.handle('otakudesu:getAnimeByGenre', () => ({ animeList: [] }));
+  ipcMain.handle('otakudesu:getAnimeList', () => []);
+  ipcMain.handle('otakudesu:search', () => []);
+  ipcMain.handle('otakudesu:getDetail', () => null);
+  ipcMain.handle('otakudesu:getEpisodeStream', () => null);
+  ipcMain.handle('otakudesu:getBatchDetails', () => null);
+  ipcMain.handle('download:start', () => ({ downloadId: 'dl_test', status: 'started' }));
+  ipcMain.handle('download:cancel', () => true);
+  ipcMain.handle('download:getActive', () => []);
 
   const win = new BrowserWindow({
     show: false,
@@ -120,17 +137,18 @@ async function runInteractiveVerification() {
       // 10. Configurable seek duration in settings
       window.controlsManager.setSeekInterval(15);
       const isInterval15 = window.controlsManager.seekInterval === 15;
-      const rewindBadgeText = document.querySelector('#btnRewind10 text')?.textContent;
-      const forwardBadgeText = document.querySelector('#btnForward10 text')?.textContent;
-      report('Configure seek interval to 15s', 'Interval: ' + window.controlsManager.seekInterval + ', Badges: ' + rewindBadgeText + '/' + forwardBadgeText, isInterval15 && rewindBadgeText === '15' && forwardBadgeText === '15');
+      const rewindTitle = document.getElementById('btnRewind10')?.title || '';
+      const forwardTitle = document.getElementById('btnForward10')?.title || '';
+      const hasTriangleIcons = document.querySelector('#btnRewind10 path') !== null && document.querySelector('#btnForward10 path') !== null;
+      report('Configure seek interval to 15s', 'Interval: ' + window.controlsManager.seekInterval + ', RewindTitle: ' + rewindTitle + ', Triangles: ' + hasTriangleIcons, isInterval15 && rewindTitle.includes('15') && forwardTitle.includes('15') && hasTriangleIcons);
       // Restore default 10s
       window.controlsManager.setSeekInterval(10);
 
-      // 11. XPlayer branding check (No YouTube logo, XPlayer text present)
-      const brandX = document.querySelector('.brand-x')?.textContent;
-      const brandTitle = document.querySelector('.brand-title')?.textContent;
-      const isXPlayer = brandX === 'X' && brandTitle === 'Player';
-      report('XPlayer branding verification', 'Brand text: ' + brandX + brandTitle, isXPlayer);
+      // 11. YouTube Music Circular Player Logo check (YouTube Music logo present, without name text)
+      const ytMusicLogo = document.querySelector('.brand-ytmusic svg.ytmusic-logo-svg');
+      const brandText = document.querySelector('.brand')?.textContent?.trim() || '';
+      const isYTMusicLogo = ytMusicLogo !== null && brandText === '';
+      report('YouTube Music player logo verification (no name text)', 'Logo present: ' + (ytMusicLogo !== null) + ', Text: "' + brandText + '"', isYTMusicLogo);
 
       // 12. Theater mode removed check
       const btnTheaterGone = document.getElementById('btnTheater') === null;

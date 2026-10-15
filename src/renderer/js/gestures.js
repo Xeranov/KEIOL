@@ -36,6 +36,11 @@ class GesturesEngine {
 
   initMouseGestures() {
     this.videoWrapper.addEventListener('mousedown', (e) => {
+      // Ignore if player is locked
+      if (window.controlsManager && window.controlsManager.isLocked) {
+        return;
+      }
+
       // Only respond to primary left-click and ignore clicks on UI controls
       if (e.button !== 0 || e.target.closest('#controlsBar') || e.target.closest('#titleBar') || e.target.closest('#settingsMenu') || e.target.closest('#shortcutsModal')) {
         return;
@@ -48,7 +53,7 @@ class GesturesEngine {
       clearTimeout(this.mouseHoldTimer);
       this.mouseHoldTimer = setTimeout(() => {
         // Only boost if video has a valid source and is playing/loaded
-        if (this.player.currentFilePath) {
+        if (this.player.hasMedia()) {
           this.isMouseHolding = true;
           this.player.setBoost2x(true);
         }
@@ -57,6 +62,12 @@ class GesturesEngine {
 
     window.addEventListener('mouseup', (e) => {
       if (e.button !== 0) return;
+      if (window.controlsManager && window.controlsManager.isLocked) {
+        if (e.target.closest('#videoWrapper')) {
+          window.controlsManager.showUnlockButtonBriefly();
+        }
+        return;
+      }
 
       clearTimeout(this.mouseHoldTimer);
 
@@ -93,12 +104,13 @@ class GesturesEngine {
   }
 
   handleClickOrDouble(e) {
+    if (window.controlsManager && window.controlsManager.isLocked) return;
     this.clickCount++;
 
     if (this.clickCount === 1) {
       this.clickTimer = setTimeout(() => {
         // Single Click: Toggle Play / Pause
-        if (this.clickCount === 1 && this.player.currentFilePath) {
+        if (this.clickCount === 1 && this.player.hasMedia()) {
           const isPlaying = this.player.togglePlayPause();
           this.showCenterFeedback(isPlaying ? 'play' : 'pause');
         }
@@ -132,6 +144,9 @@ class GesturesEngine {
 
   initSpaceGestures() {
     window.addEventListener('keydown', (e) => {
+      if (e.altKey) return;
+      if (window.controlsManager && window.controlsManager.isLocked) return;
+
       // Only capture Spacebar when not typing in an input
       if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
         e.preventDefault();
@@ -143,7 +158,7 @@ class GesturesEngine {
 
           clearTimeout(this.spaceHoldTimer);
           this.spaceHoldTimer = setTimeout(() => {
-            if (this.player.currentFilePath) {
+            if (this.player.hasMedia()) {
               this.isSpaceHolding = true;
               this.player.setBoost2x(true);
             }
@@ -153,6 +168,8 @@ class GesturesEngine {
     });
 
     window.addEventListener('keyup', (e) => {
+      if (e.altKey) return;
+      if (window.controlsManager && window.controlsManager.isLocked) return;
       if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
         e.preventDefault();
         clearTimeout(this.spaceHoldTimer);
@@ -168,7 +185,7 @@ class GesturesEngine {
         // Quick press (single tap) -> Toggle Play / Pause
         if (this.spaceDownTime > 0) {
           const pressDuration = Date.now() - this.spaceDownTime;
-          if (pressDuration < this.HOLD_THRESHOLD_MS && this.player.currentFilePath) {
+          if (pressDuration < this.HOLD_THRESHOLD_MS && this.player.hasMedia()) {
             const isPlaying = this.player.togglePlayPause();
             this.showCenterFeedback(isPlaying ? 'play' : 'pause');
           }

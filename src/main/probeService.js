@@ -47,9 +47,17 @@ function probeMedia(filePath) {
         const videoCodec = primaryVideo ? primaryVideo.codec_name.toLowerCase() : null;
         const audioCodec = primaryAudio ? primaryAudio.codec_name.toLowerCase() : null;
 
-        // Determine if container is natively playable
-        const isContainerNative = Array.from(NATIVE_CONTAINERS).some(c => formatName.includes(c));
-        const isVideoNative = videoCodec ? NATIVE_VIDEO_CODECS.has(videoCodec) : true;
+        // MKV / Matroska containers are not natively playable in Chromium
+        const isMkv = filePath.toLowerCase().endsWith('.mkv') || formatName.includes('matroska');
+        const isContainerNative = !isMkv && Array.from(NATIVE_CONTAINERS).some(c => formatName === c || formatName.split(',').includes(c));
+
+        // Detect 10-bit video (common in anime Hi10P), which Chromium cannot decode natively
+        const is10Bit = Boolean(primaryVideo && (
+          (primaryVideo.profile && primaryVideo.profile.toLowerCase().includes('high 10')) ||
+          (primaryVideo.pix_fmt && primaryVideo.pix_fmt.includes('10'))
+        ));
+
+        const isVideoNative = (videoCodec && NATIVE_VIDEO_CODECS.has(videoCodec) && !is10Bit);
         const isAudioNative = audioCodec ? NATIVE_AUDIO_CODECS.has(audioCodec) : true;
 
         let playbackMode = 'direct';
@@ -59,7 +67,7 @@ function probeMedia(filePath) {
             // Can be remuxed instantly without re-encoding video
             playbackMode = 'transmux';
           } else {
-            // Non-native video codec (e.g. MPEG-2, DivX, VC-1, HEVC) -> Full transcode
+            // Non-native video codec (e.g. 10-bit Hi10P, MPEG-2, DivX, VC-1, HEVC) -> Full transcode
             playbackMode = 'transcode';
           }
         }

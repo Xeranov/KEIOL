@@ -80,23 +80,28 @@ div[tabindex]:focus-visible {
 
 .brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-shrink: 0;
   cursor: pointer;
+  -webkit-app-region: no-drag;
 }
 
-.brand-x {
-  font-size: 18px;
-  font-weight: 900;
-  color: #e50914; /* Netflix Red */
-  letter-spacing: -0.5px;
+.brand-ytmusic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 50%;
+  transition: transform 0.18s ease, filter 0.18s ease;
 }
 
-.brand-title {
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.3px;
-  color: var(--text-primary);
+.brand-ytmusic:hover {
+  transform: scale(1.08);
+  filter: brightness(1.15);
+}
+
+.ytmusic-logo-svg {
+  display: block;
 }
 
 .video-meta-info {
@@ -235,6 +240,76 @@ video#mainVideo {
   height: 100%;
   object-fit: contain;
   background-color: #000000;
+}
+
+/* ==========================================================================
+   Player Top Overlay Bar (Netflix Style with Back Button)
+   ========================================================================== */
+.player-top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 68px;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: linear-gradient(to bottom, rgba(11, 11, 15, 0.9) 0%, rgba(11, 11, 15, 0.45) 60%, transparent 100%);
+  z-index: 55;
+  transition: opacity 0.3s cubic-bezier(0.2, 0, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0, 0.2, 1);
+  pointer-events: auto;
+}
+
+.player-top-bar.faded {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+}
+
+.player-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+
+.player-back-btn:hover {
+  background-color: #E50914;
+  border-color: #E50914;
+  transform: translateX(-2px);
+}
+
+.player-top-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-top-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #FFFFFF;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+.player-top-episode {
+  font-size: 14px;
+  font-weight: 500;
+  color: #B3B3BD;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 
 /* ==========================================================================
@@ -696,6 +771,16 @@ body.window-maximized {
   color: var(--text-primary);
   margin-left: 6px;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.time-display:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
 }
 
 .time-separator {
@@ -871,6 +956,19 @@ body.window-maximized {
   line-height: 1.5;
 }
 
+.error-code-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  background: rgba(255, 68, 68, 0.12);
+  border: 1px solid rgba(255, 68, 68, 0.35);
+  border-radius: 6px;
+  color: #ff6b6b;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  word-break: break-all;
+  user-select: text;
+}
+
 .error-actions {
   display: flex;
   gap: 10px;
@@ -880,5 +978,189 @@ body.window-maximized {
 /* Utilities */
 .hidden {
   display: none !important;
+}
+
+/* ==========================================================================
+   Titlebar Back Button (Beside brand logo, icon-only)
+   ========================================================================== */
+.btn-titlebar-back {
+  -webkit-app-region: no-drag;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast), transform 0.15s ease;
+}
+
+.btn-titlebar-back:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.08);
+}
+
+/* ==========================================================================
+   Player Lock Feature
+   ========================================================================== */
+.controls-bar.locked {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  transition: opacity 0.3s ease, visibility 0.3s ease !important;
+}
+
+.video-wrapper.is-player-locked,
+.video-wrapper.is-player-locked *,
+.video-wrapper.is-player-locked.cursor-hidden,
+.video-wrapper.is-player-locked.cursor-hidden * {
+  cursor: default !important;
+}
+
+.video-wrapper.is-player-locked .btn-floating-unlock,
+.video-wrapper.is-player-locked .btn-floating-unlock * {
+  cursor: pointer !important;
+}
+
+.floating-lock-badge {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 65;
+  pointer-events: auto;
+  animation: fadeInLockTop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-floating-unlock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #FFFFFF;
+  cursor: pointer !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-floating-unlock:hover {
+  background: rgba(229, 9, 20, 0.65);
+  border-color: rgba(229, 9, 20, 0.95);
+  transform: scale(1.1);
+}
+
+@keyframes fadeInLockTop {
+  from { opacity: 0; transform: translate(-50%, -12px) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+/* ==========================================================================
+   YouTube-Style Autoplay Toggle Switch
+   ========================================================================== */
+.btn-autoplay-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.yt-switch-track {
+  width: 34px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  position: relative;
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-autoplay-toggle.active .yt-switch-track {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.yt-switch-thumb {
+  width: 18px;
+  height: 18px;
+  background: #B3B3B3;
+  border-radius: 50%;
+  position: absolute;
+  top: -2px;
+  left: -1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #121212;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-autoplay-toggle.active .yt-switch-thumb {
+  transform: translateX(18px);
+  background: #FFFFFF;
+  color: #0f0f0f;
+}
+
+.btn-autoplay-toggle:hover .yt-switch-thumb {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* ==========================================================================
+   Floating Skip Intro Button (Netflix / Crunchyroll Style)
+   ========================================================================== */
+.btn-skip-intro-overlay {
+  position: absolute;
+  bottom: 76px;
+  right: 28px;
+  z-index: 55;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(18, 18, 18, 0.88);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  padding: 10px 18px;
+  color: #FFFFFF;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  animation: fadeInSkipIntro 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-skip-intro-overlay:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.85);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.8);
+}
+
+.btn-skip-intro-overlay:active {
+  transform: translateY(0) scale(0.97);
+}
+
+@keyframes fadeInSkipIntro {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 

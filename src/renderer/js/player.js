@@ -19,6 +19,9 @@ class VidPlayerCore {
     this.originalSpeedBeforeBoost = 1.0;
     this.isBoostActive = false;
     this.normalPlaybackRate = 1.0;
+    this.availableQualities = [];
+    this.currentQuality = null;
+    this.currentSkipIntervals = null;
 
     // Ensure audio pitch is preserved when playing fast (up to 4x)
     if ('preservesPitch' in this.video) {
@@ -93,9 +96,51 @@ class VidPlayerCore {
         console.warn('Direct play failed, falling back to transmux stream...');
         this.setPlaybackMode('transmux');
         this.reloadStreamAt(this.getCurrentTime());
+      } else if (this.playbackMode === 'transmux' && this.currentFilePath) {
+        console.warn('Transmux failed, falling back to full transcode stream...');
+        this.setPlaybackMode('transcode');
+        this.reloadStreamAt(this.getCurrentTime());
       } else {
+        const err = this.video.error;
+        let codeName = 'MEDIA_ERR_UNKNOWN (0)';
+        let codeNum = 0;
+        let detailMsg = 'Format atau codec media tidak dapat diputar langsung.';
+        if (err) {
+          codeNum = err.code;
+          switch (err.code) {
+            case 1:
+              codeName = 'MEDIA_ERR_ABORTED (1)';
+              detailMsg = 'Pengambilan media dibatalkan oleh pengguna atau sistem.';
+              break;
+            case 2:
+              codeName = 'MEDIA_ERR_NETWORK (2)';
+              detailMsg = 'Terjadi kesalahan jaringan atau server streaming menolak akses (403/404).';
+              break;
+            case 3:
+              codeName = 'MEDIA_ERR_DECODE (3)';
+              detailMsg = 'Terjadi kesalahan decoding atau stream media korup.';
+              break;
+            case 4:
+              codeName = 'MEDIA_ERR_SRC_NOT_SUPPORTED (4)';
+              detailMsg = 'Format/sumber media tidak didukung, server menolak izin akses (403 Forbidden / Expired), atau codec tidak kompatibel.';
+              break;
+            default:
+              codeName = `MEDIA_ERR_OTHER (${err.code})`;
+              detailMsg = err.message || 'Terjadi kesalahan pada media player.';
+          }
+        }
+        if (this.isSwitchingQuality) {
+          console.warn('Mengabaikan modal error fatal saat proses rollback kualitas sedang berlangsung');
+          return;
+        }
+
         window.dispatchEvent(new CustomEvent('player:error', {
-          detail: { message: 'Format atau codec media tidak dapat diputar langsung.' }
+          detail: {
+            message: detailMsg,
+            code: codeNum,
+            codeName: codeName,
+            src: this.video.src
+          }
         }));
       }
     });
@@ -128,6 +173,25 @@ class VidPlayerCore {
       window.dispatchEvent(new CustomEvent('player:medialoaded', {
         detail: { fileName, mediaInfo: this.mediaInfo, playbackMode: this.playbackMode }
       }));
+
+      // Check chapter markers for Opening/Ending
+      if (this.mediaInfo && Array.isArray(this.mediaInfo.chapters)) {
+        const opChapter = this.mediaInfo.chapters.find(ch => /OP|Opening|Intro/i.test(ch.title));
+        const edChapter = this.mediaInfo.chapters.find(ch => /ED|Ending/i.test(ch.title));
+        if (opChapter || edChapter) {
+          this.currentSkipIntervals = {
+            op: opChapter ? { startTime: opChapter.startTime, endTime: opChapter.endTime } : null,
+            ed: edChapter ? { startTime: edChapter.startTime, endTime: edChapter.endTime } : null
+          };
+        } else {
+          this.currentSkipIntervals = null;
+        }
+      } else {
+        this.currentSkipIntervals = null;
+      }
+      this.availableQualities = [];
+      this.currentQuality = null;
+      window.dispatchEvent(new CustomEvent('player:skipintervals', { detail: this.currentSkipIntervals }));
 
       // Set video source
       this.setupVideoSource(0);
@@ -354,8 +418,211 @@ class VidPlayerCore {
     trackEl.track.mode = 'hidden';
   }
 
+  /**
+   * Load and stream online video directly (e.g. Otakudesu direct MP4 stream)
+   */
+  async loadRemoteStream(streamUrl, options = {}) {
+    this.currentFilePath = null;
+    this.remoteStreamUrl = streamUrl;
+    this.remoteStreamOptions = options;
+    this.streamSeekOffset = 0;
+    this.isTransmuxSeeking = false;
+    this.playbackMode = 'direct';
+
+    if (!this.serverPort && window.electronAPI && typeof window.electronAPI.getServerPort === 'function') {
+      try {
+        this.serverPort = await window.electronAPI.getServerPort();
+      } catch (e) {}
+    }
+
+    window.dispatchEvent(new CustomEvent('player:loading', {
+      detail: { isLoading: true, message: `Menghubungkan stream ${options.title || ''}...`.trim() }
+    }));
+
+    try {
+      this.mediaInfo = {
+        duration: 0,
+        playbackMode: 'direct',
+        audioStreams: [{ index: 0, title: 'Audio Stream', language: 'jpn' }],
+        subtitleStreams: []
+      };
+
+      this.selectedAudioTrack = 0;
+      this.selectedSubTrack = -1;
+
+      const title = options.title || 'Online Stream';
+      this.availableQualities = options.availableQualities || [];
+      this.currentQuality = options.currentQuality || (this.availableQualities.find(q => q.isDefault)?.quality || '720p');
+      this.currentSkipIntervals = options.skipIntervals || null;
+
+      window.dispatchEvent(new CustomEvent('player:medialoaded', {
+        detail: { fileName: title, mediaInfo: this.mediaInfo, playbackMode: 'direct' }
+      }));
+
+      window.dispatchEvent(new CustomEvent('player:skipintervals', { detail: this.currentSkipIntervals }));
+      window.dispatchEvent(new CustomEvent('player:qualitiesupdated', {
+        detail: {
+          availableQualities: this.availableQualities,
+          currentQuality: this.currentQuality
+        }
+      }));
+
+      // Cek apakah stream utama merupakan MKV, HLS (.m3u8), atau memerlukan remux
+      const isMkv = options.isMkv || /\.mkv/i.test(streamUrl);
+      const isHls = streamUrl.includes('.m3u8');
+      const requiresRemux = isMkv || isHls;
+      const initialSrc = requiresRemux
+        ? `http://127.0.0.1:${this.serverPort}/stream?path=${encodeURIComponent(streamUrl)}&mode=transmux&audio=0`
+        : streamUrl;
+
+      this.video.src = initialSrc;
+      this.video.playbackRate = this.normalPlaybackRate;
+
+      if (options.startTime && options.startTime > 0) {
+        this.video.currentTime = options.startTime;
+      }
+
+      await this.video.play().catch(() => {});
+    } catch (err) {
+      console.error('Failed to load remote stream:', err);
+      window.dispatchEvent(new CustomEvent('player:error', {
+        detail: {
+          message: `Gagal memuat streaming video: ${err.message}`,
+          codeName: 'STREAM_LOAD_ERROR'
+        }
+      }));
+    } finally {
+      window.dispatchEvent(new CustomEvent('player:loading', { detail: { isLoading: false } }));
+    }
+  }
+
+  setSkipIntervals(intervals) {
+    this.currentSkipIntervals = intervals;
+    window.dispatchEvent(new CustomEvent('player:skipintervals', { detail: intervals }));
+  }
+
+  getSkipIntervals() {
+    return this.currentSkipIntervals;
+  }
+
+  async switchQuality(newStreamUrl, qualityLabel) {
+    if (!newStreamUrl || newStreamUrl === this.remoteStreamUrl) return;
+
+    const savedTime = this.video ? this.video.currentTime : 0;
+    const wasPlaying = this.video ? !this.video.paused : false;
+    const previousSrc = this.video ? this.video.src : null;
+    const previousRemoteUrl = this.remoteStreamUrl;
+    const previousQuality = this.currentQuality;
+
+    if (!this.serverPort && window.electronAPI && typeof window.electronAPI.getServerPort === 'function') {
+      try {
+        this.serverPort = await window.electronAPI.getServerPort();
+      } catch (e) {}
+    }
+    this.isSwitchingQuality = true;
+
+    window.dispatchEvent(new CustomEvent('player:loading', {
+      detail: { isLoading: true, message: `Beralih ke kualitas ${qualityLabel}...` }
+    }));
+
+    // Cek apakah resolusi yang dipilih berupa format MKV atau HLS (.m3u8) yang memerlukan remux FFmpeg
+    const qObj = this.availableQualities.find(q => q.quality === qualityLabel);
+    const isMkv = qObj?.isMkv || /\.mkv/i.test(newStreamUrl);
+    const isHls = newStreamUrl.includes('.m3u8');
+    const requiresRemux = isMkv || isHls;
+    const targetUrl = requiresRemux
+      ? `http://127.0.0.1:${this.serverPort}/stream?path=${encodeURIComponent(newStreamUrl)}&mode=transmux&audio=0`
+      : newStreamUrl;
+
+    try {
+      this.remoteStreamUrl = newStreamUrl;
+      this.currentQuality = qualityLabel;
+      if (this.remoteStreamOptions) {
+        this.remoteStreamOptions.currentQuality = qualityLabel;
+      }
+
+      // Handler pembatalan/rollback aman jika stream kualitas baru gagal dimuat (misal 403 atau offline)
+      const onSwitchError = (e) => {
+        this.video.removeEventListener('loadedmetadata', restoreTimeHandler);
+        console.warn(`Gagal memuat kualitas ${qualityLabel}, mengembalikan ke ${previousQuality}...`);
+        if (previousSrc) {
+          this.remoteStreamUrl = previousRemoteUrl;
+          this.currentQuality = previousQuality;
+          this.video.src = previousSrc;
+          this.video.currentTime = savedTime;
+          if (wasPlaying) this.video.play().catch(() => {});
+        }
+        setTimeout(() => {
+          this.isSwitchingQuality = false;
+        }, 300);
+        window.dispatchEvent(new CustomEvent('player:toast', {
+          detail: { message: `Kualitas ${qualityLabel} gagal dimuat. Mengembalikan ke kualitas sebelumnya.` }
+        }));
+      };
+
+      this.video.addEventListener('error', onSwitchError, { once: true });
+
+      const restoreTimeHandler = () => {
+        this.video.removeEventListener('error', onSwitchError);
+        this.isSwitchingQuality = false;
+        if (savedTime > 0) {
+          try {
+            this.video.currentTime = Math.min(savedTime, this.video.duration || savedTime);
+          } catch (e) {}
+        }
+        if (wasPlaying) {
+          this.video.play().catch(() => {});
+        }
+      };
+
+      this.video.addEventListener('loadedmetadata', restoreTimeHandler, { once: true });
+
+      this.video.src = targetUrl;
+
+      window.dispatchEvent(new CustomEvent('player:qualitychanged', {
+        detail: { quality: qualityLabel, streamUrl: targetUrl }
+      }));
+    } catch (err) {
+      console.error('Failed to switch quality:', err);
+      window.dispatchEvent(new CustomEvent('player:error', {
+        detail: {
+          message: `Gagal mengubah kualitas: ${err.message}`,
+          codeName: 'QUALITY_SWITCH_ERROR'
+        }
+      }));
+    } finally {
+      window.dispatchEvent(new CustomEvent('player:loading', { detail: { isLoading: false } }));
+    }
+  }
+
+  hasMedia() {
+    return Boolean(this.currentFilePath || this.remoteStreamUrl);
+  }
+
   setPlaybackMode(mode) {
     this.playbackMode = mode;
+    window.dispatchEvent(new CustomEvent('player:modechange', { detail: { mode } }));
+  }
+
+  /**
+   * Stop video playback completely and unload source
+   */
+  stop() {
+    if (this.video) {
+      this.video.pause();
+      this.video.removeAttribute('src');
+      this.video.load();
+    }
+    this.currentFilePath = null;
+    this.remoteStreamUrl = null;
+    this.mediaInfo = null;
+    this.availableQualities = [];
+    this.currentQuality = null;
+    this.currentSkipIntervals = null;
+    this.isBoostActive = false;
+    this.streamSeekOffset = 0;
+    window.dispatchEvent(new CustomEvent('player:statechange', { detail: { isPlaying: false } }));
+    window.dispatchEvent(new CustomEvent('player:buffering', { detail: { isBuffering: false } }));
   }
 
   updateBufferedRanges() {
