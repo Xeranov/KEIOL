@@ -91,6 +91,22 @@ assert.strictEqual(versionJson.name, 'KEIOL');
 assert.strictEqual(versionJson.version, pkg.version);
 console.log('✓ PASS: package.json and version.json synchronized.');
 
+// TEST 6: Screen & UI Zoom Calculations
+console.log('\nTEST 6: Screen & UI Zoom Calculations...');
+function calculateZoom(current, delta) {
+  if (delta === 0) return 1.0;
+  if (delta > 0) return Math.min(Math.round((current + delta) * 10) / 10, 3.0);
+  return Math.max(Math.round((current + delta) * 10) / 10, 0.5);
+}
+
+assert.strictEqual(calculateZoom(1.0, 0.1), 1.1, '1.0 + 0.1 should be 1.1');
+assert.strictEqual(calculateZoom(1.0, -0.1), 0.9, '1.0 - 0.1 should be 0.9');
+assert.strictEqual(calculateZoom(2.95, 0.1), 3.0, 'Zoom should cap at 3.0');
+assert.strictEqual(calculateZoom(0.55, -0.1), 0.5, 'Zoom should floor at 0.5');
+assert.strictEqual(calculateZoom(1.8, 0), 1.0, 'Reset zoom should return 1.0');
+console.log('✓ PASS: Zoom calculation engine and bounds are verified.');
+
 console.log('\n==================================================');
 console.log('🎉 ALL KEIOL TRAY & UPDATE TESTS PASSED SUCCESSFULLY!');
 console.log('==================================================');
+

@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Dialogs
@@ -97,5 +97,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onTogglePlayFromMain: (callback) => {
     ipcRenderer.on('player:toggle-play', () => callback());
+  },
+
+  // Screen & UI Zoom Controls
+  getZoomFactor: () => webFrame.getZoomFactor(),
+  setZoomFactor: (factor) => webFrame.setZoomFactor(factor),
+  zoomIn: () => {
+    const current = webFrame.getZoomFactor();
+    const next = Math.min(Math.round((current + 0.1) * 10) / 10, 3.0);
+    webFrame.setZoomFactor(next);
+    return next;
+  },
+  zoomOut: () => {
+    const current = webFrame.getZoomFactor();
+    const next = Math.max(Math.round((current - 0.1) * 10) / 10, 0.5);
+    webFrame.setZoomFactor(next);
+    return next;
+  },
+  resetZoom: () => {
+    webFrame.setZoomFactor(1.0);
+    return 1.0;
   }
 });

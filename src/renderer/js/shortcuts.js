@@ -109,6 +109,42 @@ class ShortcutsEngine {
         return;
       }
 
+      // Zoom In: Ctrl + Plus, Ctrl + =, Ctrl + NumpadAdd
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=' || e.code === 'Equal' || e.code === 'NumpadAdd')) {
+        e.preventDefault();
+        if (window.electronAPI && window.electronAPI.zoomIn) {
+          const factor = window.electronAPI.zoomIn();
+          if (this.controls && this.controls.showToast) {
+            this.controls.showToast(`Zoom: ${Math.round(factor * 100)}%`);
+          }
+        }
+        return;
+      }
+
+      // Zoom Out: Ctrl + Minus, Ctrl + _, Ctrl + NumpadSubtract
+      if ((e.ctrlKey || e.metaKey) && (e.key === '-' || e.key === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract')) {
+        e.preventDefault();
+        if (window.electronAPI && window.electronAPI.zoomOut) {
+          const factor = window.electronAPI.zoomOut();
+          if (this.controls && this.controls.showToast) {
+            this.controls.showToast(`Zoom: ${Math.round(factor * 100)}%`);
+          }
+        }
+        return;
+      }
+
+      // Reset Zoom: Ctrl + 0, Ctrl + Numpad0
+      if ((e.ctrlKey || e.metaKey) && (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0')) {
+        e.preventDefault();
+        if (window.electronAPI && window.electronAPI.resetZoom) {
+          window.electronAPI.resetZoom();
+          if (this.controls && this.controls.showToast) {
+            this.controls.showToast('Zoom: 100% (Normal)');
+          }
+        }
+        return;
+      }
+
       // Help Modal: '?' or Shift + '/'
       if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         e.preventDefault();
@@ -270,6 +306,26 @@ class ShortcutsEngine {
         return;
       }
     });
+
+    // Ctrl + Mouse Wheel: Smooth Zoom In / Out
+    window.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (window.electronAPI) {
+          if (e.deltaY < 0 && window.electronAPI.zoomIn) {
+            const factor = window.electronAPI.zoomIn();
+            if (this.controls && this.controls.showToast) {
+              this.controls.showToast(`Zoom: ${Math.round(factor * 100)}%`);
+            }
+          } else if (e.deltaY > 0 && window.electronAPI.zoomOut) {
+            const factor = window.electronAPI.zoomOut();
+            if (this.controls && this.controls.showToast) {
+              this.controls.showToast(`Zoom: ${Math.round(factor * 100)}%`);
+            }
+          }
+        }
+      }
+    }, { passive: false });
   }
 }
 

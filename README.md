@@ -70,6 +70,10 @@
 | `.` / `,` | Frame maju / mundur (saat jeda) |
 | `S` | Lewati Intro Anime (AniSkip) |
 | `Ctrl + O` | Buka file video lokal |
+| `Ctrl + +` / `Ctrl + =` | Perbesar Tampilan (Zoom In) |
+| `Ctrl + -` | Perkecil Tampilan (Zoom Out) |
+| `Ctrl + 0` | Reset Tampilan Normal (100%) |
+| `Ctrl + Scroll Mouse` | Perbesar / Perkecil Tampilan (Smooth Zoom) |
 
 ---
 
@@ -120,3 +124,4 @@ Aplikasi ini telah dilengkapi dengan workflow otomatis **GitHub Actions** (`.git
 
 ## 📄 Lisensi
 Didistribusikan di bawah Lisensi MIT. Lihat `LICENSE` untuk informasi lebih lanjut.
+

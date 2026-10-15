@@ -142,3 +142,4 @@ class TrayManager {
 }
 
 module.exports = new TrayManager();
+

@@ -261,3 +261,4 @@ class UpdateService {
 }
 
 module.exports = new UpdateService();
+
