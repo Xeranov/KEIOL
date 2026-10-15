@@ -1,32 +1,43 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const path = require('path');
-const fs = require('fs');
-const mediaServer = require('../main/mediaServer');
-const { probeMedia } = require('../main/probeService');
-const libraryService = require('../main/libraryService');
+const { app, BrowserWindow, ipcMain } = require("electron");
+const path = require("path");
+const fs = require("fs");
+const mediaServer = require("../main/mediaServer");
+const { probeMedia } = require("../main/probeService");
+const libraryService = require("../main/libraryService");
 
 async function testImprovements() {
-  console.log('=== Testing User Requested Improvements (Netflix UI, Seek Config, Master Folder, Translucent Titlebar, XPlayer) ===\n');
+  console.log(
+    "=== Testing User Requested Improvements (Netflix UI, Seek Config, Master Folder, Translucent Titlebar, XPlayer) ===\n",
+  );
 
   // 1. Setup mock media root with both Series subfolders and standalone Movie files
-  const mockMediaRoot = path.join(__dirname, '../../test-media/mock_library');
-  const frierenDir = path.join(mockMediaRoot, 'Sousou no Frieren');
-  const jjkDir = path.join(mockMediaRoot, 'Jujutsu Kaisen');
+  const mockMediaRoot = path.join(__dirname, "../../test-media/mock_library");
+  const frierenDir = path.join(mockMediaRoot, "Sousou no Frieren");
+  const jjkDir = path.join(mockMediaRoot, "Jujutsu Kaisen");
 
   fs.mkdirSync(frierenDir, { recursive: true });
   fs.mkdirSync(jjkDir, { recursive: true });
 
-  const sampleMp4Source = path.join(__dirname, '../../test-media/test_sample.mp4');
-  const sampleMkvSource = path.join(__dirname, '../../test-media/test_sample.mkv');
+  const sampleMp4Source = path.join(
+    __dirname,
+    "../../test-media/test_sample.mp4",
+  );
+  const sampleMkvSource = path.join(
+    __dirname,
+    "../../test-media/test_sample.mkv",
+  );
 
   // Series episodes
-  fs.copyFileSync(sampleMp4Source, path.join(frierenDir, 'Episode 01.mp4'));
-  fs.copyFileSync(sampleMkvSource, path.join(frierenDir, 'Episode 02.mkv'));
-  fs.copyFileSync(sampleMp4Source, path.join(frierenDir, 'Episode 10.mp4'));
-  fs.copyFileSync(sampleMp4Source, path.join(jjkDir, 'Episode 01.mp4'));
+  fs.copyFileSync(sampleMp4Source, path.join(frierenDir, "Episode 01.mp4"));
+  fs.copyFileSync(sampleMkvSource, path.join(frierenDir, "Episode 02.mkv"));
+  fs.copyFileSync(sampleMp4Source, path.join(frierenDir, "Episode 10.mp4"));
+  fs.copyFileSync(sampleMp4Source, path.join(jjkDir, "Episode 01.mp4"));
 
   // Standalone Movie in root media folder
-  fs.copyFileSync(sampleMp4Source, path.join(mockMediaRoot, 'Suzume no Tojimari.mp4'));
+  fs.copyFileSync(
+    sampleMp4Source,
+    path.join(mockMediaRoot, "Suzume no Tojimari.mp4"),
+  );
 
   // Point libraryService to mockMediaRoot
   libraryService.setLibraryPath(mockMediaRoot);
@@ -34,59 +45,70 @@ async function testImprovements() {
   const port = await mediaServer.start();
 
   // Register IPC
-  ipcMain.handle('server:getPort', () => port);
-  ipcMain.handle('media:probe', async (_e, fp) => probeMedia(fp));
-  ipcMain.handle('library:scan', () => libraryService.scanLibrary());
-  ipcMain.handle('library:getPath', () => libraryService.getLibraryPath());
-  ipcMain.handle('library:setPath', (_e, p) => libraryService.setLibraryPath(p));
-  ipcMain.handle('library:chooseFolder', () => libraryService.scanLibrary());
-  ipcMain.handle('library:saveProgress', (_e, sPath, epPath, epName, cur, dur) => {
-    libraryService.saveProgress(sPath, epPath, epName, cur, dur);
-    return true;
-  });
-  ipcMain.handle('library:getContinueWatching', () => libraryService.getContinueWatching());
-  ipcMain.handle('window:isFullScreen', () => false);
-  ipcMain.handle('window:setFullScreen', () => false);
-  ipcMain.handle('window:minimize', () => {});
-  ipcMain.handle('window:maximize', () => {});
-  ipcMain.handle('window:isMaximized', () => false);
-  ipcMain.handle('library:getOnlineHistory', () => ({}));
-  ipcMain.handle('library:saveOnlineProgress', () => true);
-  ipcMain.handle('library:getDownloadPath', () => libraryService.getDownloadPath());
-  ipcMain.handle('library:setDownloadPath', (_e, p) => p);
-  ipcMain.handle('library:chooseDownloadFolder', () => null);
-  ipcMain.handle('library:openDownloadFolder', () => true);
-  ipcMain.handle('library:scanDownloads', () => ({ items: [], seriesCount: 0, moviesCount: 0, episodesCount: 0, downloadPath: '' }));
-  ipcMain.handle('archive:isArchive', () => false);
-  ipcMain.handle('archive:extract', () => ({ success: true }));
-  ipcMain.handle('settings:get-close-to-tray', () => false);
-  ipcMain.handle('settings:set-close-to-tray', () => true);
-  ipcMain.handle('shell:openExternal', () => true);
-  ipcMain.handle('otakudesu:getOngoing', () => ({ animeList: [] }));
-  ipcMain.handle('otakudesu:getSchedule', () => []);
-  ipcMain.handle('otakudesu:getGenres', () => []);
-  ipcMain.handle('otakudesu:getAnimeByGenre', () => ({ animeList: [] }));
-  ipcMain.handle('otakudesu:getAnimeList', () => []);
-  ipcMain.handle('otakudesu:search', () => []);
-  ipcMain.handle('otakudesu:getDetail', () => null);
-  ipcMain.handle('otakudesu:getEpisodeStream', () => null);
-  ipcMain.handle('otakudesu:getBatchDetails', () => null);
-  ipcMain.handle('download:start', () => ({ downloadId: 'dl_test', status: 'started' }));
-  ipcMain.handle('download:cancel', () => true);
-  ipcMain.handle('download:getActive', () => []);
+  ipcMain.handle("server:getPort", () => port);
+  ipcMain.handle("media:probe", async (_e, fp) => probeMedia(fp));
+  ipcMain.handle("library:scan", () => libraryService.scanLibrary());
+  ipcMain.handle("library:getPath", () => libraryService.getLibraryPath());
+  ipcMain.handle("library:setPath", (_e, p) =>
+    libraryService.setLibraryPath(p),
+  );
+  ipcMain.handle("library:chooseFolder", () => libraryService.scanLibrary());
+  ipcMain.handle(
+    "library:saveProgress",
+    (_e, sPath, epPath, epName, cur, dur) => {
+      libraryService.saveProgress(sPath, epPath, epName, cur, dur);
+      return true;
+    },
+  );
+  ipcMain.handle("library:getContinueWatching", () =>
+    libraryService.getContinueWatching(),
+  );
+  ipcMain.handle("window:isFullScreen", () => false);
+  ipcMain.handle("window:setFullScreen", () => false);
+  ipcMain.handle("window:minimize", () => {});
+  ipcMain.handle("window:maximize", () => {});
+  ipcMain.handle("window:isMaximized", () => false);
+  ipcMain.handle("library:getOnlineHistory", () => ({}));
+  ipcMain.handle("library:saveOnlineProgress", () => true);
+  ipcMain.handle("library:getDownloadPath", () =>
+    libraryService.getDownloadPath(),
+  );
+  ipcMain.handle("library:setDownloadPath", (_e, p) => p);
+  ipcMain.handle("library:openDownloadFolder", () => true);
+  ipcMain.handle("library:scanDownloads", () => ({ items: [], seriesCount: 0, moviesCount: 0, episodesCount: 0, downloadPath: "" }));
+  ipcMain.handle("archive:isArchive", () => false);
+  ipcMain.handle("archive:extract", () => ({ success: true }));
+  ipcMain.handle("settings:get-close-to-tray", () => false);
+  ipcMain.handle("settings:set-close-to-tray", () => true);
+  ipcMain.handle("shell:openExternal", () => true);
+  ipcMain.handle("otakudesu:getOngoing", () => ({ animeList: [] }));
+  ipcMain.handle("otakudesu:getSchedule", () => []);
+  ipcMain.handle("otakudesu:getGenres", () => []);
+  ipcMain.handle("otakudesu:getAnimeByGenre", () => ({ animeList: [] }));
+  ipcMain.handle("otakudesu:getAnimeList", () => []);
+  ipcMain.handle("otakudesu:search", () => []);
+  ipcMain.handle("otakudesu:getDetail", () => null);
+  ipcMain.handle("otakudesu:getEpisodeStream", () => null);
+  ipcMain.handle("otakudesu:getBatchDetails", () => null);
+  ipcMain.handle("download:start", () => ({
+    downloadId: "dl_test",
+    status: "started",
+  }));
+  ipcMain.handle("download:cancel", () => true);
+  ipcMain.handle("download:getActive", () => []);
 
   const win = new BrowserWindow({
     show: false,
     width: 1280,
     height: 760,
     webPreferences: {
-      preload: path.join(__dirname, '../preload/preload.js'),
+      preload: path.join(__dirname, "../preload/preload.js"),
       contextIsolation: true,
-      nodeIntegration: false
-    }
+      nodeIntegration: false,
+    },
   });
 
-  await win.loadFile(path.join(__dirname, '../renderer/index.html'));
+  await win.loadFile(path.join(__dirname, "../renderer/index.html"));
 
   const results = await win.webContents.executeJavaScript(`
     (async () => {
@@ -126,7 +148,7 @@ async function testImprovements() {
       );
 
       // TEST 4: 2X Speed Boost Pop-up Auto-Hides After 800ms
-      await window.playerCore.loadFile(${JSON.stringify(path.join(frierenDir, 'Episode 01.mp4'))});
+      await window.playerCore.loadFile(${JSON.stringify(path.join(frierenDir, "Episode 01.mp4"))});
       window.playerCore.setBoost2x(true);
       const pill = document.getElementById('speedBoostPill');
       const pillShownImmediately = !pill.classList.contains('hidden');
@@ -248,7 +270,7 @@ async function testImprovements() {
       );
 
       // TEST 9: Continue Watching Resume via Netflix Billboard
-      const ep2Path = ${JSON.stringify(path.join(frierenDir, 'Episode 02.mkv'))};
+      const ep2Path = ${JSON.stringify(path.join(frierenDir, "Episode 02.mkv"))};
       await window.electronAPI.saveWatchProgress(
         ${JSON.stringify(frierenDir)},
         ep2Path,
@@ -286,23 +308,28 @@ async function testImprovements() {
   `);
 
   results.forEach((r, idx) => {
-    const mark = r.passed ? '✓ PASS' : '✗ FAIL';
+    const mark = r.passed ? "✓ PASS" : "✗ FAIL";
     console.log(`${mark} [${idx + 1}] ${r.name}`);
     console.log(`    Detail: ${r.detail}`);
   });
 
-  const allPassed = results.every(r => r.passed);
+  const allPassed = results.every((r) => r.passed);
   if (!allPassed) {
-    throw new Error('Some improvement tests failed!');
+    throw new Error("Some improvement tests failed!");
   }
 
-  console.log('\n=== ALL USER IMPROVEMENTS VERIFIED AND WORKING FLAWLESSLY! ===');
+  console.log(
+    "\n=== ALL USER IMPROVEMENTS VERIFIED AND WORKING FLAWLESSLY! ===",
+  );
 
   mediaServer.stop();
   app.quit();
 }
 
-app.whenReady().then(testImprovements).catch(err => {
-  console.error('Test error:', err);
-  process.exit(1);
-});
+app
+  .whenReady()
+  .then(testImprovements)
+  .catch((err) => {
+    console.error("Test error:", err);
+    process.exit(1);
+  });

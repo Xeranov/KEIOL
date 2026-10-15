@@ -90,6 +90,18 @@ class TrayManager {
           }
         }
       },
+      {
+        label: 'Periksa Pembaruan...',
+        click: () => {
+          this.showWindow();
+          try {
+            const updateService = require('./updateService');
+            updateService.checkForUpdates(true);
+          } catch (e) {
+            console.warn('Failed to check updates from tray:', e);
+          }
+        }
+      },
       { type: 'separator' },
       {
         label: 'Keluar',

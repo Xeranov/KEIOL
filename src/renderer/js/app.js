@@ -418,9 +418,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (updateProgressBar) updateProgressBar.style.width = `${prog.percent}%`;
         if (updateProgressPercent) updateProgressPercent.textContent = `${prog.percent}%`;
         if (updateProgressStatusText) {
-          updateProgressStatusText.textContent = prog.percent >= 100
-            ? 'Menyelesaikan unduhan...'
-            : `Mengunduh pembaruan... (${prog.percent}%)`;
+          if (prog.statusText) {
+            updateProgressStatusText.textContent = prog.statusText;
+          } else if (prog.percent >= 100) {
+            updateProgressStatusText.textContent = 'Menyelesaikan unduhan...';
+          } else if (prog.transferred && prog.total) {
+            const mbTransferred = (prog.transferred / (1024 * 1024)).toFixed(1);
+            const mbTotal = (prog.total / (1024 * 1024)).toFixed(1);
+            const mbSpeed = prog.bytesPerSecond ? ` • ${(prog.bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s` : '';
+            updateProgressStatusText.textContent = `Mengunduh: ${mbTransferred} MB / ${mbTotal} MB (${prog.percent}%)${mbSpeed}`;
+          } else {
+            updateProgressStatusText.textContent = `Mengunduh pembaruan... (${prog.percent}%)`;
+          }
         }
       });
     }
@@ -435,11 +444,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (updateProgressStatusText) {
           updateProgressStatusText.textContent = info.external
             ? 'Unduhan rilis dibuka di browser Anda.'
-            : 'Pembaruan siap dipasang!';
+            : 'Pembaruan berhasil diunduh dan siap dipasang!';
         }
         if (btnUpdateNow) {
           btnUpdateNow.disabled = false;
-          btnUpdateNow.textContent = info.external ? 'Buka Folder Rilis' : 'Pasang & Restart';
+          btnUpdateNow.textContent = info.external ? 'Buka Folder Rilis' : 'Pasang Sekarang & Restart';
+        }
+
+        // Jika pembaruan wajib (force update), pasang otomatis setelah 3 detik
+        if (isForceUpdateActive && !info.external) {
+          let count = 3;
+          const countTimer = setInterval(() => {
+            if (updateProgressStatusText) {
+              updateProgressStatusText.textContent = `Memasang otomatis dalam ${count} detik...`;
+            }
+            count--;
+            if (count < 0) {
+              clearInterval(countTimer);
+              if (window.electronAPI && window.electronAPI.installUpdateAndRestart) {
+                window.electronAPI.installUpdateAndRestart();
+              }
+            }
+          }, 1000);
         }
       });
     }
@@ -472,6 +498,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnUpdateNow) {
     btnUpdateNow.addEventListener('click', async () => {
       if (isDownloadFinished) {
+        btnUpdateNow.disabled = true;
+        btnUpdateNow.textContent = 'Memasang...';
+        if (updateProgressStatusText) {
+          updateProgressStatusText.textContent = 'Memulai pemasangan otomatis & menutup aplikasi...';
+        }
         if (window.electronAPI && window.electronAPI.installUpdateAndRestart) {
           window.electronAPI.installUpdateAndRestart();
         }

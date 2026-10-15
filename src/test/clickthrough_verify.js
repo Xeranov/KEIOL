@@ -1,65 +1,75 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const path = require('path');
-const fs = require('fs');
-const mediaServer = require('../main/mediaServer');
-const { probeMedia } = require('../main/probeService');
+const { app, BrowserWindow, ipcMain } = require("electron");
+const path = require("path");
+const fs = require("fs");
+const mediaServer = require("../main/mediaServer");
+const { probeMedia } = require("../main/probeService");
 
-const libraryService = require('../main/libraryService');
+const libraryService = require("../main/libraryService");
 
 async function runInteractiveVerification() {
-  console.log('=== Starting Antislop C-2 / R-35 Click-Through Verification ===');
+  console.log(
+    "=== Starting Antislop C-2 / R-35 Click-Through Verification ===",
+  );
   const port = await mediaServer.start();
 
-  ipcMain.handle('server:getPort', () => port);
-  ipcMain.handle('media:probe', async (_e, fp) => probeMedia(fp));
-  ipcMain.handle('library:scan', () => libraryService.scanLibrary());
-  ipcMain.handle('library:getPath', () => libraryService.getLibraryPath());
-  ipcMain.handle('library:setPath', (_e, p) => libraryService.setLibraryPath(p));
-  ipcMain.handle('library:chooseFolder', () => libraryService.scanLibrary());
-  ipcMain.handle('library:saveProgress', () => true);
-  ipcMain.handle('library:getContinueWatching', () => libraryService.getContinueWatching());
-  ipcMain.handle('window:isFullScreen', () => false);
-  ipcMain.handle('window:setFullScreen', () => false);
-  ipcMain.handle('window:minimize', () => {});
-  ipcMain.handle('window:maximize', () => {});
-  ipcMain.handle('window:isMaximized', () => false);
-  ipcMain.handle('library:getOnlineHistory', () => ({}));
-  ipcMain.handle('library:saveOnlineProgress', () => true);
-  ipcMain.handle('library:getDownloadPath', () => libraryService.getDownloadPath());
-  ipcMain.handle('library:setDownloadPath', (_e, p) => p);
-  ipcMain.handle('library:chooseDownloadFolder', () => null);
-  ipcMain.handle('library:openDownloadFolder', () => true);
-  ipcMain.handle('otakudesu:getOngoing', () => ({ animeList: [] }));
-  ipcMain.handle('otakudesu:getSchedule', () => []);
-  ipcMain.handle('otakudesu:getGenres', () => []);
-  ipcMain.handle('otakudesu:getAnimeByGenre', () => ({ animeList: [] }));
-  ipcMain.handle('otakudesu:getAnimeList', () => []);
-  ipcMain.handle('otakudesu:search', () => []);
-  ipcMain.handle('otakudesu:getDetail', () => null);
-  ipcMain.handle('otakudesu:getEpisodeStream', () => null);
-  ipcMain.handle('otakudesu:getBatchDetails', () => null);
-  ipcMain.handle('download:start', () => ({ downloadId: 'dl_test', status: 'started' }));
-  ipcMain.handle('download:cancel', () => true);
-  ipcMain.handle('download:getActive', () => []);
-  ipcMain.handle('library:scanDownloads', () => ({ items: [], seriesCount: 0, moviesCount: 0, episodesCount: 0, downloadPath: '' }));
-  ipcMain.handle('archive:isArchive', () => false);
-  ipcMain.handle('archive:extract', () => ({ success: true }));
-  ipcMain.handle('settings:get-close-to-tray', () => false);
-  ipcMain.handle('settings:set-close-to-tray', () => true);
-  ipcMain.handle('shell:openExternal', () => true);
+  ipcMain.handle("server:getPort", () => port);
+  ipcMain.handle("media:probe", async (_e, fp) => probeMedia(fp));
+  ipcMain.handle("library:scan", () => libraryService.scanLibrary());
+  ipcMain.handle("library:getPath", () => libraryService.getLibraryPath());
+  ipcMain.handle("library:setPath", (_e, p) =>
+    libraryService.setLibraryPath(p),
+  );
+  ipcMain.handle("library:chooseFolder", () => libraryService.scanLibrary());
+  ipcMain.handle("library:saveProgress", () => true);
+  ipcMain.handle("library:getContinueWatching", () =>
+    libraryService.getContinueWatching(),
+  );
+  ipcMain.handle("window:isFullScreen", () => false);
+  ipcMain.handle("window:setFullScreen", () => false);
+  ipcMain.handle("window:minimize", () => {});
+  ipcMain.handle("window:maximize", () => {});
+  ipcMain.handle("window:isMaximized", () => false);
+  ipcMain.handle("library:getOnlineHistory", () => ({}));
+  ipcMain.handle("library:saveOnlineProgress", () => true);
+  ipcMain.handle("library:getDownloadPath", () =>
+    libraryService.getDownloadPath(),
+  );
+  ipcMain.handle("library:setDownloadPath", (_e, p) => p);
+  ipcMain.handle("library:chooseDownloadFolder", () => null);
+  ipcMain.handle("library:openDownloadFolder", () => true);
+  ipcMain.handle("otakudesu:getOngoing", () => ({ animeList: [] }));
+  ipcMain.handle("otakudesu:getSchedule", () => []);
+  ipcMain.handle("otakudesu:getGenres", () => []);
+  ipcMain.handle("otakudesu:getAnimeByGenre", () => ({ animeList: [] }));
+  ipcMain.handle("otakudesu:getAnimeList", () => []);
+  ipcMain.handle("otakudesu:search", () => []);
+  ipcMain.handle("otakudesu:getDetail", () => null);
+  ipcMain.handle("otakudesu:getEpisodeStream", () => null);
+  ipcMain.handle("otakudesu:getBatchDetails", () => null);
+  ipcMain.handle("download:start", () => ({
+    downloadId: "dl_test",
+    status: "started",
+  }));
+  ipcMain.handle("download:getActive", () => []);
+  ipcMain.handle("library:scanDownloads", () => ({ items: [], seriesCount: 0, moviesCount: 0, episodesCount: 0, downloadPath: "" }));
+  ipcMain.handle("archive:isArchive", () => false);
+  ipcMain.handle("archive:extract", () => ({ success: true }));
+  ipcMain.handle("settings:get-close-to-tray", () => false);
+  ipcMain.handle("settings:set-close-to-tray", () => true);
+  ipcMain.handle("shell:openExternal", () => true);
 
   const win = new BrowserWindow({
     show: false,
     width: 1200,
     height: 720,
     webPreferences: {
-      preload: path.join(__dirname, '../preload/preload.js'),
+      preload: path.join(__dirname, "../preload/preload.js"),
       contextIsolation: true,
-      nodeIntegration: false
-    }
+      nodeIntegration: false,
+    },
   });
 
-  await win.loadFile(path.join(__dirname, '../renderer/index.html'));
+  await win.loadFile(path.join(__dirname, "../renderer/index.html"));
 
   // Helper inside renderer
   const results = await win.webContents.executeJavaScript(`
@@ -74,7 +84,7 @@ async function runInteractiveVerification() {
       report('Empty state browse button exists', 'Found #btnEmptyBrowse', !!btnBrowse);
 
       // 2. Load test video
-      const testPath = ${JSON.stringify(path.join(__dirname, '../../test-media/test_sample.mp4'))};
+      const testPath = ${JSON.stringify(path.join(__dirname, "../../test-media/test_sample.mp4"))};
       await window.playerCore.loadFile(testPath);
       report('Load media file', 'Video loaded: ' + window.playerCore.currentFilePath, window.playerCore.currentFilePath === testPath);
 
@@ -161,7 +171,7 @@ async function runInteractiveVerification() {
       report('Theater mode removed verification', 'btnTheater is null: ' + btnTheaterGone, btnTheaterGone);
 
       // 13. Test MKV with AC3 audio playback
-      const testMkvPath = ${JSON.stringify(path.join(__dirname, '../../test-media/test_sample.mkv'))};
+      const testMkvPath = ${JSON.stringify(path.join(__dirname, "../../test-media/test_sample.mkv"))};
       await window.playerCore.loadFile(testMkvPath);
       report('Load MKV with AC3 audio', 'PlaybackMode: ' + window.playerCore.playbackMode, window.playerCore.playbackMode === 'transmux');
 
@@ -170,22 +180,29 @@ async function runInteractiveVerification() {
   `);
 
   results.forEach((r, idx) => {
-    const mark = r.passed ? '✓ PASS' : '✗ FAIL';
+    const mark = r.passed ? "✓ PASS" : "✗ FAIL";
     console.log(`${mark} [${idx + 1}] ${r.action} -> ${r.result}`);
   });
 
-  const allPassed = results.every(r => r.passed);
+  const allPassed = results.every((r) => r.passed);
   fs.writeFileSync(
-    path.join(__dirname, 'clickthrough_report.json'),
-    JSON.stringify({ allPassed, timestamp: new Date().toISOString(), results }, null, 2)
+    path.join(__dirname, "clickthrough_report.json"),
+    JSON.stringify(
+      { allPassed, timestamp: new Date().toISOString(), results },
+      null,
+      2,
+    ),
   );
 
-  console.log('\n=== ALL INTERACTIVE ELEMENTS CLICK-THROUGH VERIFIED! ===');
+  console.log("\n=== ALL INTERACTIVE ELEMENTS CLICK-THROUGH VERIFIED! ===");
   mediaServer.stop();
   app.quit();
 }
 
-app.whenReady().then(runInteractiveVerification).catch(err => {
-  console.error('Click-through verification error:', err);
-  process.exit(1);
-});
+app
+  .whenReady()
+  .then(runInteractiveVerification)
+  .catch((err) => {
+    console.error("Click-through verification error:", err);
+    process.exit(1);
+  });

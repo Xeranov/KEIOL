@@ -19,11 +19,11 @@ async function runTestSuite() {
   console.log('=== TEST SUITE: KUSONIME BATCH & VIDPLAYER V1.1.0 ===\n');
 
   // Test 1: Version check
-  console.log('[1/5] Verifikasi Versi 1.1.0 di package.json & version.json...');
+  console.log('[1/5] Verifikasi Versi di package.json & version.json...');
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'));
   const ver = JSON.parse(fs.readFileSync(path.join(__dirname, '../../version.json'), 'utf8'));
-  assert.strictEqual(pkg.version, '1.1.0', 'package.json version should be 1.1.0');
-  assert.strictEqual(ver.version, '1.1.0', 'version.json version should be 1.1.0');
+  assert.strictEqual(pkg.version, ver.version, 'package.json and version.json should match');
+  assert.ok(pkg.version === '1.1.0' || pkg.version === '1.1.1', 'version should be >= 1.1.0');
   console.log(`  ✓ package.json version: ${pkg.version}`);
   console.log(`  ✓ version.json version: ${ver.version}\n`);
 

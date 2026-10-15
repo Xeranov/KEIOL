@@ -1,10 +1,11 @@
 {
   "name": "KEIOL",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "minSupportedVersion": "1.0.1",
   "forceUpdate": false,
-  "forceUpdateMessage": "Pembaruan v1.1.0 tersedia dengan integrasi download batch Kusonime dan direktori anime terpadu.",
+  "forceUpdateMessage": "Pembaruan v1.1.1 tersedia dengan fitur pengunduh & instalasi otomatis langsung di dalam aplikasi.",
   "releaseDate": "2026-10-16",
-  "changelog": "- Integrasi Kusonime Batch Download: unduh seluruh episode anime dalam paket resolusi lengkap dengan pemilihan mirror otomatis (Google Drive, Pixeldrain, dll)\n- Ekstraktor otomatis arsip batch (RAR/ZIP/7Z/TAR) langsung ke folder anime dan pembersihan arsip otomatis\n- Pemisahan tab unduhan web (downloads/) dengan library lokal (Beranda)\n- Transisi autoplay episode berikutnya instan tanpa jeda cooldown countdown\n- Penggabungan katalog A-Z direktori anime Otakudesu dan Kusonime secara cerdas tanpa duplikasi judul\n- Google Drive session cookie preservation & Pixeldrain album resolver untuk unduhan file berukuran besar",
-  "downloadUrl": "https://github.com/Xeranov/KEIOL/releases/latest"
+  "changelog": "- Fitur In-App Auto-Updater: unduh paket pembaruan resmi (.exe) langsung di dalam aplikasi tanpa dialihkan ke peramban web\n- Silent Auto-Install & Restart: aplikasi langsung memasang pembaruan otomatis dan membuka kembali versi terbaru secara mulus\n- Indikator Unduhan Real-Time: pemantauan progres persentase, total ukuran megabyte, dan kecepatan unduh langsung di dialog pembaruan\n- Shortcut Cek Pembaruan di Baki Sistem (System Tray): menu klik-kanan icon KEIOL untuk memeriksa rilis terbaru kapan saja",
+  "downloadUrl": "https://github.com/Xeranov/KEIOL/releases/latest",
+  "installerUrl": "https://github.com/Xeranov/KEIOL/releases/download/v1.1.1/KEIOL-Setup-1.1.1.exe"
 }
