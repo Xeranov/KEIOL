@@ -1,7 +1,7 @@
 {
   "name": "keiol",
   "productName": "KEIOL",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "KEIOL - Modern Desktop Video Player & Anime Streaming Hub",
   "main": "src/main/index.js",
   "scripts": {
@@ -48,7 +48,14 @@
       "build/icon.png",
       "build/tray-icon.png",
       "package.json",
-      "version.json"
+      "version.json",
+      "node_modules/ffmpeg-static/**/*",
+      "node_modules/ffprobe-static/**/*"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/ffmpeg-static/**/*",
+      "**/node_modules/ffprobe-static/**/*"
     ],
     "win": {
       "target": [

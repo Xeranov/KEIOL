@@ -20,6 +20,7 @@ anime/
 test-media/
 watch_history.json
 library_config.json
+image.png
 *.mp4
 *.mkv
 *.avi

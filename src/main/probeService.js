@@ -1,7 +1,7 @@
 const { execFile } = require('child_process');
-const ffprobeStatic = require('ffprobe-static');
+const { ffprobePath } = require('./binHelper');
 
-const FFPROBE_PATH = ffprobeStatic.path;
+const FFPROBE_PATH = ffprobePath;
 
 // Browser-native video & audio codecs in Chromium
 const NATIVE_VIDEO_CODECS = new Set(['h264', 'av1', 'vp9', 'vp8']);

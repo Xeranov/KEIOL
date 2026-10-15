@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
-const ffmpegStatic = require('ffmpeg-static');
+const { ffmpegPath } = require('./binHelper');
 let electronApp = null;
 try {
   electronApp = require('electron').app;
@@ -234,7 +234,7 @@ class MediaServer {
       'pipe:1'
     );
 
-    const ffmpegProc = spawn(ffmpegStatic, args, {
+    const ffmpegProc = spawn(ffmpegPath, args, {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -293,7 +293,7 @@ class MediaServer {
       'pipe:1'
     ];
 
-    const ffmpegProc = spawn(ffmpegStatic, args, {
+    const ffmpegProc = spawn(ffmpegPath, args, {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'ignore']
     });
@@ -304,6 +304,10 @@ class MediaServer {
     });
 
     ffmpegProc.stdout.pipe(res);
+
+    ffmpegProc.on('error', (err) => {
+      console.error('[MediaServer Subtitle FFmpeg error]:', err);
+    });
 
     const killSub = () => {
       try {
@@ -378,7 +382,7 @@ class MediaServer {
     }
 
     // Extract frame with ffmpeg-static at specified timestamp or 00:00:03
-    const ffmpegProc = spawn(ffmpegStatic, [
+    const ffmpegProc = spawn(ffmpegPath, [
       '-ss', timePos,
       '-i', filePath,
       '-vframes', '1',
@@ -396,7 +400,7 @@ class MediaServer {
         fs.createReadStream(thumbPath).pipe(res);
       } else {
         // Fallback: try early frame 00:00:00.500
-        const fallbackProc = spawn(ffmpegStatic, [
+        const fallbackProc = spawn(ffmpegPath, [
           '-ss', '00:00:00.500',
           '-i', filePath,
           '-vframes', '1',
@@ -406,6 +410,14 @@ class MediaServer {
           '-y'
         ], {
           windowsHide: true
+        });
+
+        fallbackProc.on('error', (fErr) => {
+          console.error('[MediaServer Fallback Thumbnail error]:', fErr);
+          if (!res.headersSent) {
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('Failed to generate thumbnail');
+          }
         });
 
         fallbackProc.on('close', (fCode) => {

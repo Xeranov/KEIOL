@@ -2,23 +2,22 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { execFileSync } = require('child_process');
-const ffmpegStatic = require('ffmpeg-static');
-const ffprobeStatic = require('ffprobe-static');
+const { ffmpegPath, ffprobePath } = require('../main/binHelper');
 const mediaServer = require('../main/mediaServer');
 const { probeMedia } = require('../main/probeService');
 
 async function runTests() {
   console.log('--- 1. Testing FFmpeg and FFprobe Binaries ---');
-  if (!fs.existsSync(ffmpegStatic)) {
-    throw new Error('ffmpeg-static binary not found at: ' + ffmpegStatic);
+  if (!fs.existsSync(ffmpegPath)) {
+    throw new Error('ffmpeg binary not found at: ' + ffmpegPath);
   }
-  const ffmpegVersion = execFileSync(ffmpegStatic, ['-version']).toString().split('\n')[0];
+  const ffmpegVersion = execFileSync(ffmpegPath, ['-version']).toString().split('\n')[0];
   console.log('✓ FFmpeg binary ok:', ffmpegVersion);
 
-  if (!fs.existsSync(ffprobeStatic.path)) {
-    throw new Error('ffprobe-static binary not found at: ' + ffprobeStatic.path);
+  if (!fs.existsSync(ffprobePath)) {
+    throw new Error('ffprobe binary not found at: ' + ffprobePath);
   }
-  const ffprobeVersion = execFileSync(ffprobeStatic.path, ['-version']).toString().split('\n')[0];
+  const ffprobeVersion = execFileSync(ffprobePath, ['-version']).toString().split('\n')[0];
   console.log('✓ FFprobe binary ok:', ffprobeVersion);
 
   console.log('\n--- 2. Generating Test Media Files (MP4 & MKV with AC3 Audio) ---');
@@ -31,7 +30,7 @@ async function runTests() {
   const testMkv = path.join(tempDir, 'test_sample.mkv');
 
   // Generate 3-second test MP4 (H.264 + AAC)
-  execFileSync(ffmpegStatic, [
+  execFileSync(ffmpegPath, [
     '-y',
     '-f', 'lavfi', '-i', 'testsrc=duration=3:size=320x240:rate=30',
     '-f', 'lavfi', '-i', 'sine=frequency=440:duration=3',
@@ -42,7 +41,7 @@ async function runTests() {
   console.log('✓ Generated test MP4:', testMp4);
 
   // Generate 3-second test MKV with AC3 audio (tests universal transmuxing!)
-  execFileSync(ffmpegStatic, [
+  execFileSync(ffmpegPath, [
     '-y',
     '-f', 'lavfi', '-i', 'testsrc=duration=3:size=320x240:rate=30',
     '-f', 'lavfi', '-i', 'sine=frequency=880:duration=3',

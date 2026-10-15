@@ -1,11 +1,10 @@
 {
   "name": "KEIOL",
-  "version": "1.0.0",
-  "minSupportedVersion": "1.0.0",
-  "forceUpdate": false,
-  "forceUpdateMessage": "Pembaruan wajib diperlukan untuk memperbaiki masalah kritis pada versi sebelumnya.",
+  "version": "1.0.1",
+  "minSupportedVersion": "1.0.1",
+  "forceUpdate": true,
+  "forceUpdateMessage": "Pembaruan v1.0.1 wajib dipasang untuk memperbaiki mesin pemutar video dan pembuatan thumbnail.",
   "releaseDate": "2026-10-15",
-  "changelog": "- Rilis perdana KEIOL\n- Dukungan Windows System Tray dengan kontrol cepat di taskbar\n- Pengecekan pembaruan otomatis dan opsi lewati versi\n- Pemutar video modern universal codec dengan integrasi streaming anime",
+  "changelog": "- Memperbaiki error spawn ffmpeg.exe ENOENT pada versi terpasang di Windows\n- Menambahkan dukungan unpack binary engine FFmpeg & FFprobe dari file asar\n- Menambahkan error handling aman pada thumbnail dan subtitle extraction agar tidak crash\n- Peningkatan kestabilan pemutaran video universal",
   "downloadUrl": "https://github.com/Xeranov/KEIOL/releases/latest"
 }
-
