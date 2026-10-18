@@ -92,7 +92,7 @@ class DownloadManager {
   /**
    * Mulai mengunduh video anime
    */
-  async startDownload({ animeTitle, episodeTitle, downloadUrl, quality = '720p', mirrorHost = '', mirrors = [] }) {
+  async startDownload({ animeTitle, episodeTitle, downloadUrl, quality = '720p', mirrorHost = '', mirrors = [], posterUrl = '', synopsis = '', genres = '' }) {
     const id = `dl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
 
     // Urutkan mirror jika tersedia
@@ -111,6 +111,9 @@ class DownloadManager {
       episodeTitle: episodeTitle || 'Episode',
       quality,
       mirrorHost: initialHost || 'Otomatis',
+      posterUrl: posterUrl || '',
+      synopsis: synopsis || '',
+      genres: genres || '',
       percent: 0,
       speedText: '0 KB/s',
       status: 'resolving', // 'resolving' | 'downloading' | 'completed' | 'cancelled' | 'error'
@@ -402,6 +405,31 @@ class DownloadManager {
 
         if (!fs.existsSync(animeDir)) {
           fs.mkdirSync(animeDir, { recursive: true });
+        }
+
+        // Simpan cover poster dan info.json metadata jika belum ada
+        if (item.posterUrl) {
+          const posterTarget = path.join(animeDir, 'poster.jpg');
+          if (!fs.existsSync(posterTarget)) {
+            fetch(item.posterUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+              .then(r => r.arrayBuffer())
+              .then(buf => fs.writeFileSync(posterTarget, Buffer.from(buf)))
+              .catch(err => console.warn('[Download] Gagal mengunduh cover serial:', err.message));
+          }
+        }
+
+        const infoJsonPath = path.join(animeDir, 'info.json');
+        if (!fs.existsSync(infoJsonPath) && (item.synopsis || item.genres)) {
+          try {
+            const infoData = {
+              title: item.animeTitle,
+              synopsis: item.synopsis || '',
+              genres: item.genres || '',
+              poster: 'poster.jpg',
+              createdAt: Date.now()
+            };
+            fs.writeFileSync(infoJsonPath, JSON.stringify(infoData, null, 2), 'utf8');
+          } catch (e) {}
         }
 
         const cleanEpName = this.sanitizeFileName(item.episodeTitle);

@@ -130,7 +130,65 @@ if (step12.status !== 0) {
   process.exit(step12.status || 1);
 }
 
+console.log('\nSTEP 13: Testing Ani-Chin Integration & 10 User Fixes...');
+const step13 = spawnSync(process.execPath, [path.join(__dirname, 'test_anichin_and_fixes.js')], {
+  stdio: 'inherit'
+});
+if (step13.status !== 0) {
+  console.error('\n❌ Step 13 (Ani-Chin & User Fixes) failed with exit code:', step13.status);
+  process.exit(step13.status || 1);
+}
+
+console.log('\nSTEP 14: Testing 11 User Fixes & Redesign Features...');
+const step14 = spawnSync(process.execPath, [path.join(__dirname, 'test_11_fixes.js')], {
+  stdio: 'inherit'
+});
+if (step14.status !== 0) {
+  console.error('\n❌ Step 14 (11 Fixes & Features) failed with exit code:', step14.status);
+  process.exit(step14.status || 1);
+}
+
+console.log('\nSTEP 15: Testing New Tab Detail & UX Improvements...');
+const step15 = spawnSync(process.execPath, [path.join(__dirname, 'test_new_tab_and_improvements.js')], {
+  stdio: 'inherit'
+});
+if (step15.status !== 0) {
+  console.error('\n❌ Step 15 (New Tab & UX Improvements) failed with exit code:', step15.status);
+  process.exit(step15.status || 1);
+}
+
+console.log('\nSTEP 16: Testing AniSkip Black Clover Season 2 & Continuous Anime Offsets...');
+const step16 = spawnSync(process.execPath, [path.join(__dirname, 'test_verify_aniskip_fix.js')], {
+  stdio: 'inherit'
+});
+if (step16.status !== 0) {
+  console.error('\n❌ Step 16 (AniSkip Offsets) failed with exit code:', step16.status);
+  process.exit(step16.status || 1);
+}
+
+console.log('\nSTEP 17: Testing Otakudesu Older Anime Streaming & Iframe Embed Fallback...');
+const step17 = spawnSync(electronBin, [path.join(__dirname, 'test_verify_older_streaming.js')], {
+  env,
+  stdio: 'inherit'
+});
+if (step17.status !== 0) {
+  console.error('\n❌ Step 17 (Older Anime Streaming) failed with exit code:', step17.status);
+  process.exit(step17.status || 1);
+}
+
+console.log('\nSTEP 18: Testing App Startup Loading Screen & Instant Web Tab Preload...');
+const step18 = spawnSync(electronBin, [path.join(__dirname, 'test_verify_startup_and_web.js')], {
+  env,
+  stdio: 'inherit'
+});
+if (step18.status !== 0) {
+  console.error('\n❌ Step 18 (Startup Loading & Web Preload) failed with exit code:', step18.status);
+  process.exit(step18.status || 1);
+}
+
 console.log('\n==================================================');
-console.log('🎉 ALL 12 TEST SUITES PASSED: READY FOR PRODUCTION USE!');
+console.log('🎉 ALL 18 TEST SUITES PASSED: READY FOR PRODUCTION USE!');
 console.log('==================================================');
+
+
 

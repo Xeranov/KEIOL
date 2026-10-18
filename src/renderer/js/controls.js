@@ -74,7 +74,7 @@ class ControlsManager {
     this.seekOptionsList = document.getElementById('seekOptionsList');
 
     // Seek interval configuration (default 10s, options: 5, 10, 15, 20, 25, 30s)
-    this.seekInterval = parseInt(localStorage.getItem('xplayer_seek_interval'), 10) || 10;
+    this.seekInterval = parseInt(localStorage.getItem('keiol_pref_seek') || localStorage.getItem('xplayer_seek_interval'), 10) || 10;
 
     this.btnSettingsAudio = document.getElementById('btnSettingsAudio');
     this.settingsCurrentAudioText = document.getElementById('settingsCurrentAudioText');
@@ -594,7 +594,8 @@ class ControlsManager {
 
   setSeekInterval(sec) {
     this.seekInterval = sec;
-    localStorage.setItem('xplayer_seek_interval', sec);
+    localStorage.setItem('xplayer_seek_interval', sec.toString());
+    localStorage.setItem('keiol_pref_seek', sec.toString());
     this.updateSeekUI(sec);
   }
 
@@ -772,6 +773,8 @@ class ControlsManager {
 
     window.addEventListener('player:medialoaded', () => {
       this.hasAutoSkippedCurrentMedia = false;
+      this.hasAutoSkippedOP = false;
+      this.hasAutoSkippedED = false;
       if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
     });
   }
@@ -791,25 +794,90 @@ class ControlsManager {
 
   triggerSkipIntro() {
     const intervals = this.player.getSkipIntervals();
-    if (intervals && intervals.op && intervals.op.endTime) {
-      this.player.seek(intervals.op.endTime);
-    } else {
-      this.player.seekRelative(85);
+    const duration = this.player.getDuration() || (this.player.video ? this.player.video.duration : 0);
+    const currentTime = this.player.getCurrentTime() || 0;
+
+    // 1. Sedang berada di dalam atau tepat sebelum rentang Opening (OP)
+    if (intervals?.op && currentTime < intervals.op.endTime) {
+      let target = intervals.op.endTime;
+      if (duration > 10) target = Math.min(target, duration - 2);
+      this.player.seek(target);
+      this.showToast('Intro anime dilewati');
+      if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
+      return;
     }
-    if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
-    this.showToast('Intro anime dilewati');
+
+    // 2. Sedang berada di dalam atau tepat sebelum rentang Ending (ED)
+    if (intervals?.ed && currentTime >= (intervals.ed.startTime - 15) && currentTime < intervals.ed.endTime) {
+      let target = intervals.ed.endTime;
+      if (duration > 10) target = Math.min(target, duration - 2);
+      this.player.seek(target);
+      this.showToast('Ending anime dilewati');
+      if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
+      return;
+    }
+
+    // 3. Intro telah selesai, dan pengguna sedang menonton badan episode
+    if (intervals?.op && currentTime >= intervals.op.endTime && (!intervals.ed || currentTime < intervals.ed.startTime)) {
+      this.showToast('Intro sudah terlewati');
+      return;
+    }
+
+    // 4. Fallback jika tidak ada skip intervals di AniSkip (hanya pada awal video < 3 menit)
+    if (!intervals?.op && !intervals?.ed && currentTime < 180) {
+      let target = currentTime + 85;
+      if (duration > 10) target = Math.min(target, duration - 2);
+      this.player.seek(target);
+      this.showToast('Intro anime dilewati (+85s)');
+      if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
+      return;
+    }
+
+    this.showToast('Tidak ada intro pada posisi ini');
   }
 
   handleTimeUpdateForSkip(currentTime) {
     const intervals = this.player.getSkipIntervals();
+    const duration = this.player.getDuration() || (this.player.video ? this.player.video.duration : 0);
 
-    if (intervals && intervals.op) {
+    // Reset auto-skip flags jika pengguna memutar mundur sebelum rentang intro/ending
+    if (intervals?.op && currentTime < (intervals.op.startTime - 2)) {
+      this.hasAutoSkippedOP = false;
+    }
+    if (intervals?.ed && currentTime < (intervals.ed.startTime - 2)) {
+      this.hasAutoSkippedED = false;
+    }
+
+    // 1. Cek rentang Opening (OP)
+    if (intervals?.op) {
       const { startTime, endTime } = intervals.op;
       if (currentTime >= startTime && currentTime < endTime) {
-        if (this.isAutoSkipIntro && !this.hasAutoSkippedCurrentMedia) {
-          this.hasAutoSkippedCurrentMedia = true;
-          this.player.seek(endTime);
+        if (this.txtSkipIntroLabel) this.txtSkipIntroLabel.textContent = 'Lewati Intro';
+        if (this.isAutoSkipIntro && !this.hasAutoSkippedOP) {
+          this.hasAutoSkippedOP = true;
+          let target = endTime;
+          if (duration > 10) target = Math.min(target, duration - 2);
+          this.player.seek(target);
           this.showToast('Intro anime dilewati (Auto-Skip)');
+          if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
+        } else {
+          if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.remove('hidden');
+        }
+        return;
+      }
+    }
+
+    // 2. Cek rentang Ending (ED)
+    if (intervals?.ed) {
+      const { startTime, endTime } = intervals.ed;
+      if (currentTime >= startTime && currentTime < endTime) {
+        if (this.txtSkipIntroLabel) this.txtSkipIntroLabel.textContent = 'Lewati Ending';
+        if (this.isAutoSkipIntro && !this.hasAutoSkippedED) {
+          this.hasAutoSkippedED = true;
+          let target = endTime;
+          if (duration > 10) target = Math.min(target, duration - 2);
+          this.player.seek(target);
+          this.showToast('Ending anime dilewati (Auto-Skip)');
           if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
         } else {
           if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.remove('hidden');

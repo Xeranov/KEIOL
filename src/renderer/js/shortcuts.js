@@ -83,7 +83,7 @@ class ShortcutsEngine {
         return;
       }
 
-      // Escape key closes modals, settings menu, stats panel
+      // Escape key closes modals, settings menu, stats panel, or exits fullscreen
       if (e.key === 'Escape') {
         if (!this.shortcutsModal.classList.contains('hidden')) {
           this.closeShortcutsModal();
@@ -99,6 +99,13 @@ class ShortcutsEngine {
           this.controls.statsPanel.classList.add('hidden');
           e.preventDefault();
           return;
+        }
+        if (window.electronAPI && typeof window.electronAPI.isFullScreen === 'function') {
+          window.electronAPI.isFullScreen().then(isFull => {
+            if (isFull && this.controls && typeof this.controls.toggleFullscreen === 'function') {
+              this.controls.toggleFullscreen();
+            }
+          }).catch(() => {});
         }
       }
 

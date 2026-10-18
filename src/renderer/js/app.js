@@ -4,6 +4,9 @@
  * loading and error transitions, titlebar information, and anime library.
  */
 document.addEventListener('DOMContentLoaded', async () => {
+  const startupLoadingEl = document.getElementById('appStartupLoading');
+  const startupLoadingText = document.getElementById('startupLoadingText');
+
   const player = window.playerCore;
   await player.init();
 
@@ -13,6 +16,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (typeof window.initOtakudesu === 'function') {
     window.initOtakudesu(player, window.libraryManager);
+  }
+
+  // Preload web catalog saat startup loading screen aktif
+  if (startupLoadingEl) {
+    const dismissStartupLoading = () => {
+      startupLoadingEl.classList.add('fade-out');
+      setTimeout(() => {
+        startupLoadingEl.classList.add('hidden');
+      }, 450);
+    };
+
+    // Jalankan preloading dengan batas waktu aman (maks 3.5s) agar app tidak terhambat jika internet offline
+    const preloadPromise = (async () => {
+      if (window.otakudesuManager && typeof window.otakudesuManager.preloadWebCatalog === 'function') {
+        await window.otakudesuManager.preloadWebCatalog((msg) => {
+          if (startupLoadingText) startupLoadingText.textContent = msg;
+        });
+      }
+    })();
+
+    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 3500));
+    await Promise.race([preloadPromise, timeoutPromise]);
+    dismissStartupLoading();
   }
 
   const emptyState = document.getElementById('emptyState');
@@ -96,7 +122,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  btnOpenFileTop.addEventListener('click', promptOpenFile);
+  if (btnOpenFileTop) {
+    btnOpenFileTop.addEventListener('click', promptOpenFile);
+  }
   btnEmptyBrowse.addEventListener('click', promptOpenFile);
   if (btnErrorBackHome) {
     btnErrorBackHome.addEventListener('click', () => {
@@ -219,13 +247,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnFallbackKusonime = document.getElementById('btnFallbackKusonime');
     if (player.remoteStreamUrl && !player.currentFilePath) {
       btnRetryTranscode.classList.add('hidden');
-      if (btnFallbackKusonime && library && library.currentOnlineAnime) {
+      if (btnFallbackKusonime && window.libraryManager && window.libraryManager.currentOnlineAnime) {
         btnFallbackKusonime.classList.remove('hidden');
         btnFallbackKusonime.onclick = () => {
           errorState.classList.add('hidden');
-          library.switchNavTab('web');
-          if (otakudesuManager) {
-            otakudesuManager.executeSearch(library.currentOnlineAnime.animeTitle, 'kusonime');
+          window.libraryManager.switchNavTab('web');
+          if (window.otakudesuManager) {
+            window.otakudesuManager.executeSearch(window.libraryManager.currentOnlineAnime.animeTitle, 'kusonime');
           }
         };
       }
@@ -242,8 +270,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const toggleCloseToTray = document.getElementById('toggleCloseToTray');
   const btnCheckUpdateManual = document.getElementById('btnCheckUpdateManual');
   const settingsUpdateFeedback = document.getElementById('settingsUpdateFeedback');
+  const lblSettingsAppVersion = document.getElementById('lblSettingsAppVersion');
 
   if (window.electronAPI) {
+    // Dynamic App Version Display
+    if (lblSettingsAppVersion && window.electronAPI.getAppVersion) {
+      window.electronAPI.getAppVersion().then(ver => {
+        if (ver) lblSettingsAppVersion.textContent = `KEIOL v${ver}`;
+      }).catch(err => console.warn('Gagal memuat app version:', err));
+    }
+
     // Sync close to tray setting
     if (toggleCloseToTray && window.electronAPI.getCloseToTray) {
       try {

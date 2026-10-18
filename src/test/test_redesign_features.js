@@ -51,6 +51,21 @@ async function runRedesignTests() {
   ipcMain.handle('download:start', () => ({ downloadId: 'dl_test', status: 'started' }));
   ipcMain.handle('download:cancel', () => true);
   ipcMain.handle('download:getActive', () => []);
+  ipcMain.handle('app:getVersion', () => '1.1.1');
+  ipcMain.handle('settings:get-close-to-tray', () => false);
+  ipcMain.handle('settings:set-close-to-tray', () => true);
+  ipcMain.handle('archive:isArchive', () => false);
+  ipcMain.handle('archive:extract', () => true);
+  ipcMain.handle('anichin:getOngoing', () => ({ data: [], totalPages: 1 }));
+  ipcMain.handle('anichin:getSchedule', () => ({}));
+  ipcMain.handle('anichin:getAnimeList', () => []);
+  ipcMain.handle('anichin:getDetail', () => null);
+  ipcMain.handle('anichin:getEpisodeStream', () => null);
+  ipcMain.handle('anichin:search', () => []);
+  ipcMain.handle('aniskip:getSkipTimes', async () => ({ found: false }));
+  ipcMain.handle('aniskip:validateSkipIntervals', () => null);
+  ipcMain.handle('aniskip:extractEpisodeNumber', () => 1);
+  ipcMain.handle('otakudesu:resolveStreamUrl', () => null);
 
   mainWindow = new BrowserWindow({
     width: 1200,

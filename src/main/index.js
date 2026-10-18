@@ -5,6 +5,7 @@ const { probeMedia } = require('./probeService');
 const libraryService = require('./libraryService');
 const otakudesuService = require('./otakudesuService');
 const kusonimeService = require('./kusonimeService');
+const anichinService = require('./anichinService');
 const downloadManager = require('./downloadManager');
 const extractorService = require('./extractorService');
 const aniSkipService = require('./aniSkipService');
@@ -17,21 +18,50 @@ async function createWindow() {
   // Start local streaming server
   await mediaServer.start();
 
-  // Set up request headers for media streaming CDNs (e.g. yourUpload, VidHide, etc.)
+  // Set up request headers for media streaming CDNs (e.g. yourUpload, VidHide, OK.ru, Ani-Chin, etc.)
   session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const url = details.url.toLowerCase();
     const requestHeaders = { ...details.requestHeaders };
     if (url.includes('vidcache.net') || url.includes('yourupload.com')) {
       requestHeaders['Referer'] = 'https://www.yourupload.com/';
       requestHeaders['Origin'] = 'https://www.yourupload.com';
-    } else if (url.includes('dramiyos-cdn') || url.includes('acek-cdn') || url.includes('vidhide')) {
+    } else if (url.includes('dramiyos-cdn') || url.includes('acek-cdn') || url.includes('vidhide') || url.includes('morencius.com')) {
       requestHeaders['Referer'] = 'https://odvidhide.com/';
-    } else if (url.includes('desustream') || url.includes('desudrive')) {
-      requestHeaders['Referer'] = 'https://desustream.com/';
-    } else if (url.includes('blogger.com') || url.includes('googleusercontent.com') || url.includes('googlevideo.com') || url.includes('blogspot.com')) {
+    } else if (url.includes('desustream') || url.includes('desudrive') || url.includes('playdesu') || url.includes('desuwatch') || url.includes('odesu') || url.includes('moeplay') || url.includes('desudesu')) {
+      requestHeaders['Referer'] = 'https://otakudesu.blog/';
+    } else if (url.includes('googlevideo.com') || url.includes('videoplayback')) {
+      // Google Video CDN: MUST NOT have blogger / foreign referer, and must use standard Chrome User-Agent to prevent 403 Forbidden
+      delete requestHeaders['Referer'];
+      delete requestHeaders['referer'];
+      delete requestHeaders['Origin'];
+      delete requestHeaders['origin'];
+      delete requestHeaders['User-Agent'];
+      delete requestHeaders['user-agent'];
+      requestHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    } else if (url.includes('blogger.com') || url.includes('googleusercontent.com') || url.includes('blogspot.com')) {
       requestHeaders['Referer'] = 'https://odgoingthree.blogspot.com/';
+      delete requestHeaders['User-Agent'];
+      delete requestHeaders['user-agent'];
+      requestHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    } else if (url.includes('ok.ru') || url.includes('vkuser.net')) {
+      requestHeaders['Referer'] = 'https://ok.ru/';
+      requestHeaders['Origin'] = 'https://ok.ru';
+    } else if (url.includes('ani-chin.id')) {
+      requestHeaders['Referer'] = 'https://ani-chin.id/';
     }
     callback({ cancel: false, requestHeaders });
+  });
+
+  // Izinkan iframe embed streaming untuk anime lawas (hilangkan proteksi frame-ancestors & x-frame-options)
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const responseHeaders = { ...details.responseHeaders };
+    for (const key of Object.keys(responseHeaders)) {
+      if (/^(x-frame-options|content-security-policy|content-security-policy-report-only)$/i.test(key)) {
+        delete responseHeaders[key];
+      }
+    }
+    responseHeaders['Access-Control-Allow-Origin'] = ['*'];
+    callback({ cancel: false, responseHeaders });
   });
 
   const appIcon = process.platform === 'win32'
@@ -52,7 +82,8 @@ async function createWindow() {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      webSecurity: false
     }
   });
 
@@ -218,7 +249,7 @@ ipcMain.handle('library:setDownloadPath', (_event, newPath) => {
 ipcMain.handle('library:chooseDownloadFolder', async () => {
   if (!mainWindow) return null;
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Pilih Folder Download Anime',
+    title: 'Pilih Folder Unduhan Web',
     properties: ['openDirectory', 'createDirectory']
   });
   if (!result.canceled && result.filePaths.length > 0) {
@@ -245,6 +276,26 @@ ipcMain.handle('library:openDownloadFolder', async () => {
 // IPC Handler: Scan khusus folder unduhan (terpisah dari library Beranda)
 ipcMain.handle('library:scanDownloads', () => {
   return libraryService.scanDownloads();
+});
+
+// IPC Handler: Hapus satu serial anime dari disk
+ipcMain.handle('library:deleteSeries', async (_event, seriesPath) => {
+  return libraryService.deleteSeries(seriesPath);
+});
+
+// IPC Handler: Hapus semua file di folder unduhan
+ipcMain.handle('library:deleteAllDownloads', async () => {
+  return libraryService.deleteAllDownloads();
+});
+
+// IPC Handler: Hapus cache & reset preferensi
+ipcMain.handle('app:clearCacheSettings', async () => {
+  return libraryService.clearCacheAndSettings();
+});
+
+// IPC Handler: Factory Reset total
+ipcMain.handle('app:factoryReset', async () => {
+  return libraryService.factoryReset();
 });
 
 // IPC Handlers: Batch Archive Extractor
@@ -308,6 +359,10 @@ ipcMain.handle('otakudesu:getEpisodeStream', async (_event, urlOrSlug) => {
   return await otakudesuService.getEpisodeStream(urlOrSlug);
 });
 
+ipcMain.handle('otakudesu:resolveStreamUrl', async (_event, embedUrl) => {
+  return await otakudesuService.resolveStreamUrl(embedUrl);
+});
+
 ipcMain.handle('otakudesu:getBatchDetails', async (_event, urlOrSlug) => {
   return await otakudesuService.getBatchDetails(urlOrSlug);
 });
@@ -325,9 +380,51 @@ ipcMain.handle('kusonime:getAnimeList', async () => {
   return await kusonimeService.getAnimeList();
 });
 
-// IPC Handler: AniSkip Precise Skip Times
+// IPC Handlers: Ani-Chin Integration (Donghua Streaming & Downloads)
+ipcMain.handle('anichin:getOngoing', async (_event, page) => {
+  return await anichinService.getOngoing(page);
+});
+
+ipcMain.handle('anichin:getSchedule', async () => {
+  return await anichinService.getSchedule();
+});
+
+ipcMain.handle('anichin:getAnimeList', async () => {
+  return await anichinService.getAnimeList();
+});
+
+ipcMain.handle('anichin:getDetail', async (_event, urlOrSlug) => {
+  return await anichinService.getDetail(urlOrSlug);
+});
+
+ipcMain.handle('anichin:getAnimeDetail', async (_event, urlOrSlug) => {
+  return await anichinService.getDetail(urlOrSlug);
+});
+
+ipcMain.handle('anichin:getEpisodeStream', async (_event, urlOrSlug) => {
+  return await anichinService.getEpisodeStream(urlOrSlug);
+});
+
+ipcMain.handle('anichin:search', async (_event, query) => {
+  return await anichinService.search(query);
+});
+
+// IPC Handler: Application Version
+ipcMain.handle('app:getVersion', () => {
+  return app.getVersion();
+});
+
+// IPC Handler: AniSkip Precise Skip Times & Redundant Validation
 ipcMain.handle('aniskip:getSkipTimes', async (_event, animeTitle, episodeNum) => {
   return await aniSkipService.getSkipTimes(animeTitle, episodeNum);
+});
+
+ipcMain.handle('aniskip:validateSkipIntervals', (_event, intervals, videoDuration) => {
+  return aniSkipService.validateSkipIntervals(intervals, videoDuration);
+});
+
+ipcMain.handle('aniskip:extractEpisodeNumber', (_event, rawString, animeTitle) => {
+  return aniSkipService.extractEpisodeNumber(rawString, animeTitle);
 });
 
 // IPC Handlers: Background Download Manager

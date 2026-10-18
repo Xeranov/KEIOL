@@ -9,6 +9,27 @@
   <link rel="stylesheet" href="styles/gallery.css">
 </head>
 <body class="theme-dark">
+  <!-- Application Startup Preloading Screen -->
+  <div id="appStartupLoading" class="app-startup-loading" aria-live="polite">
+    <div class="startup-loading-box">
+      <div class="startup-brand">
+        <svg class="startup-logo-svg" viewBox="0 0 28 28" width="52" height="52">
+          <rect width="28" height="28" rx="6" fill="#0F0F14"/>
+          <rect width="28" height="28" rx="6" fill="none" stroke="#E50914" stroke-width="1.5"/>
+          <rect x="7" y="6" width="3.5" height="16" rx="1.5" fill="#FFFFFF"/>
+          <polygon points="13,8 22,14 13,20" fill="#E50914"/>
+          <polygon points="12,14 21,22 18,22 10,15" fill="#FFFFFF"/>
+        </svg>
+        <span class="startup-brand-title">KEIOL</span>
+      </div>
+      <div class="startup-progress-bar">
+        <div class="startup-progress-indeterminate"></div>
+      </div>
+      <div class="startup-status-text" id="startupLoadingText">Memuat server &amp; katalog anime...</div>
+      <div class="startup-status-sub">Memuat awal agar navigasi Web instan</div>
+    </div>
+  </div>
+
   <div id="appContainer" class="app-container">
 
     <!-- Custom Semi-Transparent Titlebar -->
@@ -41,12 +62,6 @@
       </div>
 
       <div class="titlebar-actions">
-        <button id="btnOpenFileTop" class="btn-action" title="Buka File Tunggal (Ctrl+O)" aria-label="Buka File Video">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/>
-          </svg>
-          <span>File</span>
-        </button>
         <button id="btnOpenSubTop" class="btn-action" title="Muat Subtitle (.srt, .vtt, .ass)" aria-label="Muat Subtitle">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M19 4H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/>
@@ -200,16 +215,6 @@
               <span id="downloadedBadge" class="badge-count hidden">0</span>
             </button>
           </div>
-
-          <!-- Quick Download Folder Setting Pill -->
-          <div class="web-subnav-actions">
-            <button id="btnDownloadFolderSetting" class="btn-subnav-action" title="Ubah Lokasi Folder Download" aria-label="Folder Download">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
-                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
-              </svg>
-              <span id="downloadFolderLabel">Folder Download</span>
-            </button>
-          </div>
         </div>
 
         <!-- Web Content Body -->
@@ -222,14 +227,14 @@
             <div class="billboard-content">
               <div class="billboard-badge">
                 <span>🔥</span>
-                <span id="webBillboardTag">Sedang Hangat di Otakudesu</span>
+                <span id="webBillboardTag">Sedang Hangat</span>
               </div>
               <h1 id="webBillboardTitle" class="billboard-title">Judul Anime</h1>
               <p id="webBillboardDesc" class="billboard-desc">Sinopsis singkat...</p>
               <div class="billboard-actions">
                 <button id="btnWebBillboardStream" class="btn-netflix-play">
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                  <span>Streaming Sekarang</span>
+                  <span>Play</span>
                 </button>
                 <button id="btnWebBillboardDetail" class="btn-netflix-info">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
@@ -244,10 +249,12 @@
             <!-- Will be populated dynamically by otakudesu.js -->
             <div class="web-loading-spinner" id="webLoadingSpinner">
               <div class="yt-spinner"></div>
-              <span>Memuat anime dari Otakudesu...</span>
+              <span>Memuat konten...</span>
             </div>
           </div>
 
+          <!-- Full-Page Series Detail Tab Container (Idlix-style) -->
+          <div id="webDetailContainer" class="web-detail-container hidden"></div>
         </div>
 
       </div>
@@ -271,6 +278,12 @@
                 <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
               </svg>
               <span>Ganti Lokasi</span>
+            </button>
+            <button id="btnDedicatedDeleteAll" class="btn-netflix-action btn-danger-action" title="Hapus Semua Video Hasil Unduhan">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+              </svg>
+              <span>Hapus Semua</span>
             </button>
           </div>
         </div>
@@ -326,8 +339,8 @@
                   </svg>
                 </div>
                 <div>
-                  <h3 class="settings-card-title">Folder Unduhan Anime (Otakudesu)</h3>
-                  <p class="settings-card-desc">Lokasi penyimpanan khusus untuk episode dan batch anime yang diunduh dari web.</p>
+                  <h3 class="settings-card-title">Folder Unduhan Web</h3>
+                  <p class="settings-card-desc">Lokasi penyimpanan khusus untuk episode anime & donghua yang diunduh dari web.</p>
                 </div>
               </div>
               <div class="settings-card-body">
@@ -455,6 +468,37 @@
               </div>
             </div>
 
+            <!-- Card 7: Maintenance & Reset Data -->
+            <div class="settings-card full-width">
+              <div class="settings-card-header">
+                <div class="settings-card-icon">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="#e50914">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="settings-card-title">Pemeliharaan & Reset Data</h3>
+                  <p class="settings-card-desc">Bersihkan riwayat dan preferensi lokal atau lakukan reset pabrik untuk menghapus seluruh file unduhan dan setelan aplikasi.</p>
+                </div>
+              </div>
+              <div class="settings-card-body">
+                <div class="settings-card-actions">
+                  <button id="btnClearCacheSettings" class="btn-secondary btn-warning-action">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                    <span>Clear Cache & Settings</span>
+                  </button>
+                  <button id="btnFactoryReset" class="btn-secondary btn-danger-action">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    </svg>
+                    <span>Factory Reset</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -467,6 +511,7 @@
       <!-- Video Element -->
       <div class="video-wrapper" id="videoWrapper">
         <video id="mainVideo" playsinline preload="auto"></video>
+        <iframe id="iframePlayer" class="iframe-player hidden" allowfullscreen allow="autoplay; encrypted-media"></iframe>
         
         <!-- Floating Lock / Unlock Overlay (Clean transparent padlock icon) -->
         <div id="floatingLockBadge" class="floating-lock-badge hidden">
@@ -587,7 +632,7 @@
             <div id="errorCodeBadge" class="error-code-badge hidden"></div>
             <div class="error-actions">
               <button id="btnRetryTranscode" class="btn-primary">Coba Transcode Ulang</button>
-              <button id="btnFallbackKusonime" class="btn-secondary hidden" style="background:#f59e0b;color:#000;font-weight:600;">📦 Cari Versi Batch di Kusonime</button>
+              <button id="btnFallbackKusonime" class="btn-secondary hidden" style="background:#f59e0b;color:#000;font-weight:600;">📦 Cari Versi Download Batch Lengkap</button>
               <button id="btnErrorBackHome" class="btn-secondary">Kembali ke Beranda</button>
             </div>
           </div>
@@ -775,6 +820,8 @@
               <span id="episodesCountBadge" class="episodes-count-badge">0 Episode</span>
               <span id="episodesWatchedStatus" class="episodes-status-text">Tersedia</span>
             </div>
+            <div class="otakudesu-genres-wrap hidden" id="episodesGenresWrap"></div>
+            <p id="episodesSynopsis" class="otakudesu-synopsis hidden" style="margin-top: 8px; margin-bottom: 12px; max-width: 650px; color: #b3b3b3; font-size: 13px; line-height: 1.5;"></p>
             <div class="episodes-hero-actions">
               <button id="btnPlayAllEpisodes" class="btn-netflix-play">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -825,11 +872,21 @@
             <div class="otakudesu-modal-actions" id="otakudesuModalActions">
               <button id="btnOtakudesuStreamFirst" class="btn-netflix-play">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                <span id="txtOtakudesuStreamFirst">Putar Episode 1</span>
+                <span id="txtOtakudesuStreamFirst">Play</span>
+              </button>
+              <button id="btnOtakudesuDownloadAll" class="btn-netflix-info">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                <span>Download All Eps</span>
               </button>
               <button id="btnOtakudesuBatch" class="btn-netflix-info hidden">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
                 <span>Download Batch (Semua)</span>
+              </button>
+              <button id="btnOtakudesuDeleteAnime" class="btn-netflix-action btn-danger-action hidden" title="Hapus Anime Ini dari Komputer">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+                <span>Hapus Anime Ini</span>
               </button>
             </div>
           </div>
@@ -839,7 +896,7 @@
         <div class="episodes-section">
           <div class="episodes-section-header">
             <h3 class="episodes-section-title">Daftar Episode</h3>
-            <span class="episodes-section-subtitle">Streaming langsung di player VidPlayer, atau Download ke folder</span>
+            <span class="episodes-section-subtitle">Pilih episode untuk ditonton atau diunduh</span>
           </div>
           <div class="otakudesu-episodes-grid" id="otakudesuEpisodesGrid"></div>
         </div>
@@ -856,6 +913,21 @@
         </div>
         <p id="resolutionModalDesc" class="resolution-desc">Pilih resolusi dan provider untuk mengunduh episode ini:</p>
         <div class="resolution-options-list" id="resolutionOptionsList"></div>
+      </div>
+    </div>
+
+    <!-- Global Action Confirmation Modal (for Delete and Reset) -->
+    <div id="confirmationModal" class="resolution-modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+      <div class="resolution-card confirm-dialog-card">
+        <div class="resolution-header">
+          <h4 id="confirmModalTitle">Konfirmasi Tindakan</h4>
+          <button id="btnCancelConfirmX" class="btn-close-modal">&times;</button>
+        </div>
+        <p id="confirmModalMessage" class="confirm-modal-desc">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+        <div class="confirm-dialog-actions">
+          <button id="btnConfirmCancel" class="btn-secondary">Batal</button>
+          <button id="btnConfirmProceed" class="btn-danger-confirm">Ya, Hapus</button>
+        </div>
       </div>
     </div>
 

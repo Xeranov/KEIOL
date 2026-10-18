@@ -320,10 +320,21 @@ class LibraryService {
 
       if (episodes.length > 0) {
         const seriesHist = (this.history.seriesList && this.history.seriesList[folderPath]) || null;
+        let metadata = null;
+        const infoPath = path.join(folderPath, 'info.json');
+        if (fs.existsSync(infoPath)) {
+          try {
+            metadata = JSON.parse(fs.readFileSync(infoPath, 'utf8'));
+          } catch (e) {}
+        }
+
         seriesList.push({
-          title: folder.name,
+          title: (metadata && metadata.title) || folder.name,
+          rawFolder: folder.name,
           path: folderPath,
           posterPath: posterPath ? posterPath.replace(/\\/g, '/') : (episodes[0] ? episodes[0].path.replace(/\\/g, '/') : null),
+          synopsis: metadata ? metadata.synopsis : '',
+          genres: metadata ? metadata.genres : '',
           episodesCount: episodes.length,
           episodes,
           lastWatched: seriesHist || null
@@ -375,6 +386,83 @@ class LibraryService {
       console.warn(`Error reading dir ${dir}:`, err.message);
     }
   }
+
+  /**
+   * Menghapus folder serial anime tertentu beserta isinya dari disk
+   */
+  deleteSeries(seriesPath) {
+    if (!seriesPath || !fs.existsSync(seriesPath)) {
+      throw new Error('Folder anime tidak ditemukan.');
+    }
+    // Keamanan: pastikan folder berada dalam libraryPath atau downloadPath
+    const resolved = path.resolve(seriesPath);
+    const dlPath = path.resolve(this.getDownloadPath());
+    const libPath = path.resolve(this.getLibraryPath());
+
+    if (!resolved.startsWith(dlPath) && !resolved.startsWith(libPath)) {
+      throw new Error('Akses ditolak: Folder berada di luar direktori aplikasi.');
+    }
+
+    fs.rmSync(resolved, { recursive: true, force: true });
+
+    // Hapus juga dari riwayat tontonan jika ada
+    if (this.history.seriesList && this.history.seriesList[seriesPath]) {
+      delete this.history.seriesList[seriesPath];
+    }
+    try {
+      fs.writeFileSync(this.historyFile, JSON.stringify(this.history, null, 2));
+    } catch (e) {}
+
+    return true;
+  }
+
+  /**
+   * Menghapus seluruh file dan subfolder yang ada di dalam folder unduhan
+   */
+  deleteAllDownloads() {
+    const dlDir = this.getDownloadPath();
+    if (!dlDir || !fs.existsSync(dlDir)) return true;
+
+    const items = fs.readdirSync(dlDir);
+    for (const item of items) {
+      const fullPath = path.join(dlDir, item);
+      try {
+        fs.rmSync(fullPath, { recursive: true, force: true });
+      } catch (err) {
+        console.warn(`Gagal menghapus ${fullPath}:`, err.message);
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Menghapus cache tontonan dan konfigurasi lokal
+   */
+  clearCacheAndSettings() {
+    this.history = { seriesList: {}, episodes: {}, onlineHistory: {} };
+    try {
+      if (fs.existsSync(this.historyFile)) {
+        fs.writeFileSync(this.historyFile, JSON.stringify(this.history, null, 2));
+      }
+    } catch (e) {}
+    return true;
+  }
+
+  /**
+   * Factory Reset: Hapus semua file unduhan, riwayat tontonan, dan konfigurasi aplikasi
+   */
+  factoryReset() {
+    this.deleteAllDownloads();
+    this.clearCacheAndSettings();
+    try {
+      if (fs.existsSync(this.configFile)) {
+        fs.unlinkSync(this.configFile);
+      }
+    } catch (e) {}
+    return true;
+  }
 }
 
 module.exports = new LibraryService();
+

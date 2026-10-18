@@ -21,15 +21,19 @@ class OtakudesuManager {
     // Data Cache
     this.cache = {
       ongoing: null,
+      anichinOngoing: null,
       schedule: null,
+      anichinSchedule: null,
       genres: null,
       genreAnime: {},
       animeList: null,
+      anichinAnimeList: null,
       search: {}
     };
 
-    this.searchSourceFilter = 'all'; // 'all' | 'otakudesu' | 'kusonime'
-    this.lastSearchResults = { otakudesu: [], kusonime: [], query: '' };
+    this.searchSourceFilter = 'all'; // 'all' | 'otakudesu' | 'kusonime' | 'anichin'
+    this.lastSearchResults = { otakudesu: [], kusonime: [], anichin: [], query: '' };
+    this.animeListTypeFilter = 'all'; // 'all' | 'anime' | 'donghua'
 
     this.selectedAnime = null;
     this.activeDownloads = new Map();
@@ -37,6 +41,7 @@ class OtakudesuManager {
     // Elements
     this.webSection = document.getElementById('webSection');
     this.webDynamicContainer = document.getElementById('webDynamicContainer');
+    this.webDetailContainer = document.getElementById('webDetailContainer');
     this.webBillboard = document.getElementById('webBillboard');
     this.webBillboardBackdrop = document.getElementById('webBillboardBackdrop');
     this.webBillboardTitle = document.getElementById('webBillboardTitle');
@@ -44,7 +49,19 @@ class OtakudesuManager {
     this.btnWebBillboardStream = document.getElementById('btnWebBillboardStream');
     this.btnWebBillboardDetail = document.getElementById('btnWebBillboardDetail');
 
-    // Sub-nav pills
+    // Sub-nav pills & tab management
+    this.webSubnavBar = document.querySelector('.web-subnav-bar');
+    this.webSubnavPills = document.querySelector('.web-subnav-pills');
+    this.netflixTabs = document.querySelector('.netflix-tabs');
+    this.tabHome = document.getElementById('tabHome');
+    this.tabWeb = document.getElementById('tabWeb');
+    this.tabDownloads = document.getElementById('tabDownloads');
+    this.tabSettings = document.getElementById('tabSettings');
+    this.openDetailTabs = {};
+    this.activeDetailTabSlug = null;
+    this.previousCatalogSubTab = 'ongoing';
+    this.catalogScrollTop = 0;
+
     this.pillOngoing = document.getElementById('pillOngoing');
     this.pillSchedule = document.getElementById('pillSchedule');
     this.pillGenres = document.getElementById('pillGenres');
@@ -72,6 +89,8 @@ class OtakudesuManager {
     this.otakudesuSynopsis = document.getElementById('otakudesuSynopsis');
     this.btnOtakudesuStreamFirst = document.getElementById('btnOtakudesuStreamFirst');
     this.txtOtakudesuStreamFirst = document.getElementById('txtOtakudesuStreamFirst');
+    this.btnOtakudesuDownloadAll = document.getElementById('btnOtakudesuDownloadAll');
+    this.btnOtakudesuDeleteAnime = document.getElementById('btnOtakudesuDeleteAnime');
     this.btnOtakudesuBatch = document.getElementById('btnOtakudesuBatch');
     this.otakudesuEpisodesGrid = document.getElementById('otakudesuEpisodesGrid');
 
@@ -129,8 +148,46 @@ class OtakudesuManager {
       });
     }
 
-    // Load ongoing view initially
-    await this.loadOngoing();
+    // Jika tidak ada startup loading screen, muat ongoing view langsung
+    const startupEl = document.getElementById('appStartupLoading');
+    if (!startupEl) {
+      await this.loadOngoing();
+    }
+  }
+
+  /**
+   * Preload katalog web (anime & donghua ongoing) saat startup loading screen aplikasi.
+   * Merender webDynamicContainer dan billboard di latar belakang sehingga saat user
+   * membuka tab Web, konten sudah langsung siap saji tanpa loading lagi (kecuali klik refresh).
+   */
+  async preloadWebCatalog(onProgress) {
+    try {
+      if (typeof onProgress === 'function') onProgress('Memuat server anime & donghua...');
+      const promises = [];
+      if (!this.cache.ongoing && window.electronAPI && typeof window.electronAPI.otakudesuGetOngoing === 'function') {
+        promises.push(
+          window.electronAPI.otakudesuGetOngoing(1)
+            .then(res => { this.cache.ongoing = res; })
+            .catch(err => console.warn('Otakudesu preload error:', err))
+        );
+      }
+      if (!this.cache.anichinOngoing && window.electronAPI && typeof window.electronAPI.anichinGetOngoing === 'function') {
+        promises.push(
+          window.electronAPI.anichinGetOngoing(1)
+            .then(res => { this.cache.anichinOngoing = res; })
+            .catch(err => console.warn('Anichin preload error:', err))
+        );
+      }
+
+      if (promises.length > 0) {
+        await Promise.all(promises);
+      }
+
+      if (typeof onProgress === 'function') onProgress('Menyiapkan katalog anime...');
+      await this.loadOngoing(true);
+    } catch (e) {
+      console.warn('Preload web catalog error:', e);
+    }
   }
 
   async refreshOnlineHistory() {
@@ -150,6 +207,8 @@ class OtakudesuManager {
         if (this.downloadFolderLabel) {
           const folderName = this.downloadPath ? this.downloadPath.split(/[\\/]/).pop() || this.downloadPath : 'Folder Media';
           this.downloadFolderLabel.textContent = `Folder: ${folderName}`;
+        }
+        if (this.btnDownloadFolderSetting) {
           this.btnDownloadFolderSetting.title = `Lokasi Download: ${this.downloadPath} (Klik untuk ubah)`;
         }
       } catch (e) {
@@ -297,7 +356,7 @@ class OtakudesuManager {
       });
     }
 
-    // ESC to close modals
+    // ESC to close modals or active series detail tab
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         if (this.streamLoadingOverlay && !this.streamLoadingOverlay.classList.contains('hidden')) {
@@ -305,6 +364,9 @@ class OtakudesuManager {
           e.stopPropagation();
         } else if (this.resolutionPickerModal && !this.resolutionPickerModal.classList.contains('hidden')) {
           this.closeResolutionPicker();
+          e.stopPropagation();
+        } else if (this.activeDetailTabSlug) {
+          this.closeDetailTab(this.activeDetailTabSlug);
           e.stopPropagation();
         } else if (this.otakudesuDetailModal && !this.otakudesuDetailModal.classList.contains('hidden')) {
           this.closeDetailModal();
@@ -319,13 +381,20 @@ class OtakudesuManager {
     this.refreshDownloadPath();
 
     if (this.inputSearchAnime) {
-      this.inputSearchAnime.placeholder = 'Cari anime di Otakudesu (cth: Solo Leveling, Naruto)...';
+      this.inputSearchAnime.placeholder = 'Cari anime & donghua (cth: Solo Leveling, BTTH)...';
     }
+
+    // Pastikan subnav bar sedang tayang / catalog muncul kembali
+    if (this.webSubnavBar) this.webSubnavBar.classList.remove('hidden');
+    if (this.netflixTabs) {
+      this.netflixTabs.querySelectorAll('.netflix-series-tab').forEach(t => t.classList.remove('active'));
+    }
+    if (this.tabWeb) this.tabWeb.classList.add('active');
 
     if (this.searchQuery && this.searchQuery.length >= 2) {
       this.executeSearch(this.searchQuery);
     } else {
-      this.switchSubTab(this.activeSub);
+      this.switchSubTab(this.previousCatalogSubTab || this.activeSub || 'ongoing');
     }
   }
 
@@ -337,6 +406,32 @@ class OtakudesuManager {
 
   switchSubTab(sub) {
     this.activeSub = sub;
+    this.previousCatalogSubTab = sub;
+
+    // Pastikan subnav bar terlihat saat berada di katalog web
+    if (this.webSubnavBar) {
+      this.webSubnavBar.classList.remove('hidden');
+    }
+
+    // Hide series detail container and restore catalog container
+    if (this.webDetailContainer) {
+      this.webDetailContainer.classList.add('hidden');
+    }
+    if (this.webDynamicContainer) {
+      this.webDynamicContainer.classList.remove('hidden');
+    }
+    this.activeDetailTabSlug = null;
+
+    // Deactivate dynamic detail tabs
+    if (this.netflixTabs) {
+      this.netflixTabs.querySelectorAll('.netflix-series-tab').forEach(t => t.classList.remove('active'));
+    }
+    if (this.webSubnavPills) {
+      this.webSubnavPills.querySelectorAll('.web-detail-tab').forEach(t => t.classList.remove('active'));
+    }
+    if (this.tabWeb) {
+      this.tabWeb.classList.add('active');
+    }
 
     // Update subnav pills
     [this.pillOngoing, this.pillSchedule, this.pillGenres, this.pillAnimeList, this.pillDownloaded].forEach(p => {
@@ -356,7 +451,25 @@ class OtakudesuManager {
     }
   }
 
-  showLoading(text = 'Memuat dari Otakudesu...') {
+  async refreshCurrentSubTab() {
+    if (this.activeSub === 'ongoing') {
+      this.cache.ongoing = null;
+      this.cache.anichinOngoing = null;
+    } else if (this.activeSub === 'schedule') {
+      this.cache.schedule = null;
+      this.cache.anichinSchedule = null;
+    } else if (this.activeSub === 'genres') {
+      this.cache.genres = null;
+      this.cache.genreAnime = {};
+    } else if (this.activeSub === 'animelist') {
+      this.cache.animeList = null;
+      this.cache.anichinAnimeList = null;
+    }
+    await this.refreshOnlineHistory();
+    this.switchSubTab(this.activeSub);
+  }
+
+  showLoading(text = 'Memuat konten...') {
     if (!this.webDynamicContainer) return;
     this.webDynamicContainer.innerHTML = `
       <div class="web-loading-spinner">
@@ -369,25 +482,56 @@ class OtakudesuManager {
   /**
    * 1. Sub-Tab: Ongoing (Sedang Tayang) with Horizontal Row Sliders & Lanjutkan Menonton
    */
-  async loadOngoing() {
+  async loadOngoing(forceRefresh = false) {
     if (this.webBillboard) this.webBillboard.classList.remove('hidden');
-    this.showLoading('Memuat anime sedang tayang...');
+
+    // Jika katalog sudah di-load di startup loading screen dan DOM sudah siap (dan bukan klik refresh), jangan tampilkan loading spinner lagi!
+    const isAlreadyPreloaded = (this.cache.ongoing || this.cache.anichinOngoing) &&
+      this.webDynamicContainer &&
+      this.webDynamicContainer.children.length > 0 &&
+      !this.webDynamicContainer.querySelector('.web-loading-spinner');
+
+    if (!isAlreadyPreloaded || forceRefresh) {
+      this.showLoading('Memuat anime & donghua sedang tayang...');
+    } else {
+      // Konten web sudah siap saji di DOM dari preloading screen
+      return;
+    }
 
     try {
-      if (!this.cache.ongoing) {
-        if (window.electronAPI && typeof window.electronAPI.otakudesuGetOngoing === 'function') {
-          this.cache.ongoing = await window.electronAPI.otakudesuGetOngoing(1);
-        }
+      const promises = [];
+      if (!this.cache.ongoing && window.electronAPI && typeof window.electronAPI.otakudesuGetOngoing === 'function') {
+        promises.push(
+          window.electronAPI.otakudesuGetOngoing(1)
+            .then(res => { this.cache.ongoing = res; })
+            .catch(err => console.warn('Otakudesu ongoing error:', err))
+        );
+      }
+      if (!this.cache.anichinOngoing && window.electronAPI && typeof window.electronAPI.anichinGetOngoing === 'function') {
+        promises.push(
+          window.electronAPI.anichinGetOngoing(1)
+            .then(res => { this.cache.anichinOngoing = res; })
+            .catch(err => console.warn('Anichin ongoing error:', err))
+        );
+      }
+
+      if (promises.length > 0) {
+        await Promise.all(promises);
       }
 
       const data = this.cache.ongoing;
-      if (!data || !data.animeList || data.animeList.length === 0) {
-        this.webDynamicContainer.innerHTML = '<div class="web-empty-notice">Tidak dapat memuat anime ongoing dari Otakudesu. Periksa koneksi internet Anda.</div>';
+      const anichinData = this.cache.anichinOngoing;
+
+      const hasOtaku = data && data.animeList && data.animeList.length > 0;
+      const hasAnichin = anichinData && anichinData.animeList && anichinData.animeList.length > 0;
+
+      if (!hasOtaku && !hasAnichin) {
+        this.webDynamicContainer.innerHTML = '<div class="web-empty-notice">Tidak dapat memuat anime ongoing. Periksa koneksi internet Anda.</div>';
         return;
       }
 
       // Render Billboard with 1st anime
-      const hero = data.animeList[0];
+      const hero = (hasOtaku ? data.animeList[0] : anichinData.animeList[0]);
       this.renderBillboard(hero);
 
       let contentHtml = '';
@@ -425,63 +569,121 @@ class OtakudesuManager {
         `;
       }
 
-      // 2. Row: Sedang Tayang (Ongoing)
-      const isGrid = this.ongoingViewMode === 'grid';
-      contentHtml += `
-        <div class="web-slider-section" id="webOngoingSection" style="margin-top: ${historyList.length > 0 ? '16px' : '0'};">
-          <div class="web-grid-header">
-            <div>
-              <h2 class="web-section-heading">Anime Sedang Tayang (Ongoing)</h2>
-              <span class="web-section-count">${data.animeList.length} Judul Rilis Terkini</span>
-            </div>
-            <button class="btn-toggle-grid" id="btnToggleOngoingMode" title="Ubah format tampilan">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                ${isGrid ? 
-                  '<path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>' : 
-                  '<path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h-5v6zm6 0h5v-6h-5v6zm-6-7h5V5h-5v6zm6-6v6h5V5h-5z"/>'
-                }
-              </svg>
-              <span>${isGrid ? 'Mode Slider Baris' : 'Lihat Semua (Grid)'}</span>
-            </button>
-          </div>
-      `;
-
-      if (isGrid) {
-        contentHtml += `<div class="netflix-poster-grid">`;
-        data.animeList.forEach(anime => {
-          contentHtml += this.renderAnimeCard(anime);
-        });
-        contentHtml += `</div>`;
-      } else {
+      // 2. Row: Anime Sedang Tayang (Otakudesu)
+      if (hasOtaku) {
+        const isGrid = this.ongoingViewMode === 'grid';
         contentHtml += `
-          <div class="web-slider-wrapper">
-            <button class="btn-slider-arrow btn-slider-left" data-target="sliderWebOngoing" aria-label="Geser ke Kiri">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-            </button>
-            <div class="web-horizontal-slider" id="sliderWebOngoing">
-        `;
-
-        data.animeList.forEach(anime => {
-          contentHtml += this.renderAnimeCard(anime);
-        });
-
-        // "Lihat Semua" Card at the right end of the horizontal slider
-        contentHtml += `
-              <div class="card-view-more" id="cardOngoingViewMore" title="Tampilkan semua anime ongoing dalam format grid">
-                <div class="card-view-more-icon">
-                  <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
-                </div>
-                <div class="card-view-more-text">Lihat Semua<br>Ongoing (${data.animeList.length})</div>
+          <div class="web-slider-section" id="webOngoingSection" style="margin-top: ${historyList.length > 0 ? '16px' : '0'};">
+            <div class="web-grid-header">
+              <div>
+                <h2 class="web-section-heading">Anime</h2>
+                <span class="web-section-count">${data.animeList.length} Rilis Terkini</span>
               </div>
+              <button class="btn-toggle-grid" id="btnToggleOngoingMode" title="Ubah format tampilan">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  ${isGrid ? 
+                    '<path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>' : 
+                    '<path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h-5v6zm6 0h5v-6h-5v6zm-6-7h5V5h-5v6zm6-6v6h5V5h-5z"/>'
+                  }
+                </svg>
+                <span>${isGrid ? 'Mode Slider Baris' : 'Lihat Semua (Grid)'}</span>
+              </button>
             </div>
-            <button class="btn-slider-arrow btn-slider-right" data-target="sliderWebOngoing" aria-label="Geser ke Kanan">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
-            </button>
-          </div>
         `;
+
+        if (isGrid) {
+          contentHtml += `<div class="netflix-poster-grid">`;
+          data.animeList.forEach(anime => {
+            contentHtml += this.renderAnimeCard(anime);
+          });
+          contentHtml += `</div>`;
+        } else {
+          contentHtml += `
+            <div class="web-slider-wrapper">
+              <button class="btn-slider-arrow btn-slider-left" data-target="sliderWebOngoing" aria-label="Geser ke Kiri">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+              </button>
+              <div class="web-horizontal-slider" id="sliderWebOngoing">
+          `;
+
+          data.animeList.forEach(anime => {
+            contentHtml += this.renderAnimeCard(anime);
+          });
+
+          contentHtml += `
+                <div class="card-view-more" id="cardOngoingViewMore" title="Tampilkan semua anime ongoing dalam format grid">
+                  <div class="card-view-more-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                  </div>
+                  <div class="card-view-more-text">Lihat Semua<br>Anime (${data.animeList.length})</div>
+                </div>
+              </div>
+              <button class="btn-slider-arrow btn-slider-right" data-target="sliderWebOngoing" aria-label="Geser ke Kanan">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+              </button>
+            </div>
+          `;
+        }
+        contentHtml += `</div>`;
       }
 
-      contentHtml += `</div>`;
+      // 3. Row: Donghua Sedang Tayang (Ani-Chin)
+      if (hasAnichin) {
+        const isDonghuaGrid = this.donghuaOngoingViewMode === 'grid';
+        contentHtml += `
+          <div class="web-slider-section" id="webAnichinSection" style="margin-top: 24px;">
+            <div class="web-grid-header">
+              <div>
+                <h2 class="web-section-heading heading-donghua">Donghua</h2>
+                <span class="web-section-count">${anichinData.animeList.length} Rilis Terkini</span>
+              </div>
+              <button class="btn-toggle-grid" id="btnToggleDonghuaOngoingMode" title="Ubah format tampilan">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  ${isDonghuaGrid ? 
+                    '<path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>' : 
+                    '<path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h-5v6zm6 0h5v-6h-5v6zm-6-7h5V5h-5v6zm6-6v6h5V5h-5z"/>'
+                  }
+                </svg>
+                <span>${isDonghuaGrid ? 'Mode Slider Baris' : 'Lihat Semua (Grid)'}</span>
+              </button>
+            </div>
+        `;
+
+        if (isDonghuaGrid) {
+          contentHtml += `<div class="netflix-poster-grid">`;
+          anichinData.animeList.forEach(anime => {
+            contentHtml += this.renderAnimeCard(anime);
+          });
+          contentHtml += `</div>`;
+        } else {
+          contentHtml += `
+            <div class="web-slider-wrapper">
+              <button class="btn-slider-arrow btn-slider-left" data-target="sliderWebDonghua" aria-label="Geser ke Kiri">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+              </button>
+              <div class="web-horizontal-slider" id="sliderWebDonghua">
+          `;
+
+          anichinData.animeList.forEach(anime => {
+            contentHtml += this.renderAnimeCard(anime);
+          });
+
+          contentHtml += `
+                <div class="card-view-more" id="cardDonghuaViewMore" title="Tampilkan semua donghua ongoing dalam format grid">
+                  <div class="card-view-more-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                  </div>
+                  <div class="card-view-more-text">Lihat Semua<br>Donghua (${anichinData.animeList.length})</div>
+                </div>
+              </div>
+              <button class="btn-slider-arrow btn-slider-right" data-target="sliderWebDonghua" aria-label="Geser ke Kanan">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+              </button>
+            </div>
+          `;
+        }
+        contentHtml += `</div>`;
+      }
 
       this.webDynamicContainer.innerHTML = contentHtml;
 
@@ -489,7 +691,7 @@ class OtakudesuManager {
       this.bindCardClicks();
       this.bindSliderArrows();
 
-      // Toggle grid / slider button
+      // Toggle grid / slider button Otakudesu
       const btnToggle = document.getElementById('btnToggleOngoingMode');
       if (btnToggle) {
         btnToggle.addEventListener('click', () => {
@@ -498,11 +700,27 @@ class OtakudesuManager {
         });
       }
 
-      // Card view more click
       const cardViewMore = document.getElementById('cardOngoingViewMore');
       if (cardViewMore) {
         cardViewMore.addEventListener('click', () => {
           this.ongoingViewMode = 'grid';
+          this.loadOngoing();
+        });
+      }
+
+      // Toggle grid / slider button Donghua
+      const btnToggleDonghua = document.getElementById('btnToggleDonghuaOngoingMode');
+      if (btnToggleDonghua) {
+        btnToggleDonghua.addEventListener('click', () => {
+          this.donghuaOngoingViewMode = this.donghuaOngoingViewMode === 'grid' ? 'slider' : 'grid';
+          this.loadOngoing();
+        });
+      }
+
+      const cardDonghuaViewMore = document.getElementById('cardDonghuaViewMore');
+      if (cardDonghuaViewMore) {
+        cardDonghuaViewMore.addEventListener('click', () => {
+          this.donghuaOngoingViewMode = 'grid';
           this.loadOngoing();
         });
       }
@@ -526,18 +744,20 @@ class OtakudesuManager {
     }
 
     if (this.webBillboardDesc) {
-      this.webBillboardDesc.textContent = `${anime.episode || 'Episode Terbaru'} • Tayang setiap hari ${anime.day || ''} ${anime.date ? `(${anime.date})` : ''}`;
+      this.webBillboardDesc.textContent = `${anime.episode || anime.latestEpisode || 'Episode Terbaru'} • ${anime.source === 'anichin' ? 'Donghua' : (anime.day ? `Tayang setiap hari ${anime.day}` : 'Anime')}`;
     }
 
     if (this.btnWebBillboardStream) {
       this.btnWebBillboardStream.onclick = () => {
-        this.openAnimeDetail(anime.url);
+        if (anime.source === 'anichin') this.openAnichinDetail(anime.url || anime.slug);
+        else this.openAnimeDetail(anime.url);
       };
     }
 
     if (this.btnWebBillboardDetail) {
       this.btnWebBillboardDetail.onclick = () => {
-        this.openAnimeDetail(anime.url);
+        if (anime.source === 'anichin') this.openAnichinDetail(anime.url || anime.slug);
+        else this.openAnimeDetail(anime.url);
       };
     }
   }
@@ -547,17 +767,33 @@ class OtakudesuManager {
    */
   async loadSchedule() {
     if (this.webBillboard) this.webBillboard.classList.add('hidden');
-    this.showLoading('Memuat jadwal rilis mingguan...');
+    this.showLoading('Memuat jadwal rilis mingguan (Anime & Donghua)...');
 
     try {
-      if (!this.cache.schedule) {
-        if (window.electronAPI && typeof window.electronAPI.otakudesuGetSchedule === 'function') {
-          this.cache.schedule = await window.electronAPI.otakudesuGetSchedule();
-        }
+      const promises = [];
+      if (!this.cache.schedule && window.electronAPI && typeof window.electronAPI.otakudesuGetSchedule === 'function') {
+        promises.push(
+          window.electronAPI.otakudesuGetSchedule()
+            .then(res => { this.cache.schedule = res; })
+            .catch(err => console.warn('Otakudesu schedule error:', err))
+        );
+      }
+      if (!this.cache.anichinSchedule && window.electronAPI && typeof window.electronAPI.anichinGetSchedule === 'function') {
+        promises.push(
+          window.electronAPI.anichinGetSchedule()
+            .then(res => { this.cache.anichinSchedule = res; })
+            .catch(err => console.warn('Anichin schedule error:', err))
+        );
       }
 
-      const schedule = this.cache.schedule;
-      if (!schedule || schedule.length === 0) {
+      if (promises.length > 0) {
+        await Promise.all(promises);
+      }
+
+      const schedule = this.cache.schedule || [];
+      const anichinSchedule = this.cache.anichinSchedule || [];
+
+      if (schedule.length === 0 && anichinSchedule.length === 0) {
         this.webDynamicContainer.innerHTML = '<div class="web-empty-notice">Jadwal rilis tidak tersedia. Periksa koneksi internet Anda.</div>';
         return;
       }
@@ -565,30 +801,35 @@ class OtakudesuManager {
       const dayMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
       const todayName = dayMap[new Date().getDay()];
 
+      const allDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+
       if (!this.selectedScheduleDay) {
-        const foundToday = schedule.find(g => g.day && g.day.toLowerCase().includes(todayName.toLowerCase()));
-        this.selectedScheduleDay = foundToday ? foundToday.day : (schedule[0] ? schedule[0].day : 'Senin');
+        this.selectedScheduleDay = todayName;
       }
 
       let html = `
         <div class="schedule-container">
           <div class="web-grid-header">
             <div>
-              <h2 class="web-section-heading">Jadwal Rilis Anime Mingguan</h2>
-              <span class="web-section-count">Pembaruan Episode Otakudesu</span>
+              <h2 class="web-section-heading">Jadwal Rilis Mingguan</h2>
+              <span class="web-section-count">Pembaruan Episode Anime (Otakudesu) & Donghua (Ani-Chin)</span>
             </div>
           </div>
           <div class="schedule-day-tabs" role="tablist">
       `;
 
-      schedule.forEach(group => {
-        const isActive = group.day === this.selectedScheduleDay;
-        const isToday = group.day && group.day.toLowerCase().includes(todayName.toLowerCase());
+      allDays.forEach(day => {
+        const isActive = day === this.selectedScheduleDay;
+        const isToday = day.toLowerCase() === todayName.toLowerCase();
+        const otakuCount = (schedule.find(g => g.day === day)?.animeList?.length) || 0;
+        const anichinCount = (anichinSchedule.find(g => g.day === day)?.animeList?.length) || 0;
+        const totalDayCount = otakuCount + anichinCount;
+
         html += `
-          <button class="schedule-tab-btn ${isActive ? 'active' : ''}" data-day="${group.day}" role="tab" aria-selected="${isActive}">
-            <span>${group.day}</span>
+          <button class="schedule-tab-btn ${isActive ? 'active' : ''}" data-day="${day}" role="tab" aria-selected="${isActive}">
+            <span>${day}</span>
             ${isToday ? `<span class="schedule-today-pill">Hari Ini</span>` : ''}
-            <span class="schedule-count-pill">${group.animeList ? group.animeList.length : 0}</span>
+            <span class="schedule-count-pill">${totalDayCount}</span>
           </button>
         `;
       });
@@ -621,71 +862,134 @@ class OtakudesuManager {
 
   renderScheduleDayContent(dayName, todayName) {
     const panel = document.getElementById('scheduleContentPanel');
-    if (!panel || !this.cache.schedule) return;
+    if (!panel) return;
 
-    const group = this.cache.schedule.find(g => g.day === dayName);
-    if (!group || !group.animeList || group.animeList.length === 0) {
-      panel.innerHTML = '<div class="web-empty-notice">Tidak ada jadwal rilis anime pada hari ini.</div>';
+    const group = (this.cache.schedule || []).find(g => g.day === dayName);
+    const anichinGroup = (this.cache.anichinSchedule || []).find(g => g.day === dayName);
+
+    const otakuList = (group && group.animeList) || [];
+    const anichinList = (anichinGroup && anichinGroup.animeList) || [];
+
+    if (otakuList.length === 0 && anichinList.length === 0) {
+      panel.innerHTML = '<div class="web-empty-notice">Tidak ada jadwal rilis anime atau donghua pada hari ini.</div>';
       return;
     }
 
     const isToday = dayName && dayName.toLowerCase().includes(todayName.toLowerCase());
+    const totalCount = otakuList.length + anichinList.length;
 
     let html = `
       <div class="schedule-day-banner">
         <div class="schedule-day-title">
-          <span>Hari ${group.day}</span>
+          <span>Hari ${dayName}</span>
           ${isToday ? `<span class="schedule-today-pill">Hari Ini</span>` : ''}
-          <span class="web-section-count">${group.animeList.length} Anime Tayang</span>
+          <span class="web-section-count">${totalCount} Judul Tayang</span>
         </div>
       </div>
-      <div class="schedule-anime-grid">
     `;
 
-    group.animeList.forEach(anime => {
-      const initial = (anime.title || 'A').charAt(0).toUpperCase();
-      const posterImg = anime.poster
-        ? `<img class="netflix-card-poster" src="${anime.poster}" alt="${anime.title}" loading="lazy">`
-        : `<div class="poster-placeholder"><span>${initial}</span></div>`;
-
+    // 1. Top Section: Anime
+    if (otakuList.length > 0) {
       html += `
-        <div class="netflix-card otakudesu-card schedule-landscape-card" data-url="${anime.url}" data-slug="${anime.slug}" tabindex="0" role="article" aria-label="${anime.title}">
-          <div class="netflix-card-poster-wrap">
-            ${posterImg}
-            <div class="poster-gradient-overlay"></div>
-            <span class="card-badge-top badge-red">${group.day}</span>
-            <span class="card-badge-bottom">Otakudesu</span>
-          </div>
-          <div class="netflix-card-info">
-            <div class="netflix-card-title">${anime.title}</div>
-            <div class="netflix-card-meta">Tayang setiap ${group.day}</div>
-          </div>
-          <div class="netflix-card-hover-panel">
-            <div class="hover-action-row">
-              <div class="hover-action-left">
-                <button class="btn-card-action btn-card-play btn-card-quick-stream" data-url="${anime.url}" data-slug="${anime.slug}" title="Buka Detail Episode" aria-label="Buka Detail Episode">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                </button>
-                <button class="btn-card-action btn-card-secondary btn-card-quick-info" data-url="${anime.url}" data-slug="${anime.slug}" title="Lihat Informasi Anime" aria-label="Detail Anime">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                </button>
+        <h3 class="web-subsection-heading">Anime (${otakuList.length})</h3>
+        <div class="schedule-anime-grid">
+      `;
+
+      otakuList.forEach(anime => {
+        const initial = (anime.title || 'A').charAt(0).toUpperCase();
+        const posterImg = anime.poster
+          ? `<img class="netflix-card-poster" src="${anime.poster}" alt="${anime.title}" loading="lazy">`
+          : `<div class="poster-placeholder"><span>${initial}</span></div>`;
+
+        html += `
+          <div class="netflix-card otakudesu-card schedule-landscape-card" data-url="${anime.url}" data-slug="${anime.slug}" data-source="otakudesu" tabindex="0" role="article" aria-label="${anime.title}">
+            <div class="netflix-card-poster-wrap">
+              ${posterImg}
+              <div class="poster-gradient-overlay"></div>
+              <span class="card-badge-top">Total: ${anime.totalEpisodes || anime.episode || 'Episode Baru'}</span>
+              <span class="card-badge-bottom">Tersedia</span>
+            </div>
+            <div class="netflix-card-info">
+              <div class="netflix-card-title">${anime.title}</div>
+              <div class="netflix-card-meta">Tayang setiap ${dayName}</div>
+            </div>
+            <div class="netflix-card-hover-panel">
+              <div class="hover-action-row">
+                <div class="hover-action-left">
+                  <button class="btn-card-action btn-card-play btn-card-quick-stream" data-url="${anime.url}" data-slug="${anime.slug}" title="Buka Detail Episode" aria-label="Buka Detail Episode">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  </button>
+                  <button class="btn-card-action btn-card-secondary btn-card-quick-info" data-url="${anime.url}" data-slug="${anime.slug}" title="Lihat Informasi Anime" aria-label="Detail Anime">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="hover-card-title">${anime.title}</div>
+              <div class="hover-meta-row">
+                <span class="hover-badge-outline">HD</span>
+                <span class="hover-score-star">★ 8.5</span>
+              </div>
+              <div class="hover-tags-row">
+                <span>Total: ${anime.totalEpisodes || anime.episode || 'Episode Baru'}</span>
               </div>
             </div>
-            <div class="hover-card-title">${anime.title}</div>
-            <div class="hover-meta-row">
-              <span class="hover-badge-red">Tayang ${group.day}</span>
-              <span class="hover-badge-outline">HD</span>
-              <span class="hover-score-star">★ Ongoing</span>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    // 2. Bottom Section: Donghua
+    if (anichinList.length > 0) {
+      html += `
+        <h3 class="web-subsection-heading heading-donghua">Donghua (${anichinList.length})</h3>
+        <div class="schedule-anime-grid">
+      `;
+
+      anichinList.forEach(anime => {
+        const initial = (anime.title || 'D').charAt(0).toUpperCase();
+        const posterImg = anime.poster
+          ? `<img class="netflix-card-poster" src="${anime.poster}" alt="${anime.title}" loading="lazy">`
+          : `<div class="poster-placeholder"><span>${initial}</span></div>`;
+
+        html += `
+          <div class="netflix-card otakudesu-card schedule-landscape-card" data-url="${anime.url}" data-slug="${anime.slug}" data-source="anichin" tabindex="0" role="article" aria-label="${anime.title}">
+            <div class="netflix-card-poster-wrap">
+              ${posterImg}
+              <div class="poster-gradient-overlay"></div>
+              <span class="card-badge-top">Total: ${anime.totalEpisodes || anime.episode || 'Episode Baru'}</span>
+              <span class="card-badge-bottom">Tersedia</span>
             </div>
-            <div class="hover-tags-row">
-              <span>Rilis di Otakudesu</span>
+            <div class="netflix-card-info">
+              <div class="netflix-card-title">${anime.title}</div>
+              <div class="netflix-card-meta">Rilis Donghua ${dayName}</div>
+            </div>
+            <div class="netflix-card-hover-panel">
+              <div class="hover-action-row">
+                <div class="hover-action-left">
+                  <button class="btn-card-action btn-card-play btn-card-quick-anichin" data-url="${anime.url}" data-slug="${anime.slug}" data-source="anichin" title="Buka Detail Episode Donghua" aria-label="Buka Detail Donghua">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  </button>
+                  <button class="btn-card-action btn-card-secondary btn-card-quick-info" data-url="${anime.url}" data-slug="${anime.slug}" data-source="anichin" title="Lihat Informasi Donghua" aria-label="Detail Donghua">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="hover-card-title">${anime.title}</div>
+              <div class="hover-meta-row">
+                <span class="hover-score-star">★ 8.5</span>
+                <span class="hover-badge-outline">HD</span>
+              </div>
+              <div class="hover-tags-row">
+                <span>Total: ${anime.totalEpisodes || anime.episode || 'Episode Baru'}</span>
+              </div>
             </div>
           </div>
-        </div>
-      `;
-    });
+        `;
+      });
+      html += `</div>`;
+    }
 
-    html += `</div>`;
     panel.innerHTML = html;
     this.bindCardClicks(panel);
   }
@@ -712,10 +1016,11 @@ class OtakudesuManager {
 
       let html = `
         <div class="web-grid-header">
-          <h2 class="web-section-heading">Kategori & Genre Anime</h2>
-          <span class="web-section-count">${genres.length} Kategori Tersedia</span>
+          <h2 class="web-section-heading">Genre</h2>
+          <span class="web-section-count">${genres.length + 1} Kategori Tersedia</span>
         </div>
         <div class="genres-pill-slider" id="genresPillSlider">
+          <button class="genre-chip genre-chip-donghua ${this.activeGenre === 'donghua' ? 'active' : ''}" data-slug="donghua">Donghua</button>
       `;
 
       genres.forEach(g => {
@@ -759,16 +1064,71 @@ class OtakudesuManager {
       this.currentGenreSlug = slug;
       this.genreCurrentPage = 1;
       this.genreHasNextPage = false;
-      container.innerHTML = '<div class="web-loading-spinner"><div class="yt-spinner"></div><span>Mengambil anime genre...</span></div>';
+      container.innerHTML = '<div class="web-loading-spinner"><div class="yt-spinner"></div><span>Mengambil konten genre...</span></div>';
     } else {
       const btnShowMore = document.getElementById('btnGenreShowMore');
       if (btnShowMore) {
         btnShowMore.disabled = true;
-        btnShowMore.innerHTML = '<div class="yt-spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;margin-right:6px;"></div> Memuat lebih banyak anime...';
+        btnShowMore.innerHTML = '<div class="yt-spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;margin-right:6px;"></div> Memuat lebih banyak...';
       }
     }
 
     try {
+      if (slug === 'donghua') {
+        let res = null;
+        if (window.electronAPI && typeof window.electronAPI.anichinGetOngoing === 'function') {
+          res = await window.electronAPI.anichinGetOngoing(page);
+        }
+        if (!res || !res.animeList || res.animeList.length === 0) {
+          if (!append) container.innerHTML = '<div class="web-empty-notice">Tidak ada donghua ditemukan.</div>';
+          return;
+        }
+        this.genreCurrentPage = page;
+        this.genreHasNextPage = res.animeList.length >= 10;
+
+        if (!append) {
+          let html = '<div class="netflix-poster-grid" id="genrePosterGrid">';
+          res.animeList.forEach(anime => {
+            html += this.renderAnimeCard(anime);
+          });
+          html += '</div>';
+
+          if (this.genreHasNextPage) {
+            html += `
+              <div class="genre-show-more-wrap" id="genreShowMoreWrap">
+                <button class="btn-genre-show-more" id="btnGenreShowMore" type="button">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                  Muat Lebih Banyak Donghua
+                </button>
+              </div>
+            `;
+          } else {
+            html += '<div class="genre-end-notice">Semua donghua terkini telah ditampilkan.</div>';
+          }
+
+          container.innerHTML = html;
+          this.bindCardClicks(container);
+
+          const btnShowMore = document.getElementById('btnGenreShowMore');
+          if (btnShowMore) {
+            btnShowMore.addEventListener('click', () => {
+              this.loadAnimeByGenre(slug, this.genreCurrentPage + 1, true);
+            });
+          }
+        } else {
+          const grid = document.getElementById('genrePosterGrid');
+          if (grid) {
+            let newCardsHtml = '';
+            res.animeList.forEach(anime => {
+              newCardsHtml += this.renderAnimeCard(anime);
+            });
+            grid.insertAdjacentHTML('beforeend', newCardsHtml);
+            this.bindCardClicks(grid);
+          }
+        }
+        return;
+      }
+
       if (!this.cache.genreAnime) this.cache.genreAnime = {};
       if (!this.cache.genreAnime[slug]) {
         this.cache.genreAnime[slug] = {};
@@ -870,6 +1230,19 @@ class OtakudesuManager {
     }
   }
 
+  cleanDisplayTitle(t) {
+    if (!t) return '';
+    return t
+      .replace(/\s*-\s*Batch\s+Subtitle\s+Indonesia/gi, '')
+      .replace(/\s*Batch\s+Subtitle\s+Indonesia/gi, '')
+      .replace(/\s*Subtitle\s+Indonesia/gi, '')
+      .replace(/\s*\[Batch\]/gi, '')
+      .replace(/\s*\(Batch\)/gi, '')
+      .replace(/\s*Batch\s*$/gi, '')
+      .replace(/\s*Sub\s*Indo\s*$/gi, '')
+      .trim();
+  }
+
   normalizeAnimeTitle(t) {
     return (t || '')
       .toLowerCase()
@@ -877,11 +1250,11 @@ class OtakudesuManager {
       .replace(/[^a-z0-9]/g, '');
   }
 
-  mergeAnimeLists(otakuGroups, kusoGroups) {
+  mergeAnimeLists(otakuGroups, kusoGroups, anichinGroups = []) {
     const otakuTitleSet = new Set();
     const mergedMap = new Map();
 
-    // 1. Masukkan semua anime dari Otakudesu terlebih dahulu
+    // 1. Masukkan semua anime dari Otakudesu terlebih dahulu (Warna Biru)
     (otakuGroups || []).forEach(g => {
       let letter = (g.letter || '#').trim().toUpperCase();
       if (!/^[A-Z]$/.test(letter)) letter = '#';
@@ -895,15 +1268,16 @@ class OtakudesuManager {
         const norm = this.normalizeAnimeTitle(it.title);
         if (norm) otakuTitleSet.add(norm);
         groupItems.push({
-          title: it.title,
+          title: this.cleanDisplayTitle(it.title),
           url: it.url,
           slug: it.slug,
-          source: 'otakudesu'
+          source: 'otakudesu',
+          isDonghua: false
         });
       });
     });
 
-    // 2. Tambahkan anime Kusonime HANYA jika belum ada di Otakudesu (hindari duplikat)
+    // 2. Tambahkan anime Kusonime HANYA jika belum ada di Otakudesu (Warna Hitam)
     (kusoGroups || []).forEach(g => {
       let letter = (g.letter || '#').trim().toUpperCase();
       if (!/^[A-Z]$/.test(letter)) letter = '#';
@@ -918,12 +1292,34 @@ class OtakudesuManager {
         if (!norm || otakuTitleSet.has(norm)) {
           return; // Sudah ada di Otakudesu, lewati agar tidak dobel
         }
-        otakuTitleSet.add(norm); // Cegah duplikat antar postingan Kusonime sendiri
+        otakuTitleSet.add(norm);
         groupItems.push({
-          title: it.title,
+          title: this.cleanDisplayTitle(it.title),
           url: it.url,
           slug: it.slug,
-          source: 'kusonime'
+          source: 'kusonime',
+          isDonghua: false
+        });
+      });
+    });
+
+    // 3. Tambahkan Donghua dari Ani-Chin (Warna Kuning)
+    (anichinGroups || []).forEach(g => {
+      let letter = (g.letter || '#').trim().toUpperCase();
+      if (!/^[A-Z]$/.test(letter)) letter = '#';
+
+      if (!mergedMap.has(letter)) {
+        mergedMap.set(letter, []);
+      }
+      const groupItems = mergedMap.get(letter);
+
+      (g.items || []).forEach(it => {
+        groupItems.push({
+          title: this.cleanDisplayTitle(it.title),
+          url: it.url,
+          slug: it.slug,
+          source: 'anichin',
+          isDonghua: true
         });
       });
     });
@@ -950,16 +1346,17 @@ class OtakudesuManager {
 
   /**
    * 4. Sub-Tab: Daftar Anime A-Z
-   * Menggabungkan direktori Otakudesu dan Kusonime (khusus anime yang belum ada di Otakudesu)
+   * Menggabungkan direktori Otakudesu (Biru), Kusonime (Hitam), dan Ani-Chin Donghua (Kuning)
    */
   async loadAnimeList() {
     if (this.webBillboard) this.webBillboard.classList.add('hidden');
-    this.showLoading('Memuat direktori anime A-Z gabungan (Otakudesu + Kusonime)...');
+    this.showLoading('Memuat direktori anime & donghua A-Z gabungan...');
 
     try {
       if (!this.cache.animeList) {
         let otakuGroups = [];
         let kusoGroups = [];
+        let anichinGroups = [];
 
         const fetchPromises = [];
         if (window.electronAPI && typeof window.electronAPI.otakudesuGetAnimeList === 'function') {
@@ -978,10 +1375,18 @@ class OtakudesuManager {
           );
         }
 
+        if (window.electronAPI && typeof window.electronAPI.anichinGetAnimeList === 'function') {
+          fetchPromises.push(
+            window.electronAPI.anichinGetAnimeList()
+              .then(res => { anichinGroups = res || []; })
+              .catch(err => console.warn('Ani-Chin anime list error:', err.message))
+          );
+        }
+
         await Promise.all(fetchPromises);
 
-        // Gabungkan dan filter duplikat
-        this.cache.animeList = this.mergeAnimeLists(otakuGroups, kusoGroups);
+        // Gabungkan direktori tiga sumber
+        this.cache.animeList = this.mergeAnimeLists(otakuGroups, kusoGroups, anichinGroups);
       }
 
       const groups = this.cache.animeList || [];
@@ -990,23 +1395,31 @@ class OtakudesuManager {
         return;
       }
 
-      let totalAnimeCount = 0;
-      groups.forEach(g => { totalAnimeCount += (g.items ? g.items.length : 0); });
+      let totalCount = 0;
+      groups.forEach(g => { totalCount += (g.items ? g.items.length : 0); });
 
       let html = `
         <div class="alphabet-nav-wrap">
           <div class="web-grid-header">
             <div>
-              <h2 class="web-section-heading">Direktori Lengkap Anime (A - Z)</h2>
-              <span class="web-section-count">${groups.length} Grup Abjad • ${totalAnimeCount.toLocaleString('id-ID')} Anime (Otakudesu + Kusonime Batch)</span>
+              <h2 class="web-section-heading">Daftar Anime (A - Z)</h2>
+              <span class="web-section-count">${groups.length} Grup Abjad • ${totalCount.toLocaleString('id-ID')} Judul</span>
             </div>
           </div>
-          <div class="alphabet-index-bar" id="alphabetIndexBar" role="tablist">
+
+          <!-- Category Filter Bar (Semua, Anime, Donghua) -->
+          <div class="alphabet-category-filter" role="tablist">
+            <button class="az-filter-btn ${this.animeListTypeFilter === 'all' ? 'active' : ''}" data-filter="all">Semua</button>
+            <button class="az-filter-btn ${this.animeListTypeFilter === 'anime' ? 'active' : ''}" data-filter="anime">Anime</button>
+            <button class="az-filter-btn ${this.animeListTypeFilter === 'donghua' ? 'active' : ''}" data-filter="donghua">Donghua</button>
+          </div>
+
+          <!-- Sticky Alphabet Quick Jump Bar -->
+          <div class="az-sticky-bar" id="alphabetIndexBar" role="tablist">
       `;
 
-      groups.forEach((g, idx) => {
-        const isCurrent = g.letter === this.activeLetter || (!this.activeLetter && idx === 0);
-        html += `<button class="alphabet-btn ${isCurrent ? 'active' : ''}" data-letter="${g.letter}" role="tab" aria-selected="${isCurrent}">${g.letter}</button>`;
+      groups.forEach((g) => {
+        html += `<button class="az-jump-btn" data-letter="${g.letter}">${g.letter}</button>`;
       });
 
       html += `
@@ -1015,7 +1428,7 @@ class OtakudesuManager {
             <svg viewBox="0 0 24 24" width="16" height="16" fill="#888888">
               <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
             </svg>
-            <input type="text" id="inputFilterAlphabet" placeholder="Filter anime di abjad terpilih..." aria-label="Filter judul anime">
+            <input type="text" id="inputFilterAlphabet" placeholder="Filter judul anime & donghua..." aria-label="Filter judul">
           </div>
         </div>
         <div id="alphabetListContainer" class="alphabet-list-container"></div>
@@ -1023,14 +1436,26 @@ class OtakudesuManager {
 
       this.webDynamicContainer.innerHTML = html;
 
-      this.webDynamicContainer.querySelectorAll('.alphabet-btn').forEach(btn => {
+      // Event listener for category filter buttons
+      this.webDynamicContainer.querySelectorAll('.az-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          this.webDynamicContainer.querySelectorAll('.alphabet-btn').forEach(b => b.classList.remove('active'));
+          this.webDynamicContainer.querySelectorAll('.az-filter-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
-          this.activeLetter = btn.dataset.letter;
+          this.animeListTypeFilter = btn.dataset.filter;
           const searchInput = document.getElementById('inputFilterAlphabet');
-          if (searchInput) searchInput.value = '';
-          this.renderAlphabetGroup(this.activeLetter);
+          const q = searchInput ? (searchInput.value || '').toLowerCase().trim() : '';
+          this.renderFullAlphabetCatalog(q);
+        });
+      });
+
+      // Event listener for sticky alphabet quick jump buttons
+      this.webDynamicContainer.querySelectorAll('.az-jump-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const letter = btn.dataset.letter;
+          const target = document.getElementById(`az-group-${letter}`);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
         });
       });
 
@@ -1038,12 +1463,11 @@ class OtakudesuManager {
       if (searchInput) {
         searchInput.addEventListener('input', (e) => {
           const q = (e.target.value || '').toLowerCase().trim();
-          this.renderAlphabetGroup(this.activeLetter, q);
+          this.renderFullAlphabetCatalog(q);
         });
       }
 
-      const initialLetter = this.activeLetter || (groups[0] ? groups[0].letter : 'A');
-      this.renderAlphabetGroup(initialLetter);
+      this.renderFullAlphabetCatalog();
 
     } catch (err) {
       console.error('Error loading anime list:', err);
@@ -1051,48 +1475,71 @@ class OtakudesuManager {
     }
   }
 
-  renderAlphabetGroup(letter, filterQuery = '') {
+  renderFullAlphabetCatalog(filterQuery = '') {
     const container = document.getElementById('alphabetListContainer');
     if (!container || !this.cache.animeList) return;
 
-    const group = this.cache.animeList.find(g => g.letter === letter);
-    if (!group || !group.items || group.items.length === 0) {
-      container.innerHTML = '<div class="web-empty-notice">Tidak ada anime pada abjad ini.</div>';
-      return;
-    }
+    const groups = this.cache.animeList;
+    let html = '';
+    let totalRendered = 0;
 
-    let items = group.items;
-    if (filterQuery) {
-      items = items.filter(it => it.title.toLowerCase().includes(filterQuery));
-    }
+    groups.forEach(group => {
+      let items = group.items || [];
 
-    if (items.length === 0) {
-      container.innerHTML = `<div class="web-empty-notice">Tidak ada judul anime yang cocok dengan "${filterQuery}" di abjad ${letter}.</div>`;
-      return;
-    }
+      // Filter category
+      if (this.animeListTypeFilter === 'anime') {
+        items = items.filter(it => !it.isDonghua);
+      } else if (this.animeListTypeFilter === 'donghua') {
+        items = items.filter(it => it.isDonghua);
+      }
 
-    let html = `
-      <div class="alphabet-group-header">
-        <span>Abjad ${letter}</span>
-        <span class="web-section-count">(${items.length} dari ${group.items.length} anime)</span>
-      </div>
-      <div class="alphabet-items-grid">
-    `;
+      // Filter search query
+      if (filterQuery) {
+        items = items.filter(it => it.title.toLowerCase().includes(filterQuery));
+      }
 
-    items.forEach(item => {
-      const isKuso = item.source === 'kusonime';
-      html += `
-        <div class="alphabet-anime-card ${isKuso ? 'card-kuso-batch' : ''}" data-url="${item.url}" data-slug="${item.slug}" data-source="${item.source || 'otakudesu'}" tabindex="0" role="button" aria-label="${item.title}">
-          <div class="alphabet-monogram ${isKuso ? 'monogram-kuso' : ''}">${letter}</div>
-          <div class="alphabet-card-details">
-            <div class="alphabet-card-title" title="${item.title}">${item.title}</div>
-            ${isKuso ? '<span class="alphabet-kuso-tag">📦 Kusonime Batch</span>' : ''}
+      if (items.length > 0) {
+        totalRendered += items.length;
+        html += `
+          <div class="az-letter-banner" id="az-group-${group.letter}">
+            <div class="az-letter-badge">${group.letter}</div>
+            <div class="az-letter-line"></div>
+            <div class="az-letter-count">${items.length} Judul</div>
           </div>
-        </div>
-      `;
+          <div class="alphabet-items-grid">
+        `;
+
+        items.forEach(item => {
+          const src = item.source || 'otakudesu';
+          const isKuso = src === 'kusonime';
+          const isAnichin = src === 'anichin' || item.isDonghua;
+
+          const cardSourceClass = isAnichin ? 'card-source-anichin' : (isKuso ? 'card-source-kusonime' : 'card-source-otakudesu');
+          const monogramClass = isAnichin ? 'monogram-anichin' : (isKuso ? 'monogram-kuso' : 'monogram-otaku');
+          const showDonghuaTag = this.animeListTypeFilter === 'all' && isAnichin;
+
+          html += `
+            <div class="alphabet-anime-card ${cardSourceClass}" data-url="${item.url}" data-slug="${item.slug}" data-source="${src}" tabindex="0" role="button" aria-label="${item.title}">
+              <div class="alphabet-monogram ${monogramClass}">${group.letter}</div>
+              <div class="alphabet-card-details">
+                <div class="alphabet-card-title" title="${item.title}">
+                  ${item.title}
+                  ${showDonghuaTag ? '<span class="tag-donghua">Donghua</span>' : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
+      }
     });
 
-    html += '</div>';
+    if (totalRendered === 0) {
+      container.innerHTML = `<div class="web-empty-notice">Tidak ada judul yang cocok dengan filter "${filterQuery || this.animeListTypeFilter}".</div>`;
+      return;
+    }
+
     container.innerHTML = html;
 
     container.querySelectorAll('.alphabet-anime-card').forEach(card => {
@@ -1102,6 +1549,8 @@ class OtakudesuManager {
         const source = card.dataset.source;
         if (source === 'kusonime') {
           this.openKusonimeDetail(url || slug);
+        } else if (source === 'anichin') {
+          this.openAnichinDetail(url || slug);
         } else {
           this.openAnimeDetail(url || slug);
         }
@@ -1135,6 +1584,7 @@ class OtakudesuManager {
       const seriesList = (libraryResult && libraryResult.seriesList) || [];
       const movies = (libraryResult && libraryResult.movies) || [];
       const totalDownloaded = seriesList.length + movies.length;
+      this.lastDownloadedSeriesList = seriesList;
 
       // Update badge
       if (this.downloadedBadge) {
@@ -1165,6 +1615,10 @@ class OtakudesuManager {
             <button id="btnOpenDlFolderSub" class="btn-subnav-action" title="Buka Folder di Windows Explorer">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
               <span>Buka Folder</span>
+            </button>
+            <button id="btnDeleteAllDownloadedSub" class="btn-subnav-action btn-danger-action" title="Hapus Semua Video Hasil Unduhan">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+              <span>Hapus Semua</span>
             </button>
           </div>
         </div>
@@ -1215,8 +1669,17 @@ class OtakudesuManager {
         html += '<div class="netflix-poster-grid">';
 
         seriesList.forEach(series => {
-          const poster = series.posterPath ? `http://127.0.0.1:${this.player.serverPort}/file?path=${encodeURIComponent(series.posterPath)}` : '';
+          let poster = '';
+          if (series.posterPath) {
+            poster = `http://127.0.0.1:${this.player.serverPort}/file?path=${encodeURIComponent(series.posterPath)}`;
+          } else if (series.episodes && series.episodes.length > 0) {
+            poster = `http://127.0.0.1:${this.player.serverPort}/thumbnail?path=${encodeURIComponent(series.episodes[0].path)}`;
+          }
+
           const lastWatchedText = series.lastWatched ? `Terakhir: ${series.lastWatched.episodeName}` : `${series.episodesCount} Episode`;
+          const metaText = (Array.isArray(series.genres) && series.genres.length > 0)
+            ? series.genres.join(', ')
+            : lastWatchedText;
 
           html += `
             <div class="netflix-card local-downloaded-card" data-series-path="${series.path}" tabindex="0" role="article" aria-label="${series.title}">
@@ -1228,7 +1691,7 @@ class OtakudesuManager {
               </div>
               <div class="netflix-card-info">
                 <div class="netflix-card-title">${series.title}</div>
-                <div class="netflix-card-meta">${lastWatchedText}</div>
+                <div class="netflix-card-meta">${metaText}</div>
               </div>
               <div class="netflix-card-hover-panel">
                 <div class="hover-action-row">
@@ -1236,7 +1699,7 @@ class OtakudesuManager {
                     <button class="btn-card-action btn-card-play btn-play-local" data-series-path="${series.path}" title="Putar Langsung" aria-label="Putar">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                     </button>
-                    <button class="btn-card-action btn-card-secondary btn-episodes-local" data-series-path="${series.path}" title="Daftar Episode" aria-label="Daftar Episode">
+                    <button class="btn-card-action btn-card-secondary btn-episodes-local" data-series-path="${series.path}" title="Daftar Episode & Sinopsis" aria-label="Detail Series">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
                     </button>
                   </div>
@@ -1249,7 +1712,7 @@ class OtakudesuManager {
                   <span class="hover-badge-outline">Offline</span>
                 </div>
                 <div class="hover-tags-row">
-                  <span>${series.title}</span>
+                  <span>${series.synopsis ? series.synopsis.slice(0, 75) + '...' : series.title}</span>
                 </div>
               </div>
             </div>
@@ -1352,6 +1815,30 @@ class OtakudesuManager {
         });
       }
 
+      const btnDeleteAll = document.getElementById('btnDeleteAllDownloadedSub');
+      if (btnDeleteAll) {
+        btnDeleteAll.addEventListener('click', () => {
+          window.showConfirmDialog({
+            title: 'Hapus Semua Unduhan',
+            message: 'Apakah Anda yakin ingin menghapus SELURUH video dan file di dalam folder unduhan? Tindakan ini tidak dapat dibatalkan.',
+            confirmText: 'Ya, Hapus Semua',
+            onConfirm: async () => {
+              try {
+                if (window.electronAPI && typeof window.electronAPI.deleteAllDownloads === 'function') {
+                  await window.electronAPI.deleteAllDownloads();
+                  await this.renderDownloadedView();
+                  if (window.controlsManager && typeof window.controlsManager.showToast === 'function') {
+                    window.controlsManager.showToast('Semua file unduhan berhasil dihapus.');
+                  }
+                }
+              } catch (err) {
+                alert('Gagal menghapus unduhan: ' + err.message);
+              }
+            }
+          });
+        });
+      }
+
     } catch (err) {
       console.error('Error rendering downloaded view:', err);
       this.webDynamicContainer.innerHTML = `<div class="web-empty-notice">Gagal memuat unduhan: ${err.message}</div>`;
@@ -1359,11 +1846,11 @@ class OtakudesuManager {
   }
 
   /**
-   * 6. Pencarian Anime Gabungan (Otakudesu & Kusonime Smart Fallback)
+   * 6. Pencarian Anime & Donghua
    */
   async executeSearch(query, forceSource = null) {
     if (this.webBillboard) this.webBillboard.classList.add('hidden');
-    this.showLoading(`Mencari "${query}" di Otakudesu & Kusonime...`);
+    this.showLoading(`Mencari "${query}"...`);
     this.searchQuery = query;
 
     try {
@@ -1386,19 +1873,26 @@ class OtakudesuManager {
         promises.push(Promise.resolve([]));
       }
 
-      const [otakuResults, kusoResults] = await Promise.all(promises);
+      if (window.electronAPI && typeof window.electronAPI.anichinSearch === 'function') {
+        promises.push(window.electronAPI.anichinSearch(query).catch(err => {
+          console.warn('Ani-Chin search failed:', err);
+          return [];
+        }));
+      } else {
+        promises.push(Promise.resolve([]));
+      }
+
+      const [otakuResults, kusoResults, anichinResults] = await Promise.all(promises);
 
       this.lastSearchResults = {
         otakudesu: otakuResults || [],
         kusonime: kusoResults || [],
+        anichin: anichinResults || [],
         query
       };
 
-      // Smart fallback: Jika Otakudesu kosong tapi Kusonime memiliki hasil
       if (forceSource) {
         this.searchSourceFilter = forceSource;
-      } else if ((!otakuResults || otakuResults.length === 0) && (kusoResults && kusoResults.length > 0)) {
-        this.searchSourceFilter = 'kusonime';
       } else if (!this.searchSourceFilter) {
         this.searchSourceFilter = 'all';
       }
@@ -1407,73 +1901,65 @@ class OtakudesuManager {
 
     } catch (err) {
       console.error('Error executing search:', err);
-      this.webDynamicContainer.innerHTML = `<div class="web-empty-notice">Gagal mencari anime: ${err.message}</div>`;
+      this.webDynamicContainer.innerHTML = `<div class="web-empty-notice">Gagal mencari anime & donghua: ${err.message}</div>`;
     }
   }
 
   renderSearchResults() {
-    const { otakudesu, kusonime, query } = this.lastSearchResults || { otakudesu: [], kusonime: [], query: '' };
-    const totalCount = (otakudesu ? otakudesu.length : 0) + (kusonime ? kusonime.length : 0);
+    const { otakudesu, kusonime, anichin, query } = this.lastSearchResults || { otakudesu: [], kusonime: [], anichin: [], query: '' };
+    const otakuCount = otakudesu ? otakudesu.length : 0;
+    const kusoCount = kusonime ? kusonime.length : 0;
+    const anichinCount = anichin ? anichin.length : 0;
+    const totalCount = otakuCount + kusoCount + anichinCount;
 
     if (totalCount === 0) {
       this.webDynamicContainer.innerHTML = `
         <div class="web-empty-notice">
-          Tidak ada anime yang cocok dengan kata kunci "<b>${query}</b>" baik di Otakudesu maupun Kusonime. Silakan coba kata kunci lain.
+          Tidak ada anime atau donghua yang cocok dengan kata kunci "<b>${query}</b>". Silakan coba kata kunci lain.
         </div>
       `;
       return;
     }
 
-    const otakuCount = otakudesu ? otakudesu.length : 0;
-    const kusoCount = kusonime ? kusonime.length : 0;
-    const isFallbackMode = otakuCount === 0 && kusoCount > 0;
-
     let html = `
       <div class="web-grid-header search-results-header">
         <div>
           <h2 class="web-section-heading">Hasil Pencarian: "${query}"</h2>
-          <span class="web-section-count">${totalCount} Anime Ditemukan</span>
+          <span class="web-section-count">${totalCount} Judul Ditemukan</span>
         </div>
         <div class="search-source-filter-tabs" role="tablist">
           <button class="source-filter-btn ${this.searchSourceFilter === 'all' ? 'active' : ''}" data-source="all">
             Semua (${totalCount})
           </button>
           <button class="source-filter-btn ${this.searchSourceFilter === 'otakudesu' ? 'active' : ''}" data-source="otakudesu">
-            Otakudesu - Streaming (${otakuCount})
+            Anime (${otakuCount})
           </button>
           <button class="source-filter-btn ${this.searchSourceFilter === 'kusonime' ? 'active' : ''}" data-source="kusonime">
-            📦 Kusonime - Download Batch (${kusoCount})
+            Batch (${kusoCount})
+          </button>
+          <button class="source-filter-btn ${this.searchSourceFilter === 'anichin' ? 'active' : ''}" data-source="anichin" style="${this.searchSourceFilter === 'anichin' ? 'background:#eab308;color:#000;' : ''}">
+            Donghua (${anichinCount})
           </button>
         </div>
       </div>
     `;
-
-    if (isFallbackMode) {
-      html += `
-        <div class="search-fallback-notice">
-          <div class="fallback-icon">💡</div>
-          <div class="fallback-text">
-            <strong>Anime tidak ditemukan di Otakudesu.</strong>
-            <span>Menampilkan hasil download batch dari <b>Kusonime</b> di bawah ini (khusus unduhan paket lengkap, bukan streaming).</span>
-          </div>
-        </div>
-      `;
-    }
 
     let itemsToDisplay = [];
     if (this.searchSourceFilter === 'otakudesu') {
       itemsToDisplay = otakudesu || [];
     } else if (this.searchSourceFilter === 'kusonime') {
       itemsToDisplay = kusonime || [];
+    } else if (this.searchSourceFilter === 'anichin') {
+      itemsToDisplay = anichin || [];
     } else {
-      // 'all'
-      itemsToDisplay = [...(otakudesu || []), ...(kusonime || [])];
+      // 'all': gabungkan semua
+      itemsToDisplay = [...(otakudesu || []), ...(anichin || []), ...(kusonime || [])];
     }
 
     if (itemsToDisplay.length === 0) {
       html += `
         <div class="web-empty-notice">
-          Tidak ada hasil untuk kategori sumber "${this.searchSourceFilter}". Silakan pilih tab sumber lainnya di atas.
+          Tidak ada hasil untuk kategori filter "${this.searchSourceFilter}". Silakan pilih tab lainnya di atas.
         </div>
       `;
     } else {
@@ -1503,7 +1989,8 @@ class OtakudesuManager {
   renderAnimeCard(anime) {
     const slug = anime.slug;
     const isKusonime = anime.source === 'kusonime' || anime.isBatchOnly;
-    const historyEntry = !isKusonime ? this.onlineHistory[slug] : null;
+    const isAnichin = anime.source === 'anichin' || anime.isDonghua;
+    const historyEntry = (!isKusonime && !isAnichin) ? this.onlineHistory[slug] : null;
     let progressPercent = 0;
     let watchedBadgeText = '';
 
@@ -1516,17 +2003,30 @@ class OtakudesuManager {
       }
     }
 
-    const badgeTop = isKusonime
-      ? '📦 Kusonime • Batch'
-      : (anime.episode || (anime.rating ? `★ ${anime.rating}` : '') || (anime.status ? `● ${anime.status}` : 'Ongoing'));
-    const badgeBottom = isKusonime
-      ? 'Download Batch'
-      : (anime.day ? `${anime.day} • ${anime.date || ''}` : (anime.genres || 'Anime'));
+    let badgeTop = '';
+    let badgeBottom = '';
+    let sourceColorClass = '';
+
+    if (isAnichin) {
+      badgeTop = anime.latestEpisode || anime.episode || 'Donghua';
+      badgeBottom = 'Donghua';
+      sourceColorClass = 'card-source-anichin';
+    } else if (isKusonime) {
+      badgeTop = 'Batch';
+      badgeBottom = 'Download Batch';
+      sourceColorClass = 'card-source-kusonime';
+    } else {
+      badgeTop = (anime.episode || (anime.rating ? `★ ${anime.rating}` : '') || (anime.status ? `● ${anime.status}` : 'Ongoing'));
+      badgeBottom = (anime.day ? `${anime.day} • ${anime.date || ''}` : (anime.genres || 'Tersedia'));
+      sourceColorClass = 'card-source-otakudesu';
+    }
+
     const scoreText = anime.score ? `★ ${anime.score}` : (anime.rating ? `★ ${anime.rating}` : (historyEntry ? 'Terakhir Ditonton' : '★ 8.5'));
-    const statusText = isKusonime ? 'Batch Only' : (anime.status || 'Ongoing');
+    const statusText = isAnichin ? 'Donghua' : (isKusonime ? 'Batch Only' : (anime.status || 'Ongoing'));
+    const resolvedSource = isAnichin ? 'anichin' : (isKusonime ? 'kusonime' : 'otakudesu');
 
     return `
-      <div class="netflix-card otakudesu-card ${isKusonime ? 'kusonime-card' : ''}" data-url="${anime.url}" data-slug="${slug}" data-source="${isKusonime ? 'kusonime' : 'otakudesu'}" tabindex="0" role="article" aria-label="${anime.title}">
+      <div class="netflix-card otakudesu-card ${sourceColorClass} ${isKusonime ? 'kusonime-card' : ''}" data-url="${anime.url}" data-slug="${slug}" data-source="${resolvedSource}" tabindex="0" role="article" aria-label="${anime.title}">
         <div class="netflix-card-poster-wrap">
           ${anime.poster ? `<img class="netflix-card-poster" src="${anime.poster}" alt="${anime.title}" loading="lazy">` : `<div class="poster-placeholder"><span>${anime.title.charAt(0)}</span></div>`}
           <div class="poster-gradient-overlay"></div>
@@ -1545,7 +2045,11 @@ class OtakudesuManager {
         <div class="netflix-card-hover-panel">
           <div class="hover-action-row">
             <div class="hover-action-left">
-              ${isKusonime ? `
+              ${isAnichin ? `
+                <button class="btn-card-action btn-card-play btn-card-quick-anichin" data-url="${anime.url}" data-slug="${slug}" data-source="anichin" title="Buka Detail Episode Donghua" aria-label="Buka Donghua">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+              ` : (isKusonime ? `
                 <button class="btn-card-action btn-card-play btn-card-quick-batch" data-url="${anime.url}" data-slug="${slug}" data-source="kusonime" title="Lihat Paket Batch & Download" aria-label="Lihat Batch">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
                 </button>
@@ -1553,20 +2057,20 @@ class OtakudesuManager {
                 <button class="btn-card-action btn-card-play btn-card-quick-stream" data-url="${anime.url}" data-slug="${slug}" title="Putar Langsung" aria-label="Putar Langsung">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-              `}
-              <button class="btn-card-action btn-card-secondary btn-card-quick-info" data-url="${anime.url}" data-slug="${slug}" data-source="${isKusonime ? 'kusonime' : 'otakudesu'}" title="Lihat Detail & Episode" aria-label="Detail Anime">
+              `)}
+              <button class="btn-card-action btn-card-secondary btn-card-quick-info" data-url="${anime.url}" data-slug="${slug}" data-source="${resolvedSource}" title="Lihat Detail & Episode" aria-label="Detail Anime">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
               </button>
             </div>
           </div>
           <div class="hover-card-title">${anime.title}</div>
           <div class="hover-meta-row">
-            <span class="hover-score-star">${scoreText}</span>
+            <span class="hover-score-star" style="${isAnichin ? 'color:#facc15;' : ''}">${scoreText}</span>
             <span class="hover-badge-outline">${isKusonime ? 'BATCH' : 'HD'}</span>
-            <span class="${isKusonime ? 'hover-badge-amber' : 'hover-badge-red'}">${statusText}</span>
+            <span class="${isAnichin ? 'hover-badge-amber' : (isKusonime ? 'hover-badge-amber' : 'hover-badge-red')}">${statusText}</span>
           </div>
           <div class="hover-tags-row">
-            <span>${anime.genres || anime.day || anime.title}</span>
+            <span>${anime.genres || (isAnichin ? 'Donghua' : (anime.day || anime.title))}</span>
           </div>
         </div>
       </div>
@@ -1691,6 +2195,20 @@ class OtakudesuManager {
       });
     });
 
+    // Quick Play buttons for Ani-Chin Donghua inside hover panels
+    container.querySelectorAll('.btn-card-quick-anichin').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const url = btn.dataset.url;
+        const slug = btn.dataset.slug;
+        if (url) {
+          this.openAnichinDetail(url);
+        } else if (slug) {
+          this.openAnichinDetail(slug);
+        }
+      });
+    });
+
     // Quick Play buttons inside hover panels
     container.querySelectorAll('.btn-card-quick-stream').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -1717,6 +2235,11 @@ class OtakudesuManager {
           else if (slug) this.openKusonimeDetail(slug);
           return;
         }
+        if (source === 'anichin') {
+          if (url) this.openAnichinDetail(url);
+          else if (slug) this.openAnichinDetail(slug);
+          return;
+        }
         if (url) {
           this.openAnimeDetail(url);
         } else if (slug) {
@@ -1737,6 +2260,11 @@ class OtakudesuManager {
           else if (slug) this.openKusonimeDetail(slug);
           return;
         }
+        if (source === 'anichin') {
+          if (url) this.openAnichinDetail(url);
+          else if (slug) this.openAnichinDetail(slug);
+          return;
+        }
         if (url) {
           this.openAnimeDetail(url);
         } else if (slug) {
@@ -1755,6 +2283,11 @@ class OtakudesuManager {
             else if (slug) this.openKusonimeDetail(slug);
             return;
           }
+          if (source === 'anichin') {
+            if (url) this.openAnichinDetail(url);
+            else if (slug) this.openAnichinDetail(slug);
+            return;
+          }
           if (url) {
             this.openAnimeDetail(url);
           } else if (slug) {
@@ -1766,58 +2299,748 @@ class OtakudesuManager {
   }
 
   /**
-   * 7. Modal Detail Anime & Daftar Episode
+   * 7. Idlix-Style Dynamic Series Detail Tab & Full-Page View
    */
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  async openSeriesDetail(source, urlOrSlug, initialData = null) {
+    if (!urlOrSlug) return;
+
+    // Extract slug
+    let slug = '';
+    if (typeof urlOrSlug === 'string') {
+      const clean = urlOrSlug.replace(/\/+$/, '');
+      const parts = clean.split('/');
+      slug = parts[parts.length - 1] || 'series';
+    } else if (initialData && initialData.slug) {
+      slug = initialData.slug;
+    } else {
+      slug = 'series-' + Date.now();
+    }
+
+    // Save previous catalog tab and scroll position if we weren't already in a detail view
+    if (!this.activeDetailTabSlug) {
+      this.previousCatalogSubTab = this.activeSub || 'ongoing';
+      this.catalogScrollTop = this.webSection ? this.webSection.scrollTop : 0;
+    }
+
+    this.activeDetailTabSlug = slug;
+
+    // Sembunyikan web subnav bar sepenuhnya (hanya nav utama beranda web yang terlihat)
+    if (this.webSubnavBar) {
+      this.webSubnavBar.classList.add('hidden');
+    }
+
+    // Pastikan webSection ditampilkan dan section lain disembunyikan
+    if (this.webSection) this.webSection.classList.remove('hidden');
+    const netflixContent = document.getElementById('netflixContent');
+    if (netflixContent) netflixContent.classList.add('hidden');
+    const downloadsSection = document.getElementById('downloadsSection');
+    if (downloadsSection) downloadsSection.classList.add('hidden');
+    const settingsSection = document.getElementById('settingsSection');
+    if (settingsSection) settingsSection.classList.add('hidden');
+
+    // Pastikan tab Web di navbar utama tetap aktif dan tab lainnya tidak aktif
+    if (this.tabWeb) this.tabWeb.classList.add('active');
+    [this.tabHome, this.tabDownloads, this.tabSettings].forEach(t => {
+      if (t) t.classList.remove('active');
+    });
+
+    // Sembunyikan billboard & container katalog
+    if (this.webBillboard) this.webBillboard.classList.add('hidden');
+    if (this.webDynamicContainer) this.webDynamicContainer.classList.add('hidden');
+
+    // Tampilkan container series detail dengan spinner loading
+    if (this.webDetailContainer) {
+      this.webDetailContainer.classList.remove('hidden');
+      if (this.webSection) this.webSection.scrollTop = 0;
+
+      this.webDetailContainer.innerHTML = `
+        <div class="idlix-detail-header-bar">
+          <button class="btn-idlix-back" id="btnBackFromDetail-${slug}" data-slug="${slug}">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            <span>Kembali ke Katalog</span>
+          </button>
+        </div>
+        <div class="web-loading-spinner" style="margin-top: 60px;">
+          <div class="yt-spinner"></div>
+          <span>Memuat informasi ${source === 'anichin' ? 'donghua' : 'anime'}...</span>
+        </div>
+      `;
+      const btnBackInit = document.getElementById(`btnBackFromDetail-${slug}`);
+      if (btnBackInit) btnBackInit.addEventListener('click', () => this.closeSeriesDetail());
+    }
+
+    // Fetch detail data
+    try {
+      let detail = null;
+      if (source === 'anichin') {
+        if (window.electronAPI && typeof window.electronAPI.anichinGetDetail === 'function') {
+          detail = await window.electronAPI.anichinGetDetail(urlOrSlug);
+        } else if (window.electronAPI && typeof window.electronAPI.anichinGetAnimeDetail === 'function') {
+          detail = await window.electronAPI.anichinGetAnimeDetail(urlOrSlug);
+        }
+      } else if (source === 'kusonime') {
+        if (window.electronAPI && typeof window.electronAPI.kusonimeGetDetail === 'function') {
+          detail = await window.electronAPI.kusonimeGetDetail(urlOrSlug);
+        }
+      } else {
+        if (window.electronAPI && typeof window.electronAPI.otakudesuGetDetail === 'function') {
+          detail = await window.electronAPI.otakudesuGetDetail(urlOrSlug);
+        }
+      }
+
+      if (!detail) throw new Error('Data series tidak ditemukan');
+
+      // Pastikan urutan episode selalu mulai dari episode 1 (ascending)
+      if (Array.isArray(detail.episodes)) {
+        detail.episodes = this.sortEpisodesAscending(detail.episodes);
+      }
+
+      this.selectedAnime = detail;
+
+      // Render detail view
+      if (this.activeDetailTabSlug === slug) {
+        this.renderFullPageSeriesDetail(detail, source, slug);
+      }
+    } catch (err) {
+      console.error('Error fetching series detail:', err);
+      if (this.activeDetailTabSlug === slug && this.webDetailContainer) {
+        this.webDetailContainer.innerHTML = `
+          <div class="idlix-detail-header-bar">
+            <button class="btn-idlix-back" id="btnBackFromDetail-${slug}" data-slug="${slug}">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+              <span>Kembali ke Katalog</span>
+            </button>
+            <div class="idlix-breadcrumbs">
+              <span>Katalog</span>
+              <span class="crumb-sep">/</span>
+              <span class="crumb-current">Gagal Memuat</span>
+            </div>
+          </div>
+          <div class="web-empty-notice" style="margin-top: 40px;">Gagal memuat detail series: ${this.escapeHtml(err.message)}</div>
+        `;
+        const btnBack = document.getElementById(`btnBackFromDetail-${slug}`);
+        if (btnBack) btnBack.addEventListener('click', () => this.closeSeriesDetail());
+      }
+    }
+  }
+
+  closeSeriesDetail() {
+    this.activeDetailTabSlug = null;
+    if (this.webDetailContainer) this.webDetailContainer.classList.add('hidden');
+    if (this.webDynamicContainer) this.webDynamicContainer.classList.remove('hidden');
+
+    // Kembalikan subnav bar sedang tayang / jadwal rilis / genre / dll
+    if (this.webSubnavBar) this.webSubnavBar.classList.remove('hidden');
+
+    // Kembalikan active ke tabWeb di navbar utama
+    if (this.tabWeb) this.tabWeb.classList.add('active');
+    if (window.libraryManager && window.libraryManager.tabWeb) {
+      window.libraryManager.activeNav = 'web';
+      window.libraryManager.tabWeb.classList.add('active');
+    }
+
+    const prevSub = this.previousCatalogSubTab || 'ongoing';
+    this.switchSubTab(prevSub);
+
+    // Restore scroll position
+    if (this.webSection && this.catalogScrollTop) {
+      setTimeout(() => {
+        if (this.webSection) this.webSection.scrollTop = this.catalogScrollTop;
+      }, 30);
+    }
+  }
+
+  openSeriesDetailTab(source, urlOrSlug, initialData = null) {
+    return this.openSeriesDetail(source, urlOrSlug, initialData);
+  }
+
+  closeDetailTab(slug) {
+    return this.closeSeriesDetail();
+  }
+
+  switchToDetailTab(slug) {
+    // Single-page navigation, already transitioned
+  }
+
+  renderFullPageSeriesDetail(detail, source, slug) {
+    if (!this.webDetailContainer) return;
+    this.selectedAnime = detail;
+
+    if (Array.isArray(detail.episodes)) {
+      detail.episodes = this.sortEpisodesAscending(detail.episodes);
+    }
+
+    const isDonghua = source === 'anichin' || detail.isDonghua;
+    const isKusonime = source === 'kusonime' || detail.isBatchOnly;
+    const episodes = detail.episodes || [];
+    const poster = detail.poster || '';
+    const title = detail.title || 'Tanpa Judul';
+    const altTitle = detail.japaneseTitle || detail.japanese || '';
+    const status = isKusonime ? 'Batch Download' : (detail.status || 'Tersedia');
+    const score = detail.score ? `★ ${detail.score}` : '★ -';
+    const type = isDonghua ? 'Donghua' : (isKusonime ? 'Batch Series' : (detail.type || 'Anime'));
+    const studio = detail.studio || (isDonghua ? 'Donghua Studio' : 'Studio Anime');
+    const duration = detail.duration || (isKusonime ? 'Batch Lengkap' : '24 min/ep');
+    const totalEpsText = isKusonime ? `${detail.batchPackages ? detail.batchPackages.length : 1} Paket Batch` : `${episodes.length} Episode`;
+    const synopsis = detail.synopsis || 'Sinopsis belum tersedia untuk judul ini.';
+
+    // Check if downloaded locally
+    const localMatch = (this.lastDownloadedSeriesList || []).find(s => 
+      (s.slug && s.slug === detail.slug) || 
+      (s.title && detail.title && s.title.toLowerCase() === detail.title.toLowerCase())
+    );
+
+    let html = `
+      <!-- Idlix Detail Header Bar with Breadcrumb and Back Button -->
+      <div class="idlix-detail-header-bar">
+        <button class="btn-idlix-back" id="btnBackFromDetail-${slug}" data-slug="${slug}">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          <span>Kembali ke Katalog</span>
+        </button>
+        <div class="idlix-breadcrumbs">
+          <span>Katalog</span>
+          <span class="crumb-sep">/</span>
+          <span class="crumb-current">${this.escapeHtml(title)}</span>
+        </div>
+      </div>
+
+      <!-- Idlix Series Hero Section -->
+      <div class="idlix-series-hero">
+        <div class="idlix-hero-backdrop" style="background-image: url('${this.escapeHtml(poster)}')"></div>
+        <div class="idlix-hero-gradient"></div>
+        <div class="idlix-hero-body">
+          <div class="idlix-poster-box">
+            <img class="idlix-poster-img" src="${this.escapeHtml(poster)}" alt="${this.escapeHtml(title)}" loading="eager" />
+          </div>
+          <div class="idlix-info-box">
+            <div class="idlix-badges-row">
+              <span class="series-badge">${this.escapeHtml(status)}</span>
+              <span class="badge-score">${this.escapeHtml(score)}</span>
+              <span class="badge-type">${this.escapeHtml(type)}</span>
+            </div>
+            <h1 class="idlix-series-title">${this.escapeHtml(title)}</h1>
+            ${altTitle ? `<p class="idlix-alt-title">${this.escapeHtml(altTitle)}</p>` : ''}
+            <div class="idlix-meta-row">
+              <span>${this.escapeHtml(studio)}</span>
+              <span class="meta-dot">•</span>
+              <span>${this.escapeHtml(duration)}</span>
+              <span class="meta-dot">•</span>
+              <span>${totalEpsText}</span>
+            </div>
+            <div class="idlix-genres-row">
+              ${(Array.isArray(detail.genres)
+                ? detail.genres
+                : (typeof detail.genres === 'string' ? detail.genres.split(',') : [])
+              ).map(g => {
+                const gName = typeof g === 'object' && g !== null ? (g.name || g.title || '') : String(g || '').trim();
+                return gName ? `<span class="otakudesu-genre-tag">${this.escapeHtml(gName)}</span>` : '';
+              }).join('')}
+            </div>
+            <p class="idlix-synopsis">${this.escapeHtml(synopsis)}</p>
+
+            <div class="idlix-actions-row">
+              ${!isKusonime && episodes.length > 0 ? `
+                <button id="btnDetailPlayFirst-${slug}" class="btn-netflix-play">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  <span>Play</span>
+                </button>
+              ` : ''}
+
+              ${!isKusonime ? `
+                <button id="btnDetailDownloadAll-${slug}" class="btn-netflix-info">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                  <span>Download All Eps</span>
+                </button>
+              ` : ''}
+
+              ${detail.batch ? `
+                <button id="btnDetailBatch-${slug}" class="btn-netflix-info">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                  <span>Download Batch (Semua)</span>
+                </button>
+              ` : ''}
+
+              ${localMatch ? `
+                <button id="btnDetailDeleteAnime-${slug}" class="btn-netflix-action btn-danger-action" title="Hapus Anime Ini dari Komputer">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                  <span>Hapus Anime Ini</span>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Idlix Episodes Section -->
+      <div class="idlix-episodes-section">
+        <div class="idlix-episodes-heading">
+          <h2 class="episodes-section-title">${isKusonime ? 'Paket Unduhan Batch' : 'Daftar Episode'}</h2>
+          <span class="episodes-section-subtitle">${isKusonime ? 'Pilih resolusi dan paket batch untuk diunduh' : 'Pilih episode untuk ditonton atau diunduh'}</span>
+        </div>
+        <div class="idlix-episodes-container" id="detailEpisodesContainer-${slug}"></div>
+      </div>
+    `;
+
+    this.webDetailContainer.innerHTML = html;
+
+    // Attach Back Button click
+    const btnBack = document.getElementById(`btnBackFromDetail-${slug}`);
+    if (btnBack) {
+      btnBack.addEventListener('click', () => this.closeDetailTab(slug));
+    }
+
+    // Attach Play First Episode button
+    const btnPlay = document.getElementById(`btnDetailPlayFirst-${slug}`);
+    if (btnPlay && episodes.length > 0) {
+      const firstEp = episodes[0];
+      btnPlay.addEventListener('click', () => {
+        if (isDonghua) {
+          this.playAnichinEpisode(firstEp, detail, btnPlay);
+        } else {
+          this.streamEpisode(firstEp, detail, btnPlay);
+        }
+      });
+    }
+
+    // Attach Download All button
+    const btnDlAll = document.getElementById(`btnDetailDownloadAll-${slug}`);
+    if (btnDlAll) {
+      btnDlAll.addEventListener('click', () => {
+        if (detail.batch) {
+          this.openBatchPicker(detail.batch);
+        } else {
+          this.downloadAllEpisodesPrompt(detail, false);
+        }
+      });
+    }
+
+    // Attach Batch button
+    const btnBatch = document.getElementById(`btnDetailBatch-${slug}`);
+    if (btnBatch && detail.batch) {
+      btnBatch.addEventListener('click', () => {
+        this.openBatchPicker(detail.batch);
+      });
+    }
+
+    // Attach Delete Anime from PC button
+    const btnDelete = document.getElementById(`btnDetailDeleteAnime-${slug}`);
+    if (btnDelete && localMatch) {
+      btnDelete.addEventListener('click', async () => {
+        const confirmDelete = window.confirm(`Hapus folder unduhan untuk "${detail.title}" dari komputer Anda?`);
+        if (confirmDelete && window.electronAPI && typeof window.electronAPI.deleteSeries === 'function') {
+          await window.electronAPI.deleteSeries(localMatch.path);
+          this.closeDetailTab(slug);
+          if (this.activeSub === 'downloaded') {
+            this.renderDownloadedView();
+          }
+        }
+      });
+    }
+
+    // Render Episodes into container
+    const epContainer = document.getElementById(`detailEpisodesContainer-${slug}`);
+    if (epContainer) {
+      if (isKusonime) {
+        this.renderKusonimeBatchList(detail, epContainer);
+      } else {
+        this.renderUnifiedEpisodesGrid(detail, isDonghua, 1, epContainer);
+      }
+    }
+  }
+
   async openAnimeDetail(urlOrSlug) {
+    return this.openSeriesDetailTab('otakudesu', urlOrSlug);
+  }
+
+  extractEpisodeNumber(ep) {
+    if (!ep) return 0;
+    if (typeof ep.episodeNumber === 'number' && !isNaN(ep.episodeNumber)) {
+      return ep.episodeNumber;
+    }
+    if (typeof ep.episodeNumber === 'string') {
+      const parsed = parseFloat(ep.episodeNumber);
+      if (!isNaN(parsed)) return parsed;
+    }
+    const str = `${ep.slug || ''} ${ep.title || ''} ${ep.url || ''}`;
+    const match = str.match(/episode[-_\s]*([0-9]+(?:\.[0-9]+)?)/i) ||
+                  str.match(/ep[-_\s]*([0-9]+(?:\.[0-9]+)?)/i) ||
+                  (ep.title && ep.title.match(/(?:^|\s)([0-9]+)(?:\s|$)/));
+    if (match) {
+      const val = parseFloat(match[1]);
+      if (!isNaN(val)) return val;
+    }
+    return 0;
+  }
+
+  sortEpisodesAscending(episodes) {
+    if (!Array.isArray(episodes) || episodes.length <= 1) return episodes || [];
+
+    const withNumbers = episodes.map((ep, idx) => ({
+      ep,
+      idx,
+      num: this.extractEpisodeNumber(ep)
+    }));
+
+    const hasExtractedNumbers = withNumbers.some(item => item.num > 0);
+
+    if (hasExtractedNumbers) {
+      withNumbers.sort((a, b) => {
+        if (a.num > 0 && b.num > 0 && a.num !== b.num) {
+          return a.num - b.num;
+        }
+        return a.idx - b.idx;
+      });
+      return withNumbers.map(item => item.ep);
+    }
+
+    return [...episodes].reverse();
+  }
+
+  formatCleanEpisodeTitle(ep, index = 0, totalEpisodes = 1, animeTitle = '') {
+    const raw = typeof ep === 'object' && ep !== null ? (ep.title || '') : (ep || '');
+    const fallbackNum = (typeof ep === 'object' && ep !== null && typeof this.extractEpisodeNumber === 'function' ? this.extractEpisodeNumber(ep) : 0) || (index + 1);
+    if (!raw) return `Episode ${fallbackNum}`;
+    let t = raw;
+    if (animeTitle) {
+      const escaped = animeTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      t = t.replace(new RegExp(escaped, 'gi'), '');
+    }
+    t = t.replace(/Subtitle\s+Indonesia/gi, '')
+         .replace(/Sub\s+Indo/gi, '')
+         .replace(/Episode\s+(\d+)\s+END/gi, 'Episode $1 (Tamat)')
+         .replace(/END/gi, '(Tamat)')
+         .replace(/^[-\s:|]+/, '')
+         .replace(/[-\s:|]+$/, '')
+         .trim();
+    if (/^\d+$/.test(t)) {
+      return `Episode ${t}`;
+    }
+    const numMatch = t.match(/^(\d+)(.*)/);
+    if (numMatch && !t.toLowerCase().startsWith('episode')) {
+      return `Episode ${numMatch[1]}${numMatch[2] ? ' - ' + numMatch[2].trim() : ''}`;
+    }
+    return t || `Episode ${fallbackNum}`;
+  }
+
+  cleanEpisodeTitle(epTitle, animeTitle) {
+    return this.formatCleanEpisodeTitle(epTitle, 0, 1, animeTitle);
+  }
+
+  downloadAllEpisodesPrompt(animeDetail, isDonghua) {
+    const episodes = animeDetail.episodes || [];
+    if (episodes.length === 0) return;
+    const count = episodes.length;
+    const confirm = window.confirm(`Unduh episode dari "${animeDetail.title}"?\n\nKlik OK untuk membuka opsi download episode pertama dan memilih resolusi.`);
+    if (!confirm) return;
+
+    if (isDonghua) {
+      this.openAnichinResolutionPicker(episodes[0], animeDetail);
+    } else {
+      this.openResolutionPicker(episodes[0], animeDetail);
+    }
+  }
+
+  renderUnifiedEpisodesGrid(animeDetail, isDonghua = false, page = 1, targetContainer = null) {
+    const gridContainer = targetContainer || this.otakudesuEpisodesGrid;
+    if (!gridContainer) return;
+
+    const episodes = animeDetail.episodes || [];
+    if (episodes.length === 0) {
+      gridContainer.innerHTML = '<div class="web-empty-notice">Belum ada episode tersedia untuk judul ini.</div>';
+      return;
+    }
+
+    const historyForAnime = (this.onlineHistory && this.onlineHistory[animeDetail.slug]) || null;
+    let html = '';
+
+    if (episodes.length > 24) {
+      // Mode B: Compact 5x10 Numbered Grid with Pagination (> 24 episodes)
+      const pageSize = 50;
+      const totalPages = Math.ceil(episodes.length / pageSize);
+      const curPage = Math.max(1, Math.min(page, totalPages));
+      const startIdx = (curPage - 1) * pageSize;
+      const endIdx = Math.min(episodes.length, startIdx + pageSize);
+
+      // 1. Grid of 50 episode boxes FIRST
+      html += `<div class="episodes-numbered-grid otaku-episodes-5col-grid">`;
+
+      for (let i = startIdx; i < endIdx; i++) {
+        const ep = episodes[i];
+        const cleanTitle = this.cleanEpisodeTitle(ep.title, animeDetail.title);
+        const epHist = historyForAnime && historyForAnime.episodes && historyForAnime.episodes[ep.url];
+        const isCompleted = epHist && epHist.completed;
+
+        html += `
+          <div class="ep-numbered-box ${isCompleted ? 'completed' : ''}" data-index="${i}" data-url="${ep.url}">
+            <div class="ep-box-number-wrap">
+              <div class="ep-box-num">${cleanTitle}</div>
+              <div class="ep-box-tag">${ep.date || (isCompleted ? '✓ Selesai' : 'HD')}</div>
+            </div>
+            <div class="ep-box-actions">
+              <button class="btn-box-circle btn-box-play" data-index="${i}" title="Putar ${cleanTitle}" aria-label="Putar">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              </button>
+              <button class="btn-box-circle btn-box-download" data-index="${i}" title="Download ${cleanTitle}" aria-label="Download">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+
+      // 2. Pagination bar BELOW the grid
+      html += `
+        <div class="episodes-pagination-bar ep-pagination-bar">
+          <span class="ep-pagination-label">Pilih Halaman:</span>
+      `;
+
+      for (let p = 1; p <= totalPages; p++) {
+        const fromEp = (p - 1) * pageSize + 1;
+        const toEp = Math.min(episodes.length, p * pageSize);
+        html += `
+          <button class="ep-page-btn ${p === curPage ? 'active' : ''}" data-page="${p}">
+            ${fromEp} - ${toEp}
+          </button>
+        `;
+      }
+
+      html += `</div>`;
+
+    } else {
+      // Mode A: Landscape 16:9 Grid (<= 24 episodes - Jadwal Rilis / Idlix style)
+      html += `<div class="episodes-landscape-grid">`;
+
+      episodes.forEach((ep, index) => {
+        const epHist = historyForAnime && historyForAnime.episodes && historyForAnime.episodes[ep.url];
+        let progressPercent = 0;
+        let isCompleted = false;
+
+        if (epHist) {
+          if (epHist.completed) {
+            isCompleted = true;
+            progressPercent = 100;
+          } else if (epHist.currentTime > 0 && epHist.duration > 0) {
+            progressPercent = Math.min(100, Math.round((epHist.currentTime / epHist.duration) * 100));
+          }
+        }
+
+        const cleanTitle = this.cleanEpisodeTitle(ep.title, animeDetail.title);
+        const epNum = ep.episodeNumber || this.extractEpisodeNumber(ep) || (index + 1);
+        const posterImg = ep.poster || animeDetail.poster || '';
+
+        html += `
+          <div class="ep-landscape-card otaku-ep-card ${isCompleted ? 'completed' : ''}" data-index="${index}" data-url="${ep.url}">
+            <div class="ep-landscape-poster-wrap otaku-ep-thumb">
+              ${posterImg ? `<img class="ep-landscape-poster" src="${posterImg}" alt="${cleanTitle}" loading="lazy">` : `<div class="poster-placeholder"><span>${epNum}</span></div>`}
+              <span class="ep-badge-epnum">Eps ${epNum}</span>
+              ${progressPercent > 0 ? `
+                <div class="ep-landscape-progress">
+                  <div class="ep-landscape-progress-fill" style="width: ${progressPercent}%;"></div>
+                </div>
+              ` : ''}
+              <div class="ep-landscape-overlay">
+                <div class="ep-landscape-actions">
+                  <button class="btn-ep-circle btn-ep-circle-play btn-ep-card-play" data-index="${index}" title="Putar ${cleanTitle}" aria-label="Putar">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  </button>
+                  <button class="btn-ep-circle btn-ep-circle-download btn-ep-card-download" data-index="${index}" title="Download ${cleanTitle}" aria-label="Download">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="ep-landscape-info">
+              <div class="ep-landscape-title" title="${ep.title}">${cleanTitle}</div>
+              <div class="ep-landscape-meta">
+                <span>${ep.date || 'Tersedia'}</span>
+                ${isCompleted ? `<span class="ep-status-pill">Selesai</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `</div>`;
+    }
+
+    gridContainer.innerHTML = html;
+
+    // Attach Play Click (circular buttons)
+    gridContainer.querySelectorAll('.btn-ep-circle-play, .btn-box-play').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.index, 10);
+        const ep = episodes[idx];
+        if (!ep) return;
+        if (isDonghua) {
+          this.playAnichinEpisode(ep, animeDetail, btn);
+        } else {
+          this.streamEpisode(ep, animeDetail, btn);
+        }
+      });
+    });
+
+    // Attach Download Click (circular buttons)
+    gridContainer.querySelectorAll('.btn-ep-circle-download, .btn-box-download').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.index, 10);
+        const ep = episodes[idx];
+        if (!ep) return;
+        if (isDonghua) {
+          this.openAnichinResolutionPicker(ep, animeDetail);
+        } else {
+          this.openResolutionPicker(ep, animeDetail);
+        }
+      });
+    });
+
+    // Attach Card / Box Click (defaults to play)
+    gridContainer.querySelectorAll('.ep-landscape-card, .ep-numbered-box').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        const idx = parseInt(card.dataset.index, 10);
+        const ep = episodes[idx];
+        if (!ep) return;
+        if (isDonghua) {
+          this.playAnichinEpisode(ep, animeDetail, card);
+        } else {
+          this.streamEpisode(ep, animeDetail, card);
+        }
+      });
+    });
+
+    // Attach Pagination Button Click
+    gridContainer.querySelectorAll('.ep-page-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newPage = parseInt(btn.dataset.page, 10);
+        this.renderUnifiedEpisodesGrid(animeDetail, isDonghua, newPage, gridContainer);
+      });
+    });
+  }
+
+  renderEpisodesList(animeDetail) {
+    this.renderUnifiedEpisodesGrid(animeDetail, false);
+  }
+
+  renderModernEpisodesList(animeDetail) {
+    this.renderUnifiedEpisodesGrid(animeDetail, false);
+  }
+
+  formatCleanEpisodeTitle(ep, index = 0, totalEpisodes = 1, animeTitle = '') {
+    const raw = typeof ep === 'object' && ep !== null ? (ep.title || '') : (ep || '');
+    if (!raw) return `Episode ${totalEpisodes - index}`;
+    let t = raw;
+    if (animeTitle) {
+      const escaped = animeTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      t = t.replace(new RegExp(escaped, 'gi'), '');
+    }
+    t = t.replace(/Subtitle\s+Indonesia/gi, '')
+         .replace(/Sub\s+Indo/gi, '')
+         .replace(/Episode\s+(\d+)\s+END/gi, 'Episode $1 (Tamat)')
+         .replace(/END/gi, '(Tamat)')
+         .replace(/^[-\s:|]+/, '')
+         .replace(/[-\s:|]+$/, '')
+         .trim();
+    if (/^\d+$/.test(t)) {
+      return `Episode ${t}`;
+    }
+    const numMatch = t.match(/^(\d+)(.*)/);
+    if (numMatch && !t.toLowerCase().startsWith('episode')) {
+      return `Episode ${numMatch[1]}${numMatch[2] ? ' - ' + numMatch[2].trim() : ''}`;
+    }
+    return t || `Episode ${totalEpisodes - index}`;
+  }
+
+  downloadAllEpisodes(animeDetail) {
+    this.downloadAllEpisodesPrompt(animeDetail, false);
+  }
+
+  setupDeleteAnimeButton(animeDetail) {
+    if (!this.btnOtakudesuDeleteAnime) return;
+    const localMatch = (this.lastDownloadedSeriesList || []).find(s => 
+      (s.slug && s.slug === animeDetail.slug) || 
+      (s.title && animeDetail.title && s.title.toLowerCase() === animeDetail.title.toLowerCase())
+    );
+    if (localMatch) {
+      this.btnOtakudesuDeleteAnime.classList.remove('hidden');
+    } else {
+      this.btnOtakudesuDeleteAnime.classList.add('hidden');
+    }
+  }
+
+  /**
+   * 7b. Detail Series Khusus Batch (Delegates to dynamic series detail tab)
+   */
+  async openKusonimeDetail(urlOrSlug) {
+    return this.openSeriesDetailTab('kusonime', urlOrSlug);
+  }
+
+  /**
+   * 7c. Modal Detail Donghua Khusus Ani-Chin (Streaming & Download)
+   */
+  async openAnichinDetail(urlOrSlug) {
+    return this.openSeriesDetailTab('anichin', urlOrSlug);
+  }
+
+  async _legacyOpenAnichinDetail(urlOrSlug) {
     if (!this.otakudesuDetailModal) return;
 
     this.otakudesuDetailModal.classList.remove('hidden', 'kusonime-modal-active');
-    if (this.otakudesuModalTitle) this.otakudesuModalTitle.textContent = 'Memuat Informasi Anime...';
-    if (this.otakudesuJapaneseTitle) this.otakudesuJapaneseTitle.textContent = '';
-    if (this.otakudesuSynopsis) this.otakudesuSynopsis.textContent = 'Mengambil detail anime dan daftar episode dari Otakudesu...';
+    this.otakudesuDetailModal.scrollTop = 0;
+    if (this.otakudesuModalTitle) this.otakudesuModalTitle.textContent = 'Memuat Detail Donghua...';
+    if (this.otakudesuJapaneseTitle) this.otakudesuJapaneseTitle.textContent = 'Donghua (Chinese Animation)';
+    if (this.otakudesuSynopsis) this.otakudesuSynopsis.textContent = 'Mengambil detail donghua dan daftar episode...';
     if (this.otakudesuEpisodesGrid) {
-      this.otakudesuEpisodesGrid.innerHTML = '<div class="web-loading-spinner"><div class="yt-spinner"></div><span>Mengambil episode...</span></div>';
+      this.otakudesuEpisodesGrid.innerHTML = '<div class="web-loading-spinner"><div class="yt-spinner"></div><span>Mengambil episode donghua...</span></div>';
     }
 
     try {
       let detail = null;
-      if (window.electronAPI && typeof window.electronAPI.otakudesuGetDetail === 'function') {
-        detail = await window.electronAPI.otakudesuGetDetail(urlOrSlug);
+      if (window.electronAPI && typeof window.electronAPI.anichinGetDetail === 'function') {
+        detail = await window.electronAPI.anichinGetDetail(urlOrSlug);
       }
 
-      if (!detail) throw new Error('Data anime tidak ditemukan');
+      if (!detail) throw new Error('Data Donghua tidak ditemukan');
       this.selectedAnime = detail;
 
-      // Update Modal Elements
       if (this.otakudesuHeroBackdrop) {
         this.otakudesuHeroBackdrop.style.backgroundImage = `url("${detail.poster}")`;
       }
       if (this.otakudesuModalTitle) this.otakudesuModalTitle.textContent = detail.title;
-      if (this.otakudesuJapaneseTitle) this.otakudesuJapaneseTitle.textContent = detail.japaneseTitle || '';
-      if (this.otakudesuStatusBadge) this.otakudesuStatusBadge.textContent = detail.status || 'Tersedia';
-      if (this.otakudesuScoreBadge) this.otakudesuScoreBadge.textContent = detail.score ? `★ ${detail.score}` : '★ -';
-      if (this.otakudesuTypeBadge) this.otakudesuTypeBadge.textContent = detail.type || 'Anime';
-      if (this.otakudesuStudio) this.otakudesuStudio.textContent = detail.studio || 'Studio';
-      if (this.otakudesuDuration) this.otakudesuDuration.textContent = detail.duration || 'Durasi per ep';
+      if (this.otakudesuJapaneseTitle) this.otakudesuJapaneseTitle.textContent = detail.japanese || 'Donghua (Chinese Animation)';
+      if (this.otakudesuStatusBadge) this.otakudesuStatusBadge.textContent = detail.status || 'Ongoing';
+      if (this.otakudesuScoreBadge) this.otakudesuScoreBadge.textContent = detail.score ? `★ ${detail.score}` : '★ 8.5';
+      if (this.otakudesuTypeBadge) this.otakudesuTypeBadge.textContent = 'Donghua';
+      if (this.otakudesuStudio) this.otakudesuStudio.textContent = 'Donghua Animation';
+      if (this.otakudesuDuration) this.otakudesuDuration.textContent = 'Donghua Series';
       if (this.otakudesuTotalEps) this.otakudesuTotalEps.textContent = `${detail.episodes.length} Episode`;
       if (this.otakudesuSynopsis) this.otakudesuSynopsis.textContent = detail.synopsis || 'Sinopsis tidak tersedia.';
 
-      // Render Genres
       if (this.otakudesuGenresWrap) {
-        let gHtml = '';
-        (detail.genres || []).forEach(g => {
-          gHtml += `<span class="otakudesu-genre-tag">${g.name}</span>`;
-        });
-        this.otakudesuGenresWrap.innerHTML = gHtml;
+        const genreList = (typeof detail.genres === 'string' ? detail.genres.split(',') : (detail.genres || [])).map(s => s.trim()).filter(Boolean);
+        this.otakudesuGenresWrap.innerHTML = genreList.map(g => `<span class="otakudesu-genre-tag">${g}</span>`).join('');
       }
 
-      // Stream First Episode button
       if (this.btnOtakudesuStreamFirst) {
         if (detail.episodes && detail.episodes.length > 0) {
           const firstEp = detail.episodes[0];
-          this.txtOtakudesuStreamFirst.textContent = `Streaming ${firstEp.title}`;
+          if (this.txtOtakudesuStreamFirst) this.txtOtakudesuStreamFirst.textContent = 'Play';
           this.btnOtakudesuStreamFirst.onclick = () => {
-            this.streamEpisode(firstEp, detail, this.btnOtakudesuStreamFirst);
+            this.playAnichinEpisode(firstEp, detail, this.btnOtakudesuStreamFirst);
           };
           this.btnOtakudesuStreamFirst.classList.remove('hidden');
         } else {
@@ -1825,193 +3048,230 @@ class OtakudesuManager {
         }
       }
 
-      // Batch download button
-      if (this.btnOtakudesuBatch) {
-        if (detail.batch) {
-          this.btnOtakudesuBatch.classList.remove('hidden');
-          this.btnOtakudesuBatch.onclick = () => {
-            this.openBatchPicker(detail.batch);
-          };
-        } else {
-          this.btnOtakudesuBatch.classList.add('hidden');
-        }
-      }
-
-      // Render Episode Cards List
-      this.renderEpisodesList(detail);
-
-    } catch (err) {
-      console.error('Error opening anime detail:', err);
-      if (this.otakudesuSynopsis) {
-        this.otakudesuSynopsis.textContent = `Gagal memuat detail anime: ${err.message}`;
-      }
-    }
-  }
-
-  renderEpisodesList(animeDetail) {
-    if (!this.otakudesuEpisodesGrid) return;
-
-    const episodes = animeDetail.episodes || [];
-    if (episodes.length === 0) {
-      this.otakudesuEpisodesGrid.innerHTML = '<div class="web-empty-notice">Belum ada episode tersedia untuk anime ini.</div>';
-      return;
-    }
-
-    const historyForAnime = (this.onlineHistory && this.onlineHistory[animeDetail.slug]) || null;
-    let html = '';
-
-    episodes.forEach((ep, index) => {
-      const epHist = historyForAnime && historyForAnime.episodes && historyForAnime.episodes[ep.url];
-      let statusBadge = '';
-      let progressPercent = 0;
-      let timeText = '';
-
-      if (epHist) {
-        if (epHist.completed) {
-          statusBadge = '<span class="ep-badge-completed">✓ Selesai Ditonton</span>';
-          progressPercent = 100;
-        } else if (epHist.currentTime > 0 && epHist.duration > 0) {
-          progressPercent = Math.min(100, Math.round((epHist.currentTime / epHist.duration) * 100));
-          const curMin = Math.floor(epHist.currentTime / 60);
-          const curSec = Math.floor(epHist.currentTime % 60).toString().padStart(2, '0');
-          const durMin = Math.floor(epHist.duration / 60);
-          const durSec = Math.floor(epHist.duration % 60).toString().padStart(2, '0');
-          timeText = `${curMin}:${curSec} / ${durMin}:${durSec} (${progressPercent}%)`;
-          statusBadge = `<span class="ep-badge-progress">${timeText}</span>`;
-        }
-      }
-
-      html += `
-        <div class="otakudesu-episode-card" data-url="${ep.url}">
-          <div class="ep-card-main">
-            <div class="ep-number-box">
-              <span class="ep-num-label">${episodes.length - index}</span>
-            </div>
-            <div class="ep-info-box">
-              <div class="ep-title-row">
-                <h4 class="ep-title-text">${ep.title}</h4>
-                ${statusBadge}
-              </div>
-              <div class="ep-date-row">
-                <span>Rilis: ${ep.date || 'Tersedia'}</span>
-              </div>
-              ${progressPercent > 0 ? `
-                <div class="ep-progress-bar-bg">
-                  <div class="ep-progress-bar-fill" style="width: ${progressPercent}%;"></div>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-          <div class="ep-actions-box">
-            <button class="btn-ep-stream" data-index="${index}" title="Putar langsung di VidPlayer">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-              <span>Streaming</span>
-            </button>
-            <button class="btn-ep-download" data-index="${index}" title="Download ke folder komputer">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-              <span>Download</span>
-            </button>
-          </div>
-        </div>
-      `;
-    });
-
-    this.otakudesuEpisodesGrid.innerHTML = html;
-
-    // Attach button click events
-    this.otakudesuEpisodesGrid.querySelectorAll('.btn-ep-stream').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const idx = parseInt(btn.dataset.index, 10);
-        const ep = episodes[idx];
-        if (ep) this.streamEpisode(ep, animeDetail, btn);
-      });
-    });
-
-    this.otakudesuEpisodesGrid.querySelectorAll('.btn-ep-download').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const idx = parseInt(btn.dataset.index, 10);
-        const ep = episodes[idx];
-        if (ep) this.openResolutionPicker(ep, animeDetail);
-      });
-    });
-  }
-
-  /**
-   * 7b. Modal Detail Anime Khusus Kusonime (Download Batch Only)
-   */
-  async openKusonimeDetail(urlOrSlug) {
-    if (!this.otakudesuDetailModal) return;
-
-    this.otakudesuDetailModal.classList.remove('hidden');
-    this.otakudesuDetailModal.classList.add('kusonime-modal-active');
-    if (this.otakudesuModalTitle) this.otakudesuModalTitle.textContent = 'Memuat Detail Batch Kusonime...';
-    if (this.otakudesuJapaneseTitle) this.otakudesuJapaneseTitle.textContent = '';
-    if (this.otakudesuSynopsis) this.otakudesuSynopsis.textContent = 'Mengambil detail anime dan link batch dari Kusonime...';
-    if (this.otakudesuEpisodesGrid) {
-      this.otakudesuEpisodesGrid.innerHTML = '<div class="web-loading-spinner"><div class="yt-spinner"></div><span>Mengambil link download batch...</span></div>';
-    }
-
-    try {
-      let detail = null;
-      if (window.electronAPI && typeof window.electronAPI.kusonimeGetDetail === 'function') {
-        detail = await window.electronAPI.kusonimeGetDetail(urlOrSlug);
-      }
-
-      if (!detail) throw new Error('Data anime Kusonime tidak ditemukan');
-      this.selectedAnime = detail;
-
-      // Update Modal Elements
-      if (this.otakudesuHeroBackdrop) {
-        this.otakudesuHeroBackdrop.style.backgroundImage = `url("${detail.poster}")`;
-      }
-      if (this.otakudesuModalTitle) this.otakudesuModalTitle.textContent = detail.title;
-      if (this.otakudesuJapaneseTitle) this.otakudesuJapaneseTitle.textContent = detail.japanese || '';
-      if (this.otakudesuStatusBadge) this.otakudesuStatusBadge.textContent = '📦 Batch Download';
-      if (this.otakudesuScoreBadge) this.otakudesuScoreBadge.textContent = detail.score ? `★ ${detail.score}` : '★ 8.0';
-      if (this.otakudesuTypeBadge) this.otakudesuTypeBadge.textContent = detail.type || 'Batch Series';
-      if (this.otakudesuStudio) this.otakudesuStudio.textContent = detail.studio || 'Kusonime';
-      if (this.otakudesuDuration) this.otakudesuDuration.textContent = detail.duration || 'Batch Lengkap';
-      if (this.otakudesuTotalEps) this.otakudesuTotalEps.textContent = `${detail.batchPackages ? detail.batchPackages.length : 1} Paket Batch`;
-      if (this.otakudesuSynopsis) this.otakudesuSynopsis.textContent = detail.synopsis || 'Sinopsis tidak tersedia.';
-
-      // Render Genres
-      if (this.otakudesuGenresWrap) {
-        let gHtml = '';
-        (detail.genres || []).forEach(gName => {
-          gHtml += `<span class="otakudesu-genre-tag">${gName}</span>`;
-        });
-        this.otakudesuGenresWrap.innerHTML = gHtml;
-      }
-
-      // Re-purpose action button to scroll to batch packages
-      if (this.btnOtakudesuStreamFirst) {
-        if (this.txtOtakudesuStreamFirst) {
-          this.txtOtakudesuStreamFirst.textContent = 'Pilih Resolusi & Download Batch';
-        }
-        this.btnOtakudesuStreamFirst.onclick = () => {
-          if (this.otakudesuEpisodesGrid) {
-            this.otakudesuEpisodesGrid.scrollIntoView({ behavior: 'smooth' });
-          }
+      // Download All Eps button
+      if (this.btnOtakudesuDownloadAll) {
+        this.btnOtakudesuDownloadAll.onclick = () => {
+          this.downloadAllEpisodesPrompt(detail, true);
         };
-        this.btnOtakudesuStreamFirst.classList.remove('hidden');
+        this.btnOtakudesuDownloadAll.classList.remove('hidden');
       }
 
       if (this.btnOtakudesuBatch) {
         this.btnOtakudesuBatch.classList.add('hidden');
       }
 
-      // Render Batch Packages inside Grid
-      this.renderKusonimeBatchList(detail);
+      // Delete anime from PC button (if downloaded)
+      if (this.btnOtakudesuDeleteAnime) {
+        const localMatch = (this.lastDownloadedSeriesList || []).find(s => 
+          (s.slug && s.slug === detail.slug) || 
+          (s.title && detail.title && s.title.toLowerCase() === detail.title.toLowerCase())
+        );
+        if (localMatch) {
+          this.btnOtakudesuDeleteAnime.classList.remove('hidden');
+          this.btnOtakudesuDeleteAnime.onclick = async () => {
+            const confirmDelete = window.confirm(`Hapus folder unduhan untuk "${detail.title}" dari komputer Anda?`);
+            if (confirmDelete && window.electronAPI && typeof window.electronAPI.deleteSeries === 'function') {
+              await window.electronAPI.deleteSeries(localMatch.path);
+              this.closeDetailModal();
+              if (this.activeSub === 'downloaded') {
+                this.renderDownloadedView();
+              }
+            }
+          };
+        } else {
+          this.btnOtakudesuDeleteAnime.classList.add('hidden');
+        }
+      }
+
+      this.renderAnichinEpisodesList(detail);
 
     } catch (err) {
-      console.error('Error opening kusonime detail:', err);
+      console.error('Error opening anichin detail:', err);
       if (this.otakudesuSynopsis) {
-        this.otakudesuSynopsis.textContent = `Gagal memuat detail Kusonime: ${err.message}`;
+        this.otakudesuSynopsis.textContent = `Gagal memuat detail Donghua: ${err.message}`;
       }
-      if (this.otakudesuEpisodesGrid) {
-        this.otakudesuEpisodesGrid.innerHTML = `<div class="web-empty-notice">Gagal memuat link download batch: ${err.message}</div>`;
+    }
+  }
+
+  renderAnichinEpisodesList(animeDetail) {
+    this.renderUnifiedEpisodesGrid(animeDetail, true);
+  }
+
+  async playAnichinEpisode(ep, animeDetail, triggeringElement = null) {
+    if (triggeringElement) {
+      triggeringElement.classList.add('btn-loading-pulse', 'is-loading');
+    }
+    this.isStreamLoadingCancelled = false;
+    this.showStreamLoadingOverlay(animeDetail.title, ep.title, animeDetail.poster);
+    this.showDownloadToastNotification(`Menghubungkan stream Donghua ${ep.title}...`);
+
+    try {
+      let streamData = null;
+      if (window.electronAPI && typeof window.electronAPI.anichinGetEpisodeStream === 'function') {
+        streamData = await window.electronAPI.anichinGetEpisodeStream(ep.url);
+      }
+
+      if (this.isStreamLoadingCancelled) return;
+
+      if (!streamData || !streamData.streamUrl) {
+        if (streamData && streamData.downloadOptions && streamData.downloadOptions.length > 0) {
+          this.hideStreamLoadingOverlay();
+          this.showDownloadToastNotification('Stream direct sedang offline. Membuka opsi server unduhan...');
+          this.openAnichinResolutionPicker(ep, animeDetail);
+          return;
+        }
+        throw new Error('Link streaming Donghua tidak dapat diekstrak.');
+      }
+
+      this.closeDetailModal();
+
+      if (this.player && typeof this.player.loadRemoteStream === 'function') {
+        if (this.library) {
+          this.library.setOnlinePlaylist({
+            animeDetail: animeDetail,
+            currentEpisode: ep,
+            onSelectEpisode: (selectedEp) => {
+              this.playAnichinEpisode(selectedEp, animeDetail);
+            }
+          });
+          this.library.currentOnlineAnime = {
+            animeSlug: animeDetail.slug,
+            animeTitle: animeDetail.title,
+            episodeUrl: ep.url,
+            episodeTitle: ep.title,
+            poster: animeDetail.poster
+          };
+          this.library.showPlayerView();
+        }
+
+        await this.player.loadRemoteStream(streamData.streamUrl, {
+          title: `${animeDetail.title} - ${ep.title}`,
+          animeSlug: animeDetail.slug,
+          animeTitle: animeDetail.title,
+          episodeUrl: ep.url,
+          episodeTitle: ep.title,
+          poster: animeDetail.poster,
+          startTime: 0,
+          currentQuality: 'HD'
+        });
+      }
+
+    } catch (err) {
+      if (this.isStreamLoadingCancelled) return;
+      console.error('Error streaming anichin episode:', err);
+      window.dispatchEvent(new CustomEvent('player:error', {
+        detail: {
+          message: `Gagal memutar streaming Donghua: ${err.message}`,
+          codeName: 'DONGHUA_STREAM_FAILED'
+        }
+      }));
+    } finally {
+      this.hideStreamLoadingOverlay();
+      if (triggeringElement) {
+        triggeringElement.classList.remove('btn-loading-pulse', 'is-loading');
+      }
+      document.querySelectorAll('.btn-loading-pulse, .is-loading').forEach(el => {
+        el.classList.remove('btn-loading-pulse', 'is-loading');
+      });
+    }
+  }
+
+  async openAnichinResolutionPicker(ep, animeDetail) {
+    if (!this.resolutionPickerModal) return;
+
+    this.resolutionPickerModal.classList.remove('hidden');
+    if (this.resolutionModalTitle) this.resolutionModalTitle.textContent = `Download Donghua: ${ep.title}`;
+    if (this.resolutionModalDesc) this.resolutionModalDesc.textContent = 'Memuat opsi unduhan...';
+    if (this.resolutionOptionsList) {
+      this.resolutionOptionsList.innerHTML = '<div class="web-loading-spinner"><div class="yt-spinner"></div><span>Mengambil link unduhan...</span></div>';
+    }
+
+    try {
+      let streamData = null;
+      if (window.electronAPI && typeof window.electronAPI.anichinGetEpisodeStream === 'function') {
+        streamData = await window.electronAPI.anichinGetEpisodeStream(ep.url);
+      }
+
+      const options = (streamData && streamData.downloadOptions) || [];
+
+      if (streamData && streamData.streamUrl && streamData.streamType !== 'iframe') {
+        options.unshift({
+          quality: 'MP4 / HLS HD (Direct)',
+          size: 'Rekomendasi Cepat & Stabil',
+          isRecommended: true,
+          mirrors: [
+            { host: '⚡ Unduh Langsung (VidPlayer)', url: streamData.streamUrl, isDirect: true }
+          ]
+        });
+      }
+
+      if (options.length === 0) {
+        this.resolutionOptionsList.innerHTML = '<div class="web-empty-notice">Tautan download tidak ditemukan pada episode ini.</div>';
+        return;
+      }
+
+      if (this.resolutionModalDesc) {
+        this.resolutionModalDesc.textContent = 'Pilih resolusi dan server untuk mengunduh episode donghua ini:';
+      }
+
+      let html = '';
+      options.forEach(opt => {
+        const isRec = opt.isRecommended;
+        html += `
+          <div class="resolution-group-card ${isRec ? 'recommended-group' : ''}">
+            <div class="resolution-group-header">
+              <span class="resolution-label">${isRec ? '⭐ ' : ''}${opt.quality}</span>
+            </div>
+            <div class="mirror-buttons-grid">
+        `;
+
+        (opt.mirrors || []).forEach(m => {
+          const isDirect = m.isDirect || false;
+          html += `
+            <button class="btn-mirror-download ${isDirect ? 'btn-mirror-direct' : ''}" data-quality="${opt.quality}" data-host="${m.host}" data-url="${m.url}">
+              <span>${isDirect ? '⚡' : '⬇'} ${m.host}</span>
+            </button>
+          `;
+        });
+
+        html += `
+            </div>
+          </div>
+        `;
+      });
+
+      this.resolutionOptionsList.innerHTML = html;
+
+      this.resolutionOptionsList.querySelectorAll('.btn-mirror-download').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const downloadUrl = btn.dataset.url;
+          const quality = btn.dataset.quality;
+          const host = btn.dataset.host;
+
+          this.closeResolutionPicker();
+
+          const genresArr = (typeof animeDetail.genres === 'string'
+            ? animeDetail.genres.split(',')
+            : (animeDetail.genres || [])
+          ).map(g => (typeof g === 'object' ? (g.name || '') : g).trim()).filter(Boolean);
+
+          await this.triggerDownload({
+            animeTitle: animeDetail.title,
+            episodeTitle: ep.title,
+            downloadUrl,
+            quality,
+            mirrorHost: host,
+            posterUrl: animeDetail.poster,
+            synopsis: animeDetail.synopsis,
+            genres: genresArr
+          });
+        });
+      });
+
+    } catch (err) {
+      console.error('Error fetching anichin download resolutions:', err);
+      if (this.resolutionOptionsList) {
+        this.resolutionOptionsList.innerHTML = `<div class="web-empty-notice">Gagal memuat link download: ${err.message}</div>`;
       }
     }
   }
@@ -2063,12 +3323,13 @@ class OtakudesuManager {
    * Sistem otomatis menentukan mirror server terbaik (Google Drive / Pixeldrain / Fast Server)
    * dan langsung memulai unduhan latar belakang ke folder penyimpanan.
    */
-  renderKusonimeBatchList(animeDetail) {
-    if (!this.otakudesuEpisodesGrid) return;
+  renderKusonimeBatchList(animeDetail, targetContainer = null) {
+    const gridContainer = targetContainer || this.otakudesuEpisodesGrid;
+    if (!gridContainer) return;
 
     const packages = animeDetail.batchPackages || [];
     if (packages.length === 0) {
-      this.otakudesuEpisodesGrid.innerHTML = '<div class="web-empty-notice">Belum ada link unduhan batch yang tersedia untuk anime ini.</div>';
+      gridContainer.innerHTML = '<div class="web-empty-notice">Belum ada link unduhan batch yang tersedia untuk anime ini.</div>';
       return;
     }
 
@@ -2076,9 +3337,9 @@ class OtakudesuManager {
       <div class="kusonime-batch-banner">
         <div class="kusonime-banner-icon">📦</div>
         <div class="kusonime-banner-content">
-          <div class="kusonime-banner-title">Sumber: Kusonime (Download Batch Only • Bukan Streaming)</div>
+          <div class="kusonime-banner-title">Download Batch Lengkap (MKV/RAR/ZIP)</div>
           <div class="kusonime-banner-desc">
-            Anime ini disediakan khusus dalam format arsip paket batch (MKV/RAR/ZIP). Cukup pilih resolusi video yang Anda inginkan di bawah; sistem akan otomatis memilih server mirror tercepat dan langsung mengunduh ke komputer Anda.
+            Anime ini disediakan khusus dalam format arsip paket batch (MKV/RAR/ZIP). Pilih resolusi video yang Anda inginkan di bawah; sistem akan otomatis memilih server mirror tercepat dan langsung mengunduh ke komputer Anda.
           </div>
         </div>
       </div>
@@ -2124,10 +3385,10 @@ class OtakudesuManager {
     });
 
     html += '</div>';
-    this.otakudesuEpisodesGrid.innerHTML = html;
+    gridContainer.innerHTML = html;
 
     // Pasang listener pada tombol unduh resolusi
-    this.otakudesuEpisodesGrid.querySelectorAll('.btn-kuso-download-res').forEach(btn => {
+    gridContainer.querySelectorAll('.btn-kuso-download-res').forEach(btn => {
       btn.addEventListener('click', async () => {
         const pkgIdx = parseInt(btn.dataset.packageIndex, 10);
         const quality = btn.dataset.quality;
@@ -2265,7 +3526,7 @@ class OtakudesuManager {
 
       if (this.isStreamLoadingCancelled) return;
 
-      if (!streamData || !streamData.streamUrl) {
+      if (!streamData || (!streamData.streamUrl && !streamData.embedUrl)) {
         if (streamData && streamData.downloadOptions && streamData.downloadOptions.length > 0) {
           this.hideStreamLoadingOverlay();
           this.showDownloadToastNotification('Stream direct default offline. Membuka server alternatif...');
@@ -2276,7 +3537,7 @@ class OtakudesuManager {
               Silakan pilih mirror unduhan cepat di bawah (atau unduh langsung):
               <div style="margin-top: 12px;">
                 <button id="btnSearchKusonimeFallback" class="btn-fallback-kusonime">
-                  📦 Cari Versi Download Batch di Kusonime
+                  📦 Cari Versi Download Batch Lengkap
                 </button>
               </div>
             `;
@@ -2313,11 +3574,19 @@ class OtakudesuManager {
       let skipIntervals = null;
       if (window.electronAPI && typeof window.electronAPI.getAnimeSkipTimes === 'function') {
         try {
-          const epMatch = (ep.title || '').match(/(?:Episode|Eps?\.?)\s*(\d+)/i);
-          const epNum = epMatch ? parseInt(epMatch[1], 10) : 1;
+          let epNum = 1;
+          if (this.player && typeof this.player.extractEpisodeNumber === 'function') {
+            epNum = this.player.extractEpisodeNumber(ep.title || ep.url || '', animeDetail.title);
+          } else {
+            const epMatch = (ep.title || '').match(/(?:Episode|Eps?\.?)\s*(\d+)/i);
+            epNum = epMatch ? parseInt(epMatch[1], 10) : 1;
+          }
+
           const skipRes = await window.electronAPI.getAnimeSkipTimes(animeDetail.title, epNum);
           if (skipRes && skipRes.found) {
-            skipIntervals = { op: skipRes.op, ed: skipRes.ed };
+            skipIntervals = this.player && typeof this.player.validateSkipIntervals === 'function'
+              ? this.player.validateSkipIntervals({ op: skipRes.op, ed: skipRes.ed })
+              : { op: skipRes.op, ed: skipRes.ed };
           }
         } catch (e) {
           console.warn('Gagal memuat AniSkip times:', e.message);
@@ -2346,7 +3615,10 @@ class OtakudesuManager {
           this.library.showPlayerView();
         }
 
-        await this.player.loadRemoteStream(streamData.streamUrl, {
+        const finalStreamUrl = streamData.streamUrl || streamData.embedUrl;
+        const streamType = streamData.streamType || (streamData.streamUrl && !streamData.streamUrl.includes('/dstream/') ? 'direct' : 'iframe');
+
+        await this.player.loadRemoteStream(finalStreamUrl, {
           title: `${animeDetail.title} - ${ep.title}`,
           animeSlug: animeDetail.slug,
           animeTitle: animeDetail.title,
@@ -2355,8 +3627,10 @@ class OtakudesuManager {
           poster: animeDetail.poster,
           startTime: resumeTime,
           availableQualities: streamData.availableQualities || [],
-          currentQuality: streamData.currentQuality || '720p',
-          skipIntervals: skipIntervals
+          currentQuality: streamData.currentQuality || (streamType === 'iframe' ? 'Auto' : '720p'),
+          skipIntervals: skipIntervals,
+          streamType: streamType,
+          embedUrl: streamData.embedUrl
         });
       }
 
@@ -2460,12 +3734,20 @@ class OtakudesuManager {
 
           this.closeResolutionPicker();
 
+          const genresArr = (typeof animeDetail.genres === 'string'
+            ? animeDetail.genres.split(',')
+            : (animeDetail.genres || [])
+          ).map(g => (typeof g === 'object' ? (g.name || '') : g).trim()).filter(Boolean);
+
           await this.triggerDownload({
             animeTitle: animeDetail.title,
             episodeTitle: ep.title,
             downloadUrl,
             quality,
-            mirrorHost: host
+            mirrorHost: host,
+            posterUrl: animeDetail.poster,
+            synopsis: animeDetail.synopsis,
+            genres: genresArr
           });
         });
       });
@@ -2542,12 +3824,22 @@ class OtakudesuManager {
 
           this.closeResolutionPicker();
 
+          const genresArr = this.selectedAnime
+            ? (typeof this.selectedAnime.genres === 'string'
+              ? this.selectedAnime.genres.split(',')
+              : (this.selectedAnime.genres || [])
+            ).map(g => (typeof g === 'object' ? (g.name || '') : g).trim()).filter(Boolean)
+            : [];
+
           await this.triggerDownload({
             animeTitle: this.selectedAnime ? this.selectedAnime.title : 'Anime Batch',
             episodeTitle: `${this.selectedAnime ? this.selectedAnime.title : 'Anime'} [BATCH]`,
             downloadUrl,
             quality,
-            mirrorHost: host
+            mirrorHost: host,
+            posterUrl: this.selectedAnime ? this.selectedAnime.poster : null,
+            synopsis: this.selectedAnime ? this.selectedAnime.synopsis : null,
+            genres: genresArr
           });
         });
       });

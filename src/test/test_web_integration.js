@@ -49,6 +49,14 @@ async function runWebIntegrationTest() {
   ipcMain.handle('otakudesu:getEpisodeStream', async (_e, u) => otakudesuService.getEpisodeStream(u));
   ipcMain.handle('otakudesu:getBatchDetails', async (_e, u) => otakudesuService.getBatchDetails(u));
 
+  ipcMain.handle('app:getVersion', () => '1.1.1');
+  ipcMain.handle('anichin:getOngoing', async (_e, page) => ({ data: [], totalPages: 1 }));
+  ipcMain.handle('anichin:getSchedule', async () => ({}));
+  ipcMain.handle('anichin:getAnimeList', async () => []);
+  ipcMain.handle('anichin:getDetail', async (_e, url) => null);
+  ipcMain.handle('anichin:getEpisodeStream', async (_e, url) => null);
+  ipcMain.handle('anichin:search', async (_e, q) => []);
+
   ipcMain.handle('download:start', async (_e, opts) => downloadManager.startDownload(opts));
   ipcMain.handle('download:cancel', (_e, id) => downloadManager.cancelDownload(id));
   ipcMain.handle('download:getActive', () => downloadManager.getActiveDownloads());
@@ -103,10 +111,9 @@ async function runWebIntegrationTest() {
       const homeSecHidden = document.getElementById('netflixContent').classList.contains('hidden');
       report('3. Navigasi beralih ke tab Web', webSecVisible && homeSecHidden, 'WebVisible: ' + webSecVisible + ', HomeHidden: ' + homeSecHidden);
 
-      // 4. Verify Download Folder Setting Pill
+      // 4. Verify Download Folder Setting Pill is removed from web subnav
       const btnDlSetting = document.getElementById('btnDownloadFolderSetting');
-      const dlLabel = document.getElementById('downloadFolderLabel');
-      report('4. Tombol setelan folder download aktif', !!btnDlSetting && !!dlLabel && dlLabel.textContent.includes('Folder'), 'Label: ' + (dlLabel?.textContent));
+      report('4. Tombol setelan folder download dihapus dari deretan sub-nav Web', btnDlSetting === null, 'Removed: ' + (btnDlSetting === null));
 
       // 5. Test switching to Downloaded sub-tab
       mgr.switchSubTab('downloaded');

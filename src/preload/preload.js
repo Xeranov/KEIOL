@@ -25,6 +25,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   chooseDownloadFolder: () => ipcRenderer.invoke('library:chooseDownloadFolder'),
   openDownloadFolder: () => ipcRenderer.invoke('library:openDownloadFolder'),
   scanDownloads: () => ipcRenderer.invoke('library:scanDownloads'),
+  deleteSeries: (seriesPath) => ipcRenderer.invoke('library:deleteSeries', seriesPath),
+  deleteAllDownloads: () => ipcRenderer.invoke('library:deleteAllDownloads'),
+  clearCacheSettings: () => ipcRenderer.invoke('app:clearCacheSettings'),
+  factoryReset: () => ipcRenderer.invoke('app:factoryReset'),
 
   // Online Watch History (Streaming)
   saveOnlineProgress: (animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster) =>
@@ -40,13 +44,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   otakudesuSearch: (query) => ipcRenderer.invoke('otakudesu:search', query),
   otakudesuGetDetail: (urlOrSlug) => ipcRenderer.invoke('otakudesu:getDetail', urlOrSlug),
   otakudesuGetEpisodeStream: (urlOrSlug) => ipcRenderer.invoke('otakudesu:getEpisodeStream', urlOrSlug),
+  otakudesuResolveStreamUrl: (embedUrl) => ipcRenderer.invoke('otakudesu:resolveStreamUrl', embedUrl),
   otakudesuGetBatchDetails: (urlOrSlug) => ipcRenderer.invoke('otakudesu:getBatchDetails', urlOrSlug),
   getAnimeSkipTimes: (animeTitle, episodeNum) => ipcRenderer.invoke('aniskip:getSkipTimes', animeTitle, episodeNum),
+  validateAnimeSkipTimes: (intervals, videoDuration) => ipcRenderer.invoke('aniskip:validateSkipIntervals', intervals, videoDuration),
+  aniskipExtractEpisodeNumber: (rawString, animeTitle) => ipcRenderer.invoke('aniskip:extractEpisodeNumber', rawString, animeTitle),
 
   // Kusonime Integration APIs (Batch Download Source)
   kusonimeSearch: (query) => ipcRenderer.invoke('kusonime:search', query),
   kusonimeGetDetail: (urlOrSlug) => ipcRenderer.invoke('kusonime:getDetail', urlOrSlug),
   kusonimeGetAnimeList: () => ipcRenderer.invoke('kusonime:getAnimeList'),
+
+  // Ani-Chin Integration APIs (Donghua Streaming & Downloads)
+  anichinGetOngoing: (page) => ipcRenderer.invoke('anichin:getOngoing', page),
+  anichinGetSchedule: () => ipcRenderer.invoke('anichin:getSchedule'),
+  anichinGetAnimeList: () => ipcRenderer.invoke('anichin:getAnimeList'),
+  anichinGetDetail: (urlOrSlug) => ipcRenderer.invoke('anichin:getDetail', urlOrSlug),
+  anichinGetAnimeDetail: (urlOrSlug) => ipcRenderer.invoke('anichin:getDetail', urlOrSlug),
+  anichinGetEpisodeStream: (urlOrSlug) => ipcRenderer.invoke('anichin:getEpisodeStream', urlOrSlug),
+  anichinSearch: (query) => ipcRenderer.invoke('anichin:search', query),
+
+  // Application Version
+  getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
 
   // Background Download Manager
   startDownload: (options) => ipcRenderer.invoke('download:start', options),

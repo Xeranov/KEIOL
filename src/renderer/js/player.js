@@ -6,6 +6,7 @@
 class VidPlayerCore {
   constructor() {
     this.video = document.getElementById('mainVideo');
+    this.iframePlayer = document.getElementById('iframePlayer');
     this.serverPort = 0;
     this.currentFilePath = null;
     this.mediaInfo = null;
@@ -18,7 +19,8 @@ class VidPlayerCore {
     this.streamSeekOffset = 0; // Offset in seconds when streaming via FFmpeg
     this.originalSpeedBeforeBoost = 1.0;
     this.isBoostActive = false;
-    this.normalPlaybackRate = 1.0;
+    const savedSpeed = parseFloat(localStorage.getItem('keiol_pref_speed') || '1.0');
+    this.normalPlaybackRate = isNaN(savedSpeed) ? 1.0 : savedSpeed;
     this.availableQualities = [];
     this.currentQuality = null;
     this.currentSkipIntervals = null;
@@ -36,8 +38,15 @@ class VidPlayerCore {
   }
 
   async init() {
-    if (window.electronAPI) {
-      this.serverPort = await window.electronAPI.getServerPort();
+    if (!this.iframePlayer) {
+      this.iframePlayer = document.getElementById('iframePlayer');
+    }
+    if (window.electronAPI && typeof window.electronAPI.getServerPort === 'function') {
+      try {
+        this.serverPort = await window.electronAPI.getServerPort();
+      } catch (e) {
+        // Fallback port if server not running yet
+      }
     }
   }
 
@@ -68,6 +77,16 @@ class VidPlayerCore {
 
     this.video.addEventListener('canplay', () => {
       window.dispatchEvent(new CustomEvent('player:buffering', { detail: { isBuffering: false } }));
+    });
+
+    this.video.addEventListener('loadedmetadata', () => {
+      if (this.currentSkipIntervals && this.video.duration > 0) {
+        const validated = this.validateSkipIntervals(this.currentSkipIntervals, this.video.duration);
+        if (JSON.stringify(validated) !== JSON.stringify(this.currentSkipIntervals)) {
+          this.currentSkipIntervals = validated;
+          window.dispatchEvent(new CustomEvent('player:skipintervals', { detail: this.currentSkipIntervals }));
+        }
+      }
     });
 
     this.video.addEventListener('ratechange', () => {
@@ -197,6 +216,15 @@ class VidPlayerCore {
         detail: { fileName, mediaInfo: this.mediaInfo, playbackMode: this.playbackMode }
       }));
 
+      // Ensure iframe player is deactivated and main video is visible for local files
+      if (this.iframePlayer) {
+        this.iframePlayer.classList.add('hidden');
+        this.iframePlayer.src = 'about:blank';
+      }
+      if (this.video) {
+        this.video.classList.remove('hidden');
+      }
+
       // Check chapter markers for Opening/Ending
       if (this.mediaInfo && Array.isArray(this.mediaInfo.chapters)) {
         const opChapter = this.mediaInfo.chapters.find(ch => /OP|Opening|Intro/i.test(ch.title));
@@ -212,6 +240,39 @@ class VidPlayerCore {
       } else {
         this.currentSkipIntervals = null;
       }
+
+      // Jika file lokal tidak memiliki chapter OP/ED, lookup ke AniSkip berdasarkan judul anime & episode
+      if (!this.currentSkipIntervals && window.electronAPI && typeof window.electronAPI.getAnimeSkipTimes === 'function') {
+        try {
+          const rawBase = fileName.replace(/\.[^.]+$/, '');
+          const stripped = rawBase
+            .replace(/\[[^\]]+\]/g, ' ')
+            .replace(/\([^\)]+\)/g, ' ')
+            .replace(/\b(?:1080p|720p|480p|360p|2160p|x264|x265|hevc|web-dl|bdrip|bluray|10bit|aac|flac)\b/gi, ' ')
+            .trim();
+
+          const matchTitle = stripped.match(/^([^-–—_]+?)(?:\s*[-–—_]\s*|\s+[sS]\d+|\s+(?:Season|S)\s*\d+)/i);
+          const cleanName = matchTitle ? matchTitle[1].trim() : stripped.replace(/[-–—_]\s*\d+.*$/, '').trim();
+
+          let epNum = 1;
+          if (typeof window.electronAPI.aniskipExtractEpisodeNumber === 'function') {
+            epNum = await window.electronAPI.aniskipExtractEpisodeNumber(rawBase, cleanName);
+          } else {
+            epNum = this.extractEpisodeNumber(rawBase, cleanName);
+          }
+
+          if (cleanName) {
+            const skipRes = await window.electronAPI.getAnimeSkipTimes(cleanName, epNum).catch(() => null);
+            if (skipRes && skipRes.found) {
+              const dur = this.mediaInfo?.duration || this.video?.duration || null;
+              this.currentSkipIntervals = this.validateSkipIntervals({ op: skipRes.op, ed: skipRes.ed }, dur);
+            }
+          }
+        } catch (e) {
+          // Abaikan error AniSkip lookup untuk file lokal
+        }
+      }
+
       this.availableQualities = [];
       this.currentQuality = null;
       window.dispatchEvent(new CustomEvent('player:skipintervals', { detail: this.currentSkipIntervals }));
@@ -476,7 +537,25 @@ class VidPlayerCore {
       const title = options.title || 'Online Stream';
       this.availableQualities = options.availableQualities || [];
       this.currentQuality = options.currentQuality || (this.availableQualities.find(q => q.isDefault)?.quality || '720p');
-      this.currentSkipIntervals = options.skipIntervals || null;
+
+      // Redundant validation & auto-fetch of skip intervals if animeTitle is provided
+      if (options.skipIntervals) {
+        this.currentSkipIntervals = this.validateSkipIntervals(options.skipIntervals);
+      } else if (options.animeTitle && window.electronAPI && typeof window.electronAPI.getAnimeSkipTimes === 'function') {
+        try {
+          const epNum = this.extractEpisodeNumber(options.episodeTitle || options.title || '', options.animeTitle);
+          const skipRes = await window.electronAPI.getAnimeSkipTimes(options.animeTitle, epNum).catch(() => null);
+          if (skipRes && skipRes.found) {
+            this.currentSkipIntervals = this.validateSkipIntervals({ op: skipRes.op, ed: skipRes.ed });
+          } else {
+            this.currentSkipIntervals = null;
+          }
+        } catch (e) {
+          this.currentSkipIntervals = null;
+        }
+      } else {
+        this.currentSkipIntervals = null;
+      }
 
       window.dispatchEvent(new CustomEvent('player:medialoaded', {
         detail: { fileName: title, mediaInfo: this.mediaInfo, playbackMode: 'direct' }
@@ -490,13 +569,56 @@ class VidPlayerCore {
         }
       }));
 
+      // Cek apakah mode streaming adalah iframe embed (anime lawas seperti Death Note, Toradora, Clannad, dll.)
+      let effectiveStreamUrl = streamUrl;
+      let isIframeStream = options.streamType === 'iframe' ||
+        (!streamUrl && options.embedUrl) ||
+        (options.embedUrl && streamUrl === options.embedUrl);
+
+      // Coba unwrap direct media (<video src> atau <source src>) dari embedUrl jika direct stream belum tersedia
+      if (isIframeStream && (options.embedUrl || streamUrl)) {
+        try {
+          const unpacked = await this.resolveDirectMediaFromEmbed(options.embedUrl || streamUrl);
+          if (unpacked) {
+            effectiveStreamUrl = unpacked;
+            isIframeStream = false;
+          }
+        } catch (e) {}
+      }
+
+      if (isIframeStream) {
+        this.playbackMode = 'iframe';
+        if (this.video) {
+          this.video.pause();
+          this.video.removeAttribute('src');
+          this.video.load();
+          this.video.classList.add('hidden');
+        }
+        if (this.iframePlayer) {
+          this.iframePlayer.classList.remove('hidden');
+          this.iframePlayer.src = options.embedUrl || streamUrl;
+        }
+        window.dispatchEvent(new CustomEvent('player:medialoaded', {
+          detail: { fileName: title, mediaInfo: this.mediaInfo, playbackMode: 'iframe' }
+        }));
+        return;
+      } else {
+        if (this.iframePlayer) {
+          this.iframePlayer.classList.add('hidden');
+          this.iframePlayer.src = 'about:blank';
+        }
+        if (this.video) {
+          this.video.classList.remove('hidden');
+        }
+      }
+
       // Cek apakah stream utama merupakan MKV, HLS (.m3u8), atau memerlukan remux
-      const isMkv = options.isMkv || /\.mkv/i.test(streamUrl);
-      const isHls = streamUrl.includes('.m3u8');
+      const isMkv = options.isMkv || /\.mkv/i.test(effectiveStreamUrl);
+      const isHls = effectiveStreamUrl.includes('.m3u8');
       const requiresRemux = isMkv || isHls;
       const initialSrc = requiresRemux
-        ? `http://127.0.0.1:${this.serverPort}/stream?path=${encodeURIComponent(streamUrl)}&mode=transmux&audio=0`
-        : streamUrl;
+        ? `http://127.0.0.1:${this.serverPort}/stream?path=${encodeURIComponent(effectiveStreamUrl)}&mode=transmux&audio=0`
+        : effectiveStreamUrl;
 
       this.video.src = initialSrc;
       this.video.playbackRate = this.normalPlaybackRate;
@@ -520,12 +642,149 @@ class VidPlayerCore {
   }
 
   setSkipIntervals(intervals) {
-    this.currentSkipIntervals = intervals;
-    window.dispatchEvent(new CustomEvent('player:skipintervals', { detail: intervals }));
+    this.currentSkipIntervals = this.validateSkipIntervals(intervals, this.video?.duration || null);
+    window.dispatchEvent(new CustomEvent('player:skipintervals', { detail: this.currentSkipIntervals }));
   }
 
   getSkipIntervals() {
-    return this.currentSkipIntervals;
+    if (!this.currentSkipIntervals) return null;
+    return this.validateSkipIntervals(this.currentSkipIntervals, this.video?.duration || this.mediaInfo?.duration || null);
+  }
+
+  /**
+   * Redundant Validation System for Anime Skip Intervals
+   * Validates intervals against sensible OP/ED duration bounds (~80-100s, 30s-130s),
+   * start time bounds, non-overlap, and actual video duration.
+   */
+  validateSkipIntervals(intervals, videoDuration = null) {
+    if (!intervals || typeof intervals !== 'object') return null;
+
+    const validDuration = (typeof videoDuration === 'number' && !isNaN(videoDuration) && videoDuration > 0)
+      ? videoDuration
+      : null;
+
+    let validOp = null;
+    let validEd = null;
+
+    // Validate Opening (OP)
+    if (intervals.op && typeof intervals.op.startTime === 'number' && typeof intervals.op.endTime === 'number') {
+      const start = Math.max(0, intervals.op.startTime);
+      const end = intervals.op.endTime;
+      const duration = end - start;
+
+      const isSensibleDuration = duration >= 30 && duration <= 130;
+      const isSensibleStart = start >= 0 && start <= 480;
+      const fitsVideo = !validDuration || (end <= (validDuration - 5) && duration < (validDuration * 0.6));
+
+      if (isSensibleDuration && isSensibleStart && fitsVideo) {
+        const effectiveEnd = validDuration ? Math.min(end, validDuration - 2) : end;
+        validOp = {
+          startTime: Math.round(start * 10) / 10,
+          endTime: Math.round(effectiveEnd * 10) / 10
+        };
+      }
+    }
+
+    // Validate Ending (ED)
+    if (intervals.ed && typeof intervals.ed.startTime === 'number' && typeof intervals.ed.endTime === 'number') {
+      const start = Math.max(0, intervals.ed.startTime);
+      const end = intervals.ed.endTime;
+      const duration = end - start;
+
+      const isSensibleDuration = duration >= 30 && duration <= 130;
+      const fitsVideo = !validDuration || (start >= (validDuration * 0.35) && start < validDuration);
+
+      if (isSensibleDuration && fitsVideo) {
+        if (!validOp || start >= validOp.endTime) {
+          const effectiveEnd = validDuration ? Math.min(end, validDuration - 1) : end;
+          if (effectiveEnd > start) {
+            validEd = {
+              startTime: Math.round(start * 10) / 10,
+              endTime: Math.round(effectiveEnd * 10) / 10
+            };
+          }
+        }
+      }
+    }
+
+    if (!validOp && !validEd) return null;
+    return { op: validOp, ed: validEd };
+  }
+
+  /**
+   * Resolves episode number from string, stripping known animeTitle first
+   * so anime with numbers (e.g. Mob Psycho 100, 86, Steins;Gate 0) do not collide.
+   */
+  extractEpisodeNumber(rawString, animeTitle = '') {
+    if (!rawString) return 1;
+
+    let target = rawString;
+    if (animeTitle) {
+      const cleanAnime = animeTitle
+        .replace(/\[[^\]]*\]/g, '')
+        .replace(/Subtitle\s+Indonesia/gi, '')
+        .replace(/Sub\s+Indo/gi, '')
+        .replace(/\b(?:BD|Batch|OVA|Movie|Special|TAMAT|Complete|End)\b/gi, '')
+        .replace(/Season\s+\d+/gi, '')
+        .replace(/S\d+/gi, '')
+        .trim();
+      if (cleanAnime) {
+        const escaped = cleanAnime.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        target = target.replace(new RegExp(escaped, 'gi'), ' ');
+      }
+    }
+
+    target = target.replace(/\((?:Episode|Eps?\.?)\s*\d+\s*[–—\-]\s*\d+\)/gi, '');
+    target = target.replace(/\[[^\]]*\]/g, ' ');
+    target = target.replace(/\((?:1080p|720p|480p|360p|x264|x265|hevc|bdrip)[^)]*\)/gi, ' ');
+    target = target.replace(/\b(?:1080p|720p|480p|360p|2160p|x264|x265|hevc|10bit|aac|flac)\b/gi, ' ');
+
+    const explicitMatch = target.match(/(?:Episode|Eps?\.?|Ep\.?)\s*(\d{1,4})/i);
+    if (explicitMatch) return parseInt(explicitMatch[1], 10);
+
+    const seMatch = target.match(/[sS]\d+[eE](\d{1,4})/i);
+    if (seMatch) return parseInt(seMatch[1], 10);
+
+    const eMatch = target.match(/(?:^|[\s_–—\-])[eE](\d{1,4})(?:[\s_–—\.]|$)/i);
+    if (eMatch) return parseInt(eMatch[1], 10);
+
+    const dashMatches = [...target.matchAll(/[-–—_]\s*(\d{1,4})(?:v\d)?(?=[\s_–—\.]|\.mkv|\.mp4|$)/gi)];
+    if (dashMatches.length > 0) {
+      const lastMatch = dashMatches[dashMatches.length - 1];
+      const num = parseInt(lastMatch[1], 10);
+      if (num >= 0 && num !== 1080 && num !== 720 && num !== 480 && num !== 360 && num !== 2160) {
+        return num;
+      }
+    }
+
+    const trailingMatch = target.match(/\s+(\d{1,4})\s*(?:\.[a-z0-9]+)?$/i);
+    if (trailingMatch) return parseInt(trailingMatch[1], 10);
+
+    const genericMatches = target.match(/\b(\d{1,4})\b/g);
+    if (genericMatches) {
+      for (let i = genericMatches.length - 1; i >= 0; i--) {
+        const val = parseInt(genericMatches[i], 10);
+        if (val >= 0 && val < 2000 && val !== 1080 && val !== 720 && val !== 480 && val !== 360) {
+          return val;
+        }
+      }
+    }
+
+    return 1;
+  }
+
+  /**
+   * Helper untuk meng-unwrap direct media URL (<video src> atau <source src>) dari embed iframe
+   */
+  async resolveDirectMediaFromEmbed(embedUrl) {
+    if (!embedUrl) return null;
+    if (window.electronAPI && typeof window.electronAPI.otakudesuResolveStreamUrl === 'function') {
+      try {
+        const resolved = await window.electronAPI.otakudesuResolveStreamUrl(embedUrl);
+        if (resolved) return resolved;
+      } catch (e) {}
+    }
+    return null;
   }
 
   async switchQuality(newStreamUrl, qualityLabel) {
@@ -548,8 +807,17 @@ class VidPlayerCore {
       detail: { isLoading: true, message: `Beralih ke kualitas ${qualityLabel}...` }
     }));
 
-    // Cek apakah resolusi yang dipilih berupa format MKV atau HLS (.m3u8) yang memerlukan remux FFmpeg
+    // Cek apakah resolusi yang dipilih berupa format iframe embed
     const qObj = this.availableQualities.find(q => q.quality === qualityLabel);
+    if (qObj?.streamType === 'iframe' || newStreamUrl.includes('/dstream/') || newStreamUrl.includes('/embed/')) {
+      return this.loadRemoteStream(newStreamUrl, {
+        ...this.remoteStreamOptions,
+        streamType: 'iframe',
+        currentQuality: qualityLabel
+      });
+    }
+
+    // Cek apakah resolusi yang dipilih berupa format MKV atau HLS (.m3u8) yang memerlukan remux FFmpeg
     const isMkv = qObj?.isMkv || /\.mkv/i.test(newStreamUrl);
     const isHls = newStreamUrl.includes('.m3u8');
     const requiresRemux = isMkv || isHls;
@@ -635,6 +903,11 @@ class VidPlayerCore {
       this.video.pause();
       this.video.removeAttribute('src');
       this.video.load();
+      this.video.classList.remove('hidden');
+    }
+    if (this.iframePlayer) {
+      this.iframePlayer.classList.add('hidden');
+      this.iframePlayer.src = 'about:blank';
     }
     this.currentFilePath = null;
     this.remoteStreamUrl = null;
@@ -644,6 +917,7 @@ class VidPlayerCore {
     this.currentSkipIntervals = null;
     this.isBoostActive = false;
     this.streamSeekOffset = 0;
+    this.playbackMode = 'direct';
     window.dispatchEvent(new CustomEvent('player:statechange', { detail: { isPlaying: false } }));
     window.dispatchEvent(new CustomEvent('player:buffering', { detail: { isBuffering: false } }));
   }

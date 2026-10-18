@@ -369,6 +369,25 @@ class OtakudesuService {
       });
     }
 
+    // Urutkan episode mulai dari episode 1 (ascending), dan taruh OVA/Special di akhir
+    episodes.sort((a, b) => {
+      const isOvaA = /ova|special|sp\b/i.test(a.title);
+      const isOvaB = /ova|special|sp\b/i.test(b.title);
+      const getNum = (ep) => {
+        const m = (ep.title + ' ' + ep.slug).match(/episode[-_\s]*([0-9]+(?:\.[0-9]+)?)/i) || 
+                  (ep.title + ' ' + ep.slug).match(/ep[-_\s]*([0-9]+(?:\.[0-9]+)?)/i);
+        return m ? parseFloat(m[1]) : 0;
+      };
+      const numA = getNum(a);
+      const numB = getNum(b);
+
+      if (!isOvaA && isOvaB) return -1;
+      if (isOvaA && !isOvaB) return 1;
+
+      if (numA > 0 && numB > 0 && numA !== numB) return numA - numB;
+      return 0;
+    });
+
     // Cek jika ada Batch download
     let batch = null;
     const batchMatch = html.match(/<a href=['"]([^'"]*\/batch\/[^'"]+)['"][^>]*>([^<]+)<\/a>/i);
@@ -439,9 +458,41 @@ class OtakudesuService {
   async isStreamAlive(url, referer = null) {
     if (!url) return false;
     const clean = url.replace(/&amp;/g, '&');
-    // Google Video blogger URLs from Otakudesu are signed with server IP and return 403 on client IP
+    // Jika URL adalah embed URL atau halaman iframe (desustream, playdesu, dll.), validasi status HTTP
+    if (clean.includes('/dstream/') || clean.includes('/embed/') || clean.includes('desustream') || clean.includes('playdesu')) {
+      try {
+        let res = await fetch(clean, {
+          method: 'HEAD',
+          headers: { ...DEFAULT_HEADERS, 'Referer': 'https://otakudesu.blog/' },
+          signal: AbortSignal.timeout(3500)
+        });
+        if (res.status === 405) {
+          res = await fetch(clean, {
+            method: 'GET',
+            headers: { ...DEFAULT_HEADERS, 'Referer': 'https://otakudesu.blog/', 'Range': 'bytes=0-100' },
+            signal: AbortSignal.timeout(3500)
+          });
+        }
+        return res.status >= 200 && res.status < 400;
+      } catch (e) {
+        return false;
+      }
+    }
+    // Google Video blogger URLs: verifikasi stream dengan Range GET bytes=0-100
     if (clean.includes('googlevideo.com') || clean.includes('videoplayback')) {
-      return false;
+      try {
+        const res = await fetch(clean, {
+          method: 'GET',
+          headers: {
+            'User-Agent': DEFAULT_HEADERS['User-Agent'],
+            'Range': 'bytes=0-100'
+          },
+          signal: AbortSignal.timeout(3500)
+        });
+        return res.status === 200 || res.status === 206;
+      } catch (e) {
+        return false;
+      }
     }
     let ref = referer;
     if (!ref) {
@@ -507,10 +558,15 @@ class OtakudesuService {
       }
     }
 
-    // 2b. Fallback: Ekstrak dari mirrorstream via AJAX jika embed utama gagal/kedaluwarsa
-    if (!streamUrl) {
+    // 2b. Jika streamUrl belum ditemukan, atau streamUrl berupa Google Video (360p SD),
+    // coba periksa mirrorstream alternatif (720p HD / 480p di yourupload/vidhide) untuk kualitas lebih prima
+    const isLowQualityGoogleVideo = streamUrl && (streamUrl.includes('googlevideo.com') || streamUrl.includes('itag=18'));
+    if (!streamUrl || isLowQualityGoogleVideo) {
       try {
-        streamUrl = await this.resolveMirrorStreamUrl(html, url);
+        const mirrorStream = await this.resolveMirrorStreamUrl(html, url);
+        if (mirrorStream) {
+          streamUrl = mirrorStream;
+        }
       } catch (err) {
         console.warn('Gagal mengekstrak direct MP4 dari mirrorstream AJAX:', err.message);
       }
@@ -562,21 +618,33 @@ class OtakudesuService {
       }
     }
 
+    // 2d. Fallback 3: Jika tidak ada direct MP4 stream yang aktif, tetapi embedUrl tersedia (seperti anime lawas: Death Note, Toradora), gunakan iframe stream
+    let streamType = 'direct';
+    if (!streamUrl && embedUrl) {
+      streamUrl = embedUrl;
+      streamType = 'iframe';
+    } else if (streamUrl) {
+      streamType = 'direct';
+    } else {
+      streamType = null;
+    }
+
     // Navigasi Prev/Next
     const prevMatch = html.match(/<div class=['"]flir['"][^>]*>[\s\S]*?<a href=['"]([^'"]+)['"][^>]*>Previous Eps\.<\/a>/i);
     const nextMatch = html.match(/<div class=['"]flir['"][^>]*>[\s\S]*?<a href=['"]([^'"]+)['"][^>]*>Next Eps\.<\/a>/i);
     const allEpsMatch = html.match(/<div class=['"]flir['"][^>]*>[\s\S]*?<a href=['"]([^'"]+)['"][^>]*>See All Episodes<\/a>/i);
 
     // 4. Ekstrak seluruh pilihan kualitas video (1080p, 720p, 480p, 360p)
-    const availableQualities = await this.extractAvailableQualities(streamUrl, downloadOptions, html, url);
+    const availableQualities = await this.extractAvailableQualities(streamUrl, downloadOptions, html, url, streamType);
 
     return {
       title: episodeTitle,
       url,
       streamUrl,
       embedUrl,
+      streamType,
       availableQualities,
-      currentQuality: availableQualities.length > 0 ? (availableQualities.find(q => q.isDefault)?.quality || availableQualities[0].quality) : '720p',
+      currentQuality: availableQualities.length > 0 ? (availableQualities.find(q => q.isDefault)?.quality || availableQualities[0].quality) : (streamType === 'iframe' ? 'Auto' : '720p'),
       downloadOptions,
       navigation: {
         prev: prevMatch ? prevMatch[1] : null,
@@ -633,7 +701,8 @@ class OtakudesuService {
         'X-Requested-With': 'XMLHttpRequest',
         'Referer': pageUrl
       },
-      body: new URLSearchParams({ action: nonceAction })
+      body: new URLSearchParams({ action: nonceAction }),
+      signal: AbortSignal.timeout(3000)
     });
 
     if (!nonceRes.ok) return null;
@@ -656,8 +725,12 @@ class OtakudesuService {
       return (sA === -1 ? 99 : sA) - (sB === -1 ? 99 : sB);
     });
 
+    // Filter out permanently dead mirror hosts like solidfiles to avoid long network stalls
+    const viableMirrors = sortedMirrors.filter(m => !/solidfiles/i.test(m.server));
+    const mirrorCandidates = viableMirrors.length > 0 ? viableMirrors : sortedMirrors;
+
     // Coba sampai dapat stream yang valid dan aktif (MP4 / HLS m3u8)
-    for (const mirror of sortedMirrors.slice(0, 12)) {
+    for (const mirror of mirrorCandidates.slice(0, 6)) {
       try {
         const streamRes = await fetch(ajaxEndpoint, {
           method: 'POST',
@@ -673,7 +746,8 @@ class OtakudesuService {
             i: mirror.data.i.toString(),
             q: mirror.data.q,
             nonce: nonce
-          })
+          }),
+          signal: AbortSignal.timeout(3000)
         });
 
         if (!streamRes.ok) continue;
@@ -764,7 +838,8 @@ class OtakudesuService {
           'X-Requested-With': 'XMLHttpRequest',
           'Referer': pageUrl
         },
-        body: new URLSearchParams({ action: nonceAction })
+        body: new URLSearchParams({ action: nonceAction }),
+        signal: AbortSignal.timeout(3000)
       });
 
       if (!nonceRes.ok) return null;
@@ -786,7 +861,8 @@ class OtakudesuService {
           i: mirror.data.i.toString(),
           q: mirror.data.q,
           nonce: nonce
-        })
+        }),
+        signal: AbortSignal.timeout(3000)
       });
 
       if (!streamRes.ok) return null;
@@ -812,31 +888,43 @@ class OtakudesuService {
   /**
    * Mengumpulkan seluruh variasi resolusi (1080p, 720p, 480p, 360p) yang dapat diputar langsung di player
    */
-  async extractAvailableQualities(streamUrl, downloadOptions, html = null, pageUrl = null) {
+  async extractAvailableQualities(streamUrl, downloadOptions, html = null, pageUrl = null, streamType = 'direct') {
     const qualities = [];
     const seenQualities = new Set();
 
-    // 1. Tambahkan streamUrl utama (biasanya 720p HD direct CDN odcloud atau yourUpload atau vidhide)
+    // 1. Tambahkan streamUrl utama (biasanya 720p HD direct CDN odcloud atau yourUpload atau vidhide, atau embed server)
     if (streamUrl) {
       const cleanStreamUrl = streamUrl.replace(/&amp;/g, '&');
-      let mainLabel = '720p HD';
-      let mainKey = '720p';
-      if (/1080p/i.test(cleanStreamUrl)) { mainLabel = '1080p Full HD'; mainKey = '1080p'; }
-      else if (/480p/i.test(cleanStreamUrl)) { mainLabel = '480p SD'; mainKey = '480p'; }
-      else if (/360p/i.test(cleanStreamUrl)) { mainLabel = '360p Hemat Kuota'; mainKey = '360p'; }
+      if (streamType === 'iframe') {
+        qualities.push({
+          quality: 'Auto',
+          label: 'Default Server (Embed / Multi-Quality)',
+          streamUrl: cleanStreamUrl,
+          isDefault: true,
+          streamType: 'iframe'
+        });
+        seenQualities.add('Auto');
+      } else {
+        let mainLabel = '720p HD';
+        let mainKey = '720p';
+        if (/1080p/i.test(cleanStreamUrl)) { mainLabel = '1080p Full HD'; mainKey = '1080p'; }
+        else if (/480p/i.test(cleanStreamUrl)) { mainLabel = '480p SD'; mainKey = '480p'; }
+        else if (/360p|itag=18|googlevideo\.com/i.test(cleanStreamUrl)) { mainLabel = '360p SD'; mainKey = '360p'; }
 
-      qualities.push({
-        quality: mainKey,
-        label: `${mainLabel} (Cepat & Stabil)`,
-        streamUrl: cleanStreamUrl,
-        isDefault: true,
-        isMkv: /mkv/i.test(cleanStreamUrl)
-      });
-      seenQualities.add(mainKey);
+        qualities.push({
+          quality: mainKey,
+          label: `${mainLabel} (Cepat & Stabil)`,
+          streamUrl: cleanStreamUrl,
+          isDefault: true,
+          streamType: 'direct',
+          isMkv: /mkv/i.test(cleanStreamUrl)
+        });
+        seenQualities.add(mainKey);
+      }
     }
 
     // 2. Ekstrak variasi resolusi dari mirrorstream (misal vidhide 480p, 360p) jika belum ada
-    if (html && pageUrl) {
+    if (streamType !== 'iframe' && html && pageUrl) {
       try {
         const mirrorRegex = /<li[^>]*><a[^>]+data-content=['"]([^'"]+)['"][^>]*>([^<]+)<\/a><\/li>/gi;
         let m;
@@ -928,7 +1016,8 @@ class OtakudesuService {
           headers: {
             ...DEFAULT_HEADERS,
             'Referer': this.baseUrl
-          }
+          },
+          signal: AbortSignal.timeout(3500)
         });
         if (vhRes.ok) {
           const vhHtml = await vhRes.text();
@@ -954,7 +1043,8 @@ class OtakudesuService {
         let yuUrl = embedUrl;
         if (embedUrl.includes('desudrive.com')) {
           const yuRes = await fetch(embedUrl, {
-            headers: { ...DEFAULT_HEADERS, 'Referer': this.baseUrl }
+            headers: { ...DEFAULT_HEADERS, 'Referer': this.baseUrl },
+            signal: AbortSignal.timeout(3500)
           });
           if (yuRes.ok) {
             const yuHtml = await yuRes.text();
@@ -964,7 +1054,8 @@ class OtakudesuService {
         }
         if (yuUrl.includes('yourupload.com')) {
           const actualRes = await fetch(yuUrl, {
-            headers: { ...DEFAULT_HEADERS, 'Referer': 'https://desudrive.com/' }
+            headers: { ...DEFAULT_HEADERS, 'Referer': 'https://desudrive.com/' },
+            signal: AbortSignal.timeout(3500)
           });
           if (actualRes.ok) {
             const actualHtml = await actualRes.text();
@@ -985,7 +1076,8 @@ class OtakudesuService {
       headers: {
         ...DEFAULT_HEADERS,
         'Referer': this.baseUrl
-      }
+      },
+      signal: AbortSignal.timeout(3500)
     });
     if (!res.ok) return null;
     const html = await res.text();
@@ -1006,6 +1098,23 @@ class OtakudesuService {
     const fileMatch = html.match(/file\s*:\s*["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
     if (fileMatch) {
       return fileMatch[1].replace(/&amp;/g, '&');
+    }
+
+    // Pola 4: <video src="...">
+    const videoTagMatch = html.match(/<video[^>]+src=['"]([^'"]+)['"]/i);
+    if (videoTagMatch) {
+      return videoTagMatch[1].replace(/&amp;/g, '&');
+    }
+
+    // Pola 5: Nested iframe embed (e.g. desudrive -> yourupload / playdesu)
+    const nestedIframeMatch = html.match(/<iframe[^>]+src=['"]([^'"]+)['"]/i);
+    if (nestedIframeMatch && nestedIframeMatch[1] && nestedIframeMatch[1] !== embedUrl) {
+      let nestedUrl = nestedIframeMatch[1];
+      if (nestedUrl.startsWith('//')) nestedUrl = 'https:' + nestedUrl;
+      try {
+        const nestedResolved = await this.resolveStreamUrl(nestedUrl);
+        if (nestedResolved) return nestedResolved;
+      } catch (e) {}
     }
 
     return null;

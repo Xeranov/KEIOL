@@ -57,6 +57,14 @@ async function runInteractiveVerification() {
   ipcMain.handle("settings:get-close-to-tray", () => false);
   ipcMain.handle("settings:set-close-to-tray", () => true);
   ipcMain.handle("shell:openExternal", () => true);
+  ipcMain.handle("app:getVersion", () => "1.1.1");
+  ipcMain.handle("anichin:getOngoing", () => ({ data: [], totalPages: 1 }));
+  ipcMain.handle("anichin:getSchedule", () => ({}));
+  ipcMain.handle("anichin:getAnimeList", () => []);
+  ipcMain.handle("anichin:getDetail", () => null);
+  ipcMain.handle("anichin:getEpisodeStream", () => null);
+  ipcMain.handle("anichin:search", () => []);
+  ipcMain.handle("aniskip:getSkipTimes", () => ({ found: false }));
 
   const win = new BrowserWindow({
     show: false,

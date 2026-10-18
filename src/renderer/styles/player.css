@@ -1164,3 +1164,16 @@ body.window-maximized {
   }
 }
 
+/* Fallback Iframe Player for Protected / Older Anime Embeds */
+.iframe-player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #000000;
+  z-index: 5;
+}
+
+

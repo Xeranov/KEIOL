@@ -96,6 +96,14 @@ async function testImprovements() {
   }));
   ipcMain.handle("download:cancel", () => true);
   ipcMain.handle("download:getActive", () => []);
+  ipcMain.handle("app:getVersion", () => "1.1.1");
+  ipcMain.handle("anichin:getOngoing", () => ({ data: [], totalPages: 1 }));
+  ipcMain.handle("anichin:getSchedule", () => ({}));
+  ipcMain.handle("anichin:getAnimeList", () => []);
+  ipcMain.handle("anichin:getDetail", () => null);
+  ipcMain.handle("anichin:getEpisodeStream", () => null);
+  ipcMain.handle("anichin:search", () => []);
+  ipcMain.handle("aniskip:getSkipTimes", () => ({ found: false }));
 
   const win = new BrowserWindow({
     show: false,

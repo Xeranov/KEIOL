@@ -27,6 +27,7 @@ class LibraryManager {
     this.libraryFolderText = document.getElementById('libraryFolderText');
     this.btnRefreshLibrary = document.getElementById('btnRefreshLibrary');
     this.inputSearchAnime = document.getElementById('inputSearchAnime');
+    this.netflixSearchBox = document.querySelector('.netflix-search-box');
 
     // Tabs & Navigation
     this.activeNav = 'home'; // 'home' | 'web' | 'downloads' | 'settings'
@@ -179,10 +180,31 @@ class LibraryManager {
       }
     });
 
-    // Refresh Library
+    // Refresh Library (Kontekstual sesuai tab aktif)
     if (this.btnRefreshLibrary) {
-      this.btnRefreshLibrary.addEventListener('click', () => {
-        this.scanAndRender();
+      this.btnRefreshLibrary.addEventListener('click', async () => {
+        this.btnRefreshLibrary.classList.add('is-refreshing');
+        try {
+          if (this.activeNav === 'home') {
+            await this.scanAndRender();
+          } else if (this.activeNav === 'web') {
+            if (window.otakudesuManager && typeof window.otakudesuManager.refreshCurrentSubTab === 'function') {
+              await window.otakudesuManager.refreshCurrentSubTab();
+            }
+          } else if (this.activeNav === 'downloads') {
+            if (window.otakudesuManager && typeof window.otakudesuManager.renderDedicatedDownloadsTab === 'function') {
+              await window.otakudesuManager.renderDedicatedDownloadsTab();
+            }
+          } else if (this.activeNav === 'settings') {
+            await this.renderSettingsTab();
+          }
+        } catch (err) {
+          console.warn('Gagal me-refresh:', err);
+        } finally {
+          setTimeout(() => {
+            if (this.btnRefreshLibrary) this.btnRefreshLibrary.classList.remove('is-refreshing');
+          }, 600);
+        }
       });
     }
 
@@ -254,8 +276,17 @@ class LibraryManager {
     if (this.selectSettingSeek) {
       this.selectSettingSeek.addEventListener('change', (e) => {
         const val = parseInt(e.target.value, 10);
+        localStorage.setItem('keiol_pref_seek', val.toString());
+        localStorage.setItem('xplayer_seek_interval', val.toString());
         if (window.controlsManager) {
-          window.controlsManager.seekInterval = val;
+          if (typeof window.controlsManager.setSeekInterval === 'function') {
+            window.controlsManager.setSeekInterval(val);
+          } else {
+            window.controlsManager.seekInterval = val;
+          }
+          if (typeof window.controlsManager.showToast === 'function') {
+            window.controlsManager.showToast(`Lompat seek diatur ke ${val} detik`);
+          }
         }
       });
     }
@@ -263,9 +294,132 @@ class LibraryManager {
     if (this.selectSettingSpeed) {
       this.selectSettingSpeed.addEventListener('change', (e) => {
         const val = parseFloat(e.target.value);
-        if (this.player && this.player.video) {
-          this.player.setPlaybackRate(val);
+        localStorage.setItem('keiol_pref_speed', val.toString());
+        if (this.player) {
+          this.player.normalPlaybackRate = val;
+          if (this.player.video) {
+            this.player.setPlaybackRate(val);
+          }
         }
+        if (window.controlsManager && typeof window.controlsManager.showToast === 'function') {
+          window.controlsManager.showToast(`Kecepatan default diatur ke ${val}x`);
+        }
+      });
+    }
+
+    // Global Action Confirmation Dialog
+    window.showConfirmDialog = function({ title, message, confirmText = 'Ya, Hapus', onConfirm }) {
+      const modal = document.getElementById('confirmationModal');
+      const titleEl = document.getElementById('confirmModalTitle');
+      const msgEl = document.getElementById('confirmModalMessage');
+      const btnProceed = document.getElementById('btnConfirmProceed');
+      const btnCancel = document.getElementById('btnConfirmCancel');
+      const btnX = document.getElementById('btnCancelConfirmX');
+
+      if (!modal || !btnProceed) {
+        if (confirm(message)) {
+          if (typeof onConfirm === 'function') onConfirm();
+        }
+        return;
+      }
+
+      if (titleEl) titleEl.textContent = title || 'Konfirmasi Tindakan';
+      if (msgEl) msgEl.textContent = message || 'Apakah Anda yakin ingin melanjutkan tindakan ini?';
+      if (btnProceed) btnProceed.textContent = confirmText;
+
+      modal.classList.remove('hidden');
+
+      const closeDialog = () => {
+        modal.classList.add('hidden');
+        btnProceed.onclick = null;
+        btnCancel.onclick = null;
+        if (btnX) btnX.onclick = null;
+      };
+
+      btnCancel.onclick = closeDialog;
+      if (btnX) btnX.onclick = closeDialog;
+
+      btnProceed.onclick = async () => {
+        closeDialog();
+        if (typeof onConfirm === 'function') {
+          await onConfirm();
+        }
+      };
+    };
+
+    // Dedicated Downloads: Delete All Action
+    const btnDedicatedDeleteAll = document.getElementById('btnDedicatedDeleteAll');
+    if (btnDedicatedDeleteAll) {
+      btnDedicatedDeleteAll.addEventListener('click', () => {
+        window.showConfirmDialog({
+          title: 'Hapus Semua Unduhan',
+          message: 'Apakah Anda yakin ingin menghapus SELURUH video dan file di dalam folder unduhan? Tindakan ini tidak dapat dibatalkan.',
+          confirmText: 'Ya, Hapus Semua',
+          onConfirm: async () => {
+            try {
+              if (window.electronAPI && typeof window.electronAPI.deleteAllDownloads === 'function') {
+                await window.electronAPI.deleteAllDownloads();
+                if (window.otakudesuManager && typeof window.otakudesuManager.renderDownloadedView === 'function') {
+                  await window.otakudesuManager.renderDownloadedView();
+                }
+                if (window.controlsManager && typeof window.controlsManager.showToast === 'function') {
+                  window.controlsManager.showToast('Semua file unduhan berhasil dihapus.');
+                }
+              }
+            } catch (err) {
+              alert('Gagal menghapus unduhan: ' + err.message);
+            }
+          }
+        });
+      });
+    }
+
+    // Settings: Clear Cache & Settings
+    const btnClearCache = document.getElementById('btnClearCacheSettings');
+    if (btnClearCache) {
+      btnClearCache.addEventListener('click', () => {
+        window.showConfirmDialog({
+          title: 'Bersihkan Cache & Pengaturan',
+          message: 'Riwayat tontonan, progres putar, dan preferensi lokal akan dihapus. Video yang sudah diunduh TIDAK akan dihapus.',
+          confirmText: 'Bersihkan Cache',
+          onConfirm: async () => {
+            try {
+              if (window.electronAPI && typeof window.electronAPI.clearCacheSettings === 'function') {
+                await window.electronAPI.clearCacheSettings();
+              }
+              localStorage.removeItem('keiol_pref_seek');
+              localStorage.removeItem('keiol_pref_speed');
+              alert('Cache dan pengaturan berhasil dibersihkan.');
+              window.location.reload();
+            } catch (err) {
+              alert('Gagal membersihkan cache: ' + err.message);
+            }
+          }
+        });
+      });
+    }
+
+    // Settings: Factory Reset
+    const btnReset = document.getElementById('btnFactoryReset');
+    if (btnReset) {
+      btnReset.addEventListener('click', () => {
+        window.showConfirmDialog({
+          title: 'Factory Reset Total',
+          message: 'PERINGATAN: Semua file video yang sudah diunduh di folder unduhan, semua riwayat tontonan, dan semua setelan akan dihapus total ke kondisi awal pabrik!',
+          confirmText: 'Reset Total Pabrik',
+          onConfirm: async () => {
+            try {
+              if (window.electronAPI && typeof window.electronAPI.factoryReset === 'function') {
+                await window.electronAPI.factoryReset();
+              }
+              localStorage.clear();
+              alert('Aplikasi telah di-reset ke kondisi awal pabrik.');
+              window.location.reload();
+            } catch (err) {
+              alert('Gagal reset pabrik: ' + err.message);
+            }
+          }
+        });
       });
     }
 
@@ -430,6 +584,7 @@ class LibraryManager {
     if (this.tabWeb) this.tabWeb.classList.toggle('active', tabName === 'web');
     if (this.tabDownloads) this.tabDownloads.classList.toggle('active', tabName === 'downloads');
     if (this.tabSettings) this.tabSettings.classList.toggle('active', tabName === 'settings');
+    document.querySelectorAll('.netflix-series-tab').forEach(t => t.classList.remove('active'));
 
     // Sembunyikan semua section terlebih dahulu
     if (this.netflixContent) this.netflixContent.classList.add('hidden');
@@ -437,6 +592,11 @@ class LibraryManager {
     if (this.downloadsSection) this.downloadsSection.classList.add('hidden');
     if (this.settingsSection) this.settingsSection.classList.add('hidden');
     if (this.folderActionGroup) this.folderActionGroup.classList.add('hidden');
+
+    // Sembunyikan search box di tab Pengaturan dan Unduhan (Item 6)
+    if (this.netflixSearchBox) {
+      this.netflixSearchBox.classList.toggle('hidden', tabName === 'downloads' || tabName === 'settings');
+    }
 
     if (tabName === 'home') {
       if (this.netflixContent) this.netflixContent.classList.remove('hidden');
@@ -481,8 +641,14 @@ class LibraryManager {
       }
     }
 
-    if (this.selectSettingSeek && window.controlsManager) {
-      this.selectSettingSeek.value = (window.controlsManager.seekInterval || 10).toString();
+    // Sinkronisasi preferensi seek & speed lokal (Item 9)
+    if (this.selectSettingSeek) {
+      const savedSeek = localStorage.getItem('keiol_pref_seek') || (window.controlsManager?.seekInterval || 10).toString();
+      this.selectSettingSeek.value = savedSeek;
+    }
+    if (this.selectSettingSpeed) {
+      const savedSpeed = localStorage.getItem('keiol_pref_speed') || '1.0';
+      this.selectSettingSpeed.value = savedSpeed;
     }
   }
 
@@ -725,6 +891,29 @@ class LibraryManager {
         this.episodesHeroBackdrop.style.backgroundImage = `url('http://127.0.0.1:${this.player.serverPort}/${endpoint}?path=${encoded}')`;
       } else {
         this.episodesHeroBackdrop.style.backgroundImage = 'none';
+      }
+    }
+
+    // Set Genres & Synopsis if available (e.g. from downloaded metadata info.json)
+    const genresEl = document.getElementById('episodesGenresWrap');
+    if (genresEl) {
+      if (Array.isArray(series.genres) && series.genres.length > 0) {
+        genresEl.innerHTML = series.genres.map(g => `<span class="otakudesu-genre-tag">${typeof g === 'object' ? (g.name || '') : g}</span>`).join('');
+        genresEl.classList.remove('hidden');
+      } else {
+        genresEl.innerHTML = '';
+        genresEl.classList.add('hidden');
+      }
+    }
+
+    const synopsisEl = document.getElementById('episodesSynopsis');
+    if (synopsisEl) {
+      if (series.synopsis && series.synopsis.trim()) {
+        synopsisEl.textContent = series.synopsis.trim();
+        synopsisEl.classList.remove('hidden');
+      } else {
+        synopsisEl.textContent = '';
+        synopsisEl.classList.add('hidden');
       }
     }
 
