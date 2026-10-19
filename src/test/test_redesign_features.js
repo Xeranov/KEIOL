@@ -51,7 +51,7 @@ async function runRedesignTests() {
   ipcMain.handle('download:start', () => ({ downloadId: 'dl_test', status: 'started' }));
   ipcMain.handle('download:cancel', () => true);
   ipcMain.handle('download:getActive', () => []);
-  ipcMain.handle('app:getVersion', () => '1.1.1');
+  ipcMain.handle('app:getVersion', () => require('../../package.json').version);
   ipcMain.handle('settings:get-close-to-tray', () => false);
   ipcMain.handle('settings:set-close-to-tray', () => true);
   ipcMain.handle('archive:isArchive', () => false);

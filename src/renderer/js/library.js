@@ -515,6 +515,11 @@ class LibraryManager {
       this.executeNextEpisode();
     });
 
+    // Next Episode shortcut & physical button listener (centralized via player:playnextepisode)
+    window.addEventListener('player:playnextepisode', () => {
+      this.playNextEpisode();
+    });
+
     // Video end event for next episode countdown
     window.addEventListener('player:ended', () => {
       this.handleEpisodeEnded();
@@ -1152,6 +1157,84 @@ class LibraryManager {
 
       this.playlistDrawerBody.appendChild(item);
     });
+  }
+
+  findNextOnlineEpisode(episodes, currentEp) {
+    if (!Array.isArray(episodes) || episodes.length === 0 || !currentEp) return null;
+    const epRegex = /(?:Episode|Eps?\.?|#|E)\s*(\d+)/i;
+    const currentNumMatch = (currentEp.title || '').match(epRegex);
+    if (currentNumMatch) {
+      const targetNum = parseInt(currentNumMatch[1], 10) + 1;
+      const foundNext = episodes.find(e => {
+        const m = (e.title || '').match(epRegex);
+        return m && parseInt(m[1], 10) === targetNum;
+      });
+      if (foundNext) return foundNext;
+    }
+    const curIdx = episodes.findIndex(e => (e.url && currentEp.url && e.url === currentEp.url) || (e.slug && currentEp.slug && e.slug === currentEp.slug));
+    if (curIdx === -1) return null;
+
+    // Deteksi apakah playlist disusun secara descending (episode terbaru di indeks 0) atau ascending
+    let isDescending = false;
+    if (episodes.length >= 2) {
+      const mFirst = (episodes[0].title || '').match(epRegex);
+      const mLast = (episodes[episodes.length - 1].title || '').match(epRegex);
+      if (mFirst && mLast) {
+        isDescending = parseInt(mFirst[1], 10) > parseInt(mLast[1], 10);
+      }
+    }
+
+    if (isDescending) {
+      if (curIdx > 0) return episodes[curIdx - 1];
+    } else {
+      if (curIdx < episodes.length - 1) return episodes[curIdx + 1];
+    }
+    return null;
+  }
+
+  playNextEpisode() {
+    // 1. Streaming Anime Online
+    if (this.currentOnlinePlaylist && this.currentOnlinePlaylist.animeDetail) {
+      const episodes = this.currentOnlinePlaylist.animeDetail.episodes || [];
+      const currentEp = this.currentOnlinePlaylist.currentEpisode;
+      const nextEpisode = this.findNextOnlineEpisode(episodes, currentEp);
+      if (nextEpisode) {
+        this.playInstantNextEpisode(nextEpisode, true);
+        if (window.controlsManager && typeof window.controlsManager.showToast === 'function') {
+          window.controlsManager.showToast(`Memutar: ${nextEpisode.title || 'Episode Berikutnya'}`);
+        }
+        return true;
+      } else {
+        if (window.controlsManager && typeof window.controlsManager.showToast === 'function') {
+          window.controlsManager.showToast('Tidak ada episode berikutnya');
+        }
+        return false;
+      }
+    }
+
+    // 2. Serial Video Lokal
+    if (this.currentSeries && this.currentSeries.episodes) {
+      const episodes = this.currentSeries.episodes;
+      const currentIndex = episodes.findIndex(ep => ep.path === this.currentEpisodePath);
+      if (currentIndex >= 0 && currentIndex < episodes.length - 1) {
+        const nextEpisode = episodes[currentIndex + 1];
+        this.playInstantNextEpisode(nextEpisode, false);
+        if (window.controlsManager && typeof window.controlsManager.showToast === 'function') {
+          window.controlsManager.showToast(`Memutar: ${nextEpisode.name || 'Episode Berikutnya'}`);
+        }
+        return true;
+      } else {
+        if (window.controlsManager && typeof window.controlsManager.showToast === 'function') {
+          window.controlsManager.showToast('Tidak ada episode berikutnya');
+        }
+        return false;
+      }
+    }
+
+    if (window.controlsManager && typeof window.controlsManager.showToast === 'function') {
+      window.controlsManager.showToast('Tidak ada episode berikutnya');
+    }
+    return false;
   }
 
   handleEpisodeEnded() {

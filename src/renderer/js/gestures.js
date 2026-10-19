@@ -41,8 +41,8 @@ class GesturesEngine {
         return;
       }
 
-      // Only respond to primary left-click and ignore clicks on UI controls
-      if (e.button !== 0 || e.target.closest('#controlsBar') || e.target.closest('#titleBar') || e.target.closest('#settingsMenu') || e.target.closest('#shortcutsModal')) {
+      // Only respond to primary left-click and ignore clicks on UI controls, buttons, and overlays
+      if (e.button !== 0 || e.target.closest('#controlsBar') || e.target.closest('#titleBar') || e.target.closest('#settingsMenu') || e.target.closest('#shortcutsModal') || e.target.closest('button') || e.target.closest('.btn-skip-intro-overlay')) {
         return;
       }
 
@@ -79,8 +79,8 @@ class GesturesEngine {
         return;
       }
 
-      // Check if mouse up was inside video wrapper
-      if (!e.target.closest('#videoWrapper') || e.target.closest('#controlsBar') || e.target.closest('#titleBar')) {
+      // Check if mouse up was inside video wrapper, ignoring buttons and UI overlays
+      if (!e.target.closest('#videoWrapper') || e.target.closest('#controlsBar') || e.target.closest('#titleBar') || e.target.closest('button') || e.target.closest('.btn-skip-intro-overlay')) {
         return;
       }
 
@@ -117,28 +117,10 @@ class GesturesEngine {
         this.clickCount = 0;
       }, 240);
     } else if (this.clickCount === 2) {
-      // Double Click: Detect Left vs Right side for 10s seek
+      // Double Click anywhere on video: Toggle Fullscreen / Unfullscreen
       clearTimeout(this.clickTimer);
       this.clickCount = 0;
-
-      const rect = this.videoWrapper.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const width = rect.width;
-
-      const seekSec = window.controlsManager ? window.controlsManager.seekInterval : 10;
-
-      if (clickX < width * 0.35) {
-        // Left side: Rewind configured seconds
-        this.player.seekRelative(-seekSec);
-        this.showSeekRipple('left', seekSec);
-      } else if (clickX > width * 0.65) {
-        // Right side: Fast-Forward configured seconds
-        this.player.seekRelative(seekSec);
-        this.showSeekRipple('right', seekSec);
-      } else {
-        // Center double click: Toggle fullscreen
-        window.dispatchEvent(new CustomEvent('controls:togglefullscreen'));
-      }
+      window.dispatchEvent(new CustomEvent('controls:togglefullscreen'));
     }
   }
 

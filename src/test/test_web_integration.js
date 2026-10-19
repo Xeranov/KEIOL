@@ -49,7 +49,7 @@ async function runWebIntegrationTest() {
   ipcMain.handle('otakudesu:getEpisodeStream', async (_e, u) => otakudesuService.getEpisodeStream(u));
   ipcMain.handle('otakudesu:getBatchDetails', async (_e, u) => otakudesuService.getBatchDetails(u));
 
-  ipcMain.handle('app:getVersion', () => '1.1.1');
+  ipcMain.handle('app:getVersion', () => require('../../package.json').version);
   ipcMain.handle('anichin:getOngoing', async (_e, page) => ({ data: [], totalPages: 1 }));
   ipcMain.handle('anichin:getSchedule', async () => ({}));
   ipcMain.handle('anichin:getAnimeList', async () => []);

@@ -188,11 +188,18 @@ class ShortcutsEngine {
         return;
       }
 
+      // Shift + N: Next Episode (YouTube style)
+      if (e.shiftKey && (e.key === 'N' || e.key === 'n' || e.code === 'KeyN')) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('player:playnextepisode'));
+        return;
+      }
+
       // s: Skip Intro
-      if ((e.key === 's' || e.key === 'S') && !e.ctrlKey && !e.metaKey) {
+      if ((e.key === 's' || e.key === 'S') && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
         if (this.controls && typeof this.controls.triggerSkipIntro === 'function') {
           e.preventDefault();
-          this.controls.triggerSkipIntro();
+          this.controls.triggerSkipIntro(true);
           return;
         }
       }

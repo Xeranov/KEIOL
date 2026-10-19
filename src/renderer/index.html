@@ -27,6 +27,7 @@
       </div>
       <div class="startup-status-text" id="startupLoadingText">Memuat server &amp; katalog anime...</div>
       <div class="startup-status-sub">Memuat awal agar navigasi Web instan</div>
+      <button id="btnSkipStartupLoading" class="btn-skip-startup hidden" title="Lewati loading dan masuk ke aplikasi">Lewati Loading</button>
     </div>
   </div>
 
@@ -587,6 +588,7 @@
           <span id="txtSkipIntroLabel">Lewati Intro</span>
         </button>
 
+
         <!-- Stats for Nerds Panel -->
         <div id="statsPanel" class="stats-panel hidden">
           <div class="stats-header">
@@ -697,6 +699,14 @@
                 <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/>
               </svg>
             </button>
+
+            <!-- Next Episode Button (Shift + N) -->
+            <button id="btnNextEpisode" class="ctrl-btn" title="Episode Berikutnya (Shift + N)" aria-label="Episode Berikutnya">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+              </svg>
+            </button>
+
 
             <!-- Volume Container -->
             <div class="volume-container" id="volumeContainer">
@@ -1192,8 +1202,12 @@
               <span class="shortcut-keys"><kbd>Home</kbd> / <kbd>End</kbd></span>
             </div>
             <div class="shortcut-row highlight-row">
-              <span class="shortcut-desc">Lewati Intro Anime</span>
+              <span class="shortcut-desc">Lewati Intro Anime (+85s)</span>
               <span class="shortcut-keys"><kbd>s</kbd></span>
+            </div>
+            <div class="shortcut-row highlight-row">
+              <span class="shortcut-desc">Episode Berikutnya</span>
+              <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>N</kbd></span>
             </div>
           </div>
 

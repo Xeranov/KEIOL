@@ -20,25 +20,50 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Preload web catalog saat startup loading screen aktif
   if (startupLoadingEl) {
+    const btnSkipStartupLoading = document.getElementById('btnSkipStartupLoading');
+    let isStartupDismissed = false;
+
     const dismissStartupLoading = () => {
+      if (isStartupDismissed) return;
+      isStartupDismissed = true;
       startupLoadingEl.classList.add('fade-out');
       setTimeout(() => {
         startupLoadingEl.classList.add('hidden');
       }, 450);
     };
 
-    // Jalankan preloading dengan batas waktu aman (maks 3.5s) agar app tidak terhambat jika internet offline
-    const preloadPromise = (async () => {
-      if (window.otakudesuManager && typeof window.otakudesuManager.preloadWebCatalog === 'function') {
-        await window.otakudesuManager.preloadWebCatalog((msg) => {
-          if (startupLoadingText) startupLoadingText.textContent = msg;
-        });
-      }
-    })();
+    if (btnSkipStartupLoading) {
+      btnSkipStartupLoading.addEventListener('click', () => {
+        dismissStartupLoading();
+      });
+    }
 
-    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 3500));
-    await Promise.race([preloadPromise, timeoutPromise]);
-    dismissStartupLoading();
+    // Jika offline, tidak perlu menunggu loading web
+    if (!navigator.onLine) {
+      dismissStartupLoading();
+    } else {
+      // Jika loading screen lebih dari 10 detik, berikan tombol skip loading
+      const skipTimer = setTimeout(() => {
+        if (!isStartupDismissed && btnSkipStartupLoading) {
+          btnSkipStartupLoading.classList.remove('hidden');
+        }
+      }, 10000);
+
+      // Jalankan preloading web catalog di latar belakang
+      const preloadPromise = (async () => {
+        if (window.otakudesuManager && typeof window.otakudesuManager.preloadWebCatalog === 'function') {
+          await window.otakudesuManager.preloadWebCatalog((msg) => {
+            if (startupLoadingText) startupLoadingText.textContent = msg;
+          });
+        }
+      })();
+
+      // Batas waktu maksimal aman (15s) agar pengguna tidak terblokir permanen jika jaringan lambat
+      const safetyTimeout = new Promise(resolve => setTimeout(resolve, 15000));
+      await Promise.race([preloadPromise, safetyTimeout]);
+      clearTimeout(skipTimer);
+      dismissStartupLoading();
+    }
   }
 
   const emptyState = document.getElementById('emptyState');

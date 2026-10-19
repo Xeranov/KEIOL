@@ -6,11 +6,6 @@
  */
 
 const CONTINUOUS_ANIME_OFFSETS = {
-  'black clover': {
-    2: 51,   // Season 2 Ep 1 = Continuous Episode 52
-    3: 102,  // Season 3 Ep 1 = Continuous Episode 103
-    4: 154   // Season 4 Ep 1 = Continuous Episode 155
-  },
   'fairy tail': {
     2: 175,  // Series 2 Ep 1 = Continuous Episode 176
     3: 277   // Final Season Ep 1 = Continuous Episode 278
@@ -383,8 +378,13 @@ class AniSkipService {
           this.skipTimesCache.set(cacheKey, seasonSkip);
           return seasonSkip;
         }
+        // Season spesifik terdaftar di MAL namun belum memiliki data di AniSkip (cth: Black Clover Season 2).
+        // Jangan fallback ke Season 1 karena akan memuat intro dari episode lawas yang tidak cocok.
+        const notFoundResult = { found: false, malId: seasonMalId, episodeNum };
+        this.skipTimesCache.set(cacheKey, notFoundResult);
+        return notFoundResult;
       }
-      // Fallback ke baseTitle jika season khusus tidak menghasilkan skip times
+      // Fallback ke baseTitle hanya jika season khusus tidak terdaftar di AniList
       targetMalTitle = baseTitle;
     }
 

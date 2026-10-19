@@ -61,6 +61,8 @@ Anda tidak perlu lagi menginstall codec pihak ketiga. KEIOL sudah dibekali mesin
 Menonton video terasa sangat alami dan cepat:
 - **Akselerasi 2x Instan (Hold-to-Boost)**: Tahan tombol `Spasi` pada keyboard atau tahan `Klik Kiri` mouse di layar video untuk mempercepat putaran menjadi 2x. Lepaskan untuk kembali ke kecepatan normal.
 - **Lompat Waktu (Seeking)**: Tekan tombol `J` untuk mundur 10 detik, atau `L` untuk maju 10 detik (bisa juga menggunakan tombol panah kiri / kanan).
+- **Layar Penuh (Fullscreen)**: Klik dua kali (*double-click*) pada layar video untuk masuk atau keluar dari mode layar penuh (atau tekan tombol `F`).
+- **Episode Selanjutnya**: Tekan `Shift + N` untuk langsung berpindah ke episode berikutnya.
 - **Atur Kecepatan Bebas**: Atur kecepatan putar dari sangat lambat (0.25x) hingga super cepat (4.0x) dengan shortcut `Shift + >` dan `Shift + <`.
 - **Cek Detil Frame demi Frame**: Saat video sedang di-pause, tekan tombol titik `.` untuk maju satu frame, atau koma `,` untuk mundur satu frame.
 
@@ -110,6 +112,7 @@ Bagi penggemar anime, KEIOL menyediakan tab khusus untuk menonton dan mengunduh 
 | `C` | Hidupkan / Matikan subtitle |
 | `S` | Lewati intro pembuka anime (AniSkip) |
 | `Shift + >` / `Shift + <` | Tambah / Kurangi kecepatan putar (+0.25x hingga 4x) |
+| `Shift + N` | Lompat ke episode selanjutnya (Next Episode) |
 | `0` sampai `9` | Lompat ke 0% hingga 90% durasi video |
 | `.` / `,` | Lompat maju / mundur satu frame (saat video dijeda) |
 | `Ctrl + O` | Buka file video dari komputer |

@@ -240,6 +240,14 @@ class ControlsManager {
       this.btnForward10.blur();
     });
 
+    this.btnNextEpisode = document.getElementById('btnNextEpisode');
+    if (this.btnNextEpisode) {
+      this.btnNextEpisode.addEventListener('click', () => {
+        window.dispatchEvent(new CustomEvent('player:playnextepisode'));
+        this.btnNextEpisode.blur();
+      });
+    }
+
     this.btnMiniplayer.addEventListener('click', async () => {
       try {
         if (document.pictureInPictureElement) {
@@ -766,8 +774,11 @@ class ControlsManager {
     }
 
     if (this.btnSkipIntroOverlay) {
-      this.btnSkipIntroOverlay.addEventListener('click', () => {
-        this.triggerSkipIntro();
+      this.btnSkipIntroOverlay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        this.hasAutoSkippedOP = true;
+        this.triggerSkipIntro(true);
       });
     }
 
@@ -792,18 +803,32 @@ class ControlsManager {
     }
   }
 
-  triggerSkipIntro() {
+  triggerSkipIntro(forceFallback = false) {
     const intervals = this.player.getSkipIntervals();
     const duration = this.player.getDuration() || (this.player.video ? this.player.video.duration : 0);
     const currentTime = this.player.getCurrentTime() || 0;
+    const wasPlaying = this.player.video && !this.player.video.paused;
 
-    // 1. Sedang berada di dalam atau tepat sebelum rentang Opening (OP)
+    const ensurePlaying = () => {
+      if (wasPlaying && this.player.video) {
+        // Jangan sampai tombol skip intro mengepause video
+        this.player.video.play().catch(() => {});
+        setTimeout(() => {
+          if (this.player.video && this.player.video.paused) {
+            this.player.video.play().catch(() => {});
+          }
+        }, 50);
+      }
+    };
+
+    // 1. Sedang berada di dalam atau sebelum rentang Opening (OP)
     if (intervals?.op && currentTime < intervals.op.endTime) {
       let target = intervals.op.endTime;
       if (duration > 10) target = Math.min(target, duration - 2);
       this.player.seek(target);
       this.showToast('Intro anime dilewati');
       if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
+      ensurePlaying();
       return;
     }
 
@@ -814,26 +839,23 @@ class ControlsManager {
       this.player.seek(target);
       this.showToast('Ending anime dilewati');
       if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
+      ensurePlaying();
       return;
     }
 
-    // 3. Intro telah selesai, dan pengguna sedang menonton badan episode
-    if (intervals?.op && currentTime >= intervals.op.endTime && (!intervals.ed || currentTime < intervals.ed.startTime)) {
+    // 3. Intro telah selesai, dan pengguna sedang menonton badan episode (hanya jika ada data OP & bukan force fallback)
+    if (!forceFallback && intervals?.op && currentTime >= intervals.op.endTime && (!intervals.ed || currentTime < intervals.ed.startTime)) {
       this.showToast('Intro sudah terlewati');
       return;
     }
 
-    // 4. Fallback jika tidak ada skip intervals di AniSkip (hanya pada awal video < 3 menit)
-    if (!intervals?.op && !intervals?.ed && currentTime < 180) {
-      let target = currentTime + 85;
-      if (duration > 10) target = Math.min(target, duration - 2);
-      this.player.seek(target);
-      this.showToast('Intro anime dilewati (+85s)');
-      if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
-      return;
-    }
-
-    this.showToast('Tidak ada intro pada posisi ini');
+    // 4. Fallback / Universal skip 85 detik (standar intro anime, dapat diklik kapan saja jika tidak ada data intro atau dipicu via physical button / shortcut S)
+    let target = currentTime + 85;
+    if (duration > 10) target = Math.min(target, duration - 2);
+    this.player.seek(target);
+    this.showToast('Intro anime dilewati (+85s)');
+    if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('hidden');
+    ensurePlaying();
   }
 
   handleTimeUpdateForSkip(currentTime) {
@@ -886,6 +908,7 @@ class ControlsManager {
       }
     }
 
+    // 3. Jika di luar rentang intro dan ending, atau anime tidak memiliki data intro pasti, sembunyikan tombol
     if (this.btnSkipIntroOverlay && !this.btnSkipIntroOverlay.classList.contains('hidden')) {
       this.btnSkipIntroOverlay.classList.add('hidden');
     }
@@ -993,6 +1016,7 @@ class ControlsManager {
       if (this.isControlsFaded) {
         this.controlsBar.classList.remove('faded');
         if (this.playerTopBar) this.playerTopBar.classList.remove('faded');
+        if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.remove('faded');
         this.videoWrapper.classList.remove('cursor-hidden');
         this.isControlsFaded = false;
       }
@@ -1005,6 +1029,7 @@ class ControlsManager {
           if (!this.player.video.paused && !this.isDraggingScrubber && this.settingsMenu.classList.contains('hidden')) {
             this.controlsBar.classList.add('faded');
             if (this.playerTopBar) this.playerTopBar.classList.add('faded');
+            if (this.btnSkipIntroOverlay) this.btnSkipIntroOverlay.classList.add('faded');
             this.videoWrapper.classList.add('cursor-hidden');
             this.isControlsFaded = true;
           }

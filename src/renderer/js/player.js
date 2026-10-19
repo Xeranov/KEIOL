@@ -538,21 +538,17 @@ class VidPlayerCore {
       this.availableQualities = options.availableQualities || [];
       this.currentQuality = options.currentQuality || (this.availableQualities.find(q => q.isDefault)?.quality || '720p');
 
-      // Redundant validation & auto-fetch of skip intervals if animeTitle is provided
+      // Redundant validation & non-blocking auto-fetch of skip intervals if animeTitle is provided
       if (options.skipIntervals) {
         this.currentSkipIntervals = this.validateSkipIntervals(options.skipIntervals);
       } else if (options.animeTitle && window.electronAPI && typeof window.electronAPI.getAnimeSkipTimes === 'function') {
-        try {
-          const epNum = this.extractEpisodeNumber(options.episodeTitle || options.title || '', options.animeTitle);
-          const skipRes = await window.electronAPI.getAnimeSkipTimes(options.animeTitle, epNum).catch(() => null);
+        const epNum = this.extractEpisodeNumber(options.episodeTitle || options.title || '', options.animeTitle);
+        window.electronAPI.getAnimeSkipTimes(options.animeTitle, epNum).then(skipRes => {
           if (skipRes && skipRes.found) {
-            this.currentSkipIntervals = this.validateSkipIntervals({ op: skipRes.op, ed: skipRes.ed });
-          } else {
-            this.currentSkipIntervals = null;
+            this.setSkipIntervals({ op: skipRes.op, ed: skipRes.ed });
           }
-        } catch (e) {
-          this.currentSkipIntervals = null;
-        }
+        }).catch(() => {});
+        this.currentSkipIntervals = null;
       } else {
         this.currentSkipIntervals = null;
       }

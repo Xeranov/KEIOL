@@ -14,6 +14,7 @@ const path = require('path');
 const kusonimeService = require('../main/kusonimeService');
 const otakudesuService = require('../main/otakudesuService');
 const downloadManager = require('../main/downloadManager');
+const updateService = require('../main/updateService');
 
 async function runTestSuite() {
   console.log('=== TEST SUITE: KUSONIME BATCH & VIDPLAYER V1.1.0 ===\n');
@@ -23,7 +24,7 @@ async function runTestSuite() {
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8'));
   const ver = JSON.parse(fs.readFileSync(path.join(__dirname, '../../version.json'), 'utf8'));
   assert.strictEqual(pkg.version, ver.version, 'package.json and version.json should match');
-  assert.ok(pkg.version === '1.1.0' || pkg.version === '1.1.1', 'version should be >= 1.1.0');
+  assert.ok(updateService.compareSemver(pkg.version, '1.1.0') >= 0, 'version should be >= 1.1.0');
   console.log(`  ✓ package.json version: ${pkg.version}`);
   console.log(`  ✓ version.json version: ${ver.version}\n`);
 

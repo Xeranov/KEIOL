@@ -96,7 +96,7 @@ async function testImprovements() {
   }));
   ipcMain.handle("download:cancel", () => true);
   ipcMain.handle("download:getActive", () => []);
-  ipcMain.handle("app:getVersion", () => "1.1.1");
+  ipcMain.handle("app:getVersion", () => require("../../package.json").version);
   ipcMain.handle("anichin:getOngoing", () => ({ data: [], totalPages: 1 }));
   ipcMain.handle("anichin:getSchedule", () => ({}));
   ipcMain.handle("anichin:getAnimeList", () => []);

@@ -1,11 +1,12 @@
 {
   "name": "KEIOL",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "minSupportedVersion": "1.0.1",
   "forceUpdate": false,
-  "forceUpdateMessage": "Pembaruan v1.1.1 tersedia dengan fitur pengunduh & instalasi otomatis langsung di dalam aplikasi.",
-  "releaseDate": "2026-10-16",
-  "changelog": "- Fitur In-App Auto-Updater: unduh paket pembaruan resmi (.exe) langsung di dalam aplikasi tanpa dialihkan ke peramban web\n- Silent Auto-Install & Restart: aplikasi langsung memasang pembaruan otomatis dan membuka kembali versi terbaru secara mulus\n- Indikator Unduhan Real-Time: pemantauan progres persentase, total ukuran megabyte, dan kecepatan unduh langsung di dialog pembaruan\n- Shortcut Cek Pembaruan di Baki Sistem (System Tray): menu klik-kanan icon KEIOL untuk memeriksa rilis terbaru kapan saja",
+  "forceUpdateMessage": "Pembaruan v1.2.0 tersedia dengan peningkatan kontrol player khas YouTube (double-click fullscreen & Shift+N), preloading katalog multi-sumber lengkap, dan akurasi skip intro.",
+  "releaseDate": "2026-10-19",
+  "changelog": "- Kontrol Pemutar Video Khas YouTube: ketukan ganda (double-click) pada layar untuk toggle Fullscreen / Unfullscreen\n- Tombol & Shortcut Episode Selanjutnya: pintasan Shift + N dan tombol fisik pemutar untuk berpindah ke episode berikutnya secara instan\n- Skip Intro Cerdas & Bersih: tombol lewati intro otomatis memudar saat idle dan tidak akan tampil jika tidak ada data intro yang pasti; tombol pintas S (+85s) tetap tersedia tanpa menjeda video\n- Preloading Multi-Sumber Terpadu: daftar anime A-Z memuat seluruh sumber secara paralel di latar belakang sejak startup\n- Optimasi Loading & Mode Offline: tombol lewati loading 10 detik saat startup dan deteksi offline otomatis\n- Peningkatan Mesin AniSkip: akurasi resolusi judul bersambung multi-season dan eliminasi notifikasi streaming lambat",
   "downloadUrl": "https://github.com/Xeranov/KEIOL/releases/latest",
-  "installerUrl": "https://github.com/Xeranov/KEIOL/releases/download/v1.1.1/KEIOL-Setup-1.1.1.exe"
+  "installerUrl": "https://github.com/Xeranov/KEIOL/releases/download/v1.2.0/KEIOL-Setup-1.2.0.exe"
 }
+

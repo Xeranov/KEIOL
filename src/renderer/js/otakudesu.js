@@ -161,8 +161,18 @@ class OtakudesuManager {
    * membuka tab Web, konten sudah langsung siap saji tanpa loading lagi (kecuali klik refresh).
    */
   async preloadWebCatalog(onProgress) {
+    if (!navigator.onLine) {
+      console.log('App is offline, skipping web catalog preload.');
+      this.renderOfflineNotice();
+      return;
+    }
+
     try {
       if (typeof onProgress === 'function') onProgress('Memuat server anime & donghua...');
+
+      // Pemuatan asinkronus instan: jalankan preloading tab web lainnya (jadwal, genre, daftar anime) di latar belakang secara paralel
+      this.preloadBackgroundTabs();
+
       const promises = [];
       if (!this.cache.ongoing && window.electronAPI && typeof window.electronAPI.otakudesuGetOngoing === 'function') {
         promises.push(
@@ -187,6 +197,78 @@ class OtakudesuManager {
       await this.loadOngoing(true);
     } catch (e) {
       console.warn('Preload web catalog error:', e);
+    }
+  }
+
+  preloadBackgroundTabs() {
+    if (!navigator.onLine) return;
+
+    // 1. Asynchronously load Schedule in background
+    if (!this.cache.schedule && window.electronAPI && typeof window.electronAPI.otakudesuGetSchedule === 'function') {
+      window.electronAPI.otakudesuGetSchedule()
+        .then(res => { if (res) this.cache.schedule = res; })
+        .catch(() => {});
+    }
+    if (!this.cache.anichinSchedule && window.electronAPI && typeof window.electronAPI.anichinGetSchedule === 'function') {
+      window.electronAPI.anichinGetSchedule()
+        .then(res => { if (res) this.cache.anichinSchedule = res; })
+        .catch(() => {});
+    }
+
+    // 2. Asynchronously load Genres in background
+    if (!this.cache.genres && window.electronAPI && typeof window.electronAPI.otakudesuGetGenres === 'function') {
+      window.electronAPI.otakudesuGetGenres()
+        .then(res => { if (res) this.cache.genres = res; })
+        .catch(() => {});
+    }
+
+    // 3. Asynchronously load all sources for Anime List (Otakudesu, Kusonime, Ani-Chin Donghua) in background
+    if (!this.cache.animeList) {
+      this.fetchAndMergeAnimeList().catch(() => {});
+    }
+  }
+
+  prefetchEpisodeStream(epUrl, isDonghua = false) {
+    if (!epUrl || !window.electronAPI || !navigator.onLine) return;
+    if (!this.streamCache) this.streamCache = new Map();
+    if (this.streamCache.has(epUrl)) return;
+
+    if (isDonghua && typeof window.electronAPI.anichinGetEpisodeStream === 'function') {
+      window.electronAPI.anichinGetEpisodeStream(epUrl)
+        .then(stream => { if (stream) this.streamCache.set(epUrl, stream); })
+        .catch(() => {});
+    } else if (typeof window.electronAPI.otakudesuGetEpisodeStream === 'function') {
+      window.electronAPI.otakudesuGetEpisodeStream(epUrl)
+        .then(stream => { if (stream) this.streamCache.set(epUrl, stream); })
+        .catch(() => {});
+    }
+  }
+
+  renderOfflineNotice() {
+    if (!this.webDynamicContainer) return;
+    if (this.webBillboard) this.webBillboard.classList.add('hidden');
+    this.webDynamicContainer.innerHTML = `
+      <div class="web-offline-container">
+        <div class="offline-icon">
+          <svg viewBox="0 0 24 24" width="64" height="64" fill="#888890">
+            <path d="M23.64 7c-.45-.34-4.93-3.66-11.64-3.66-6.72 0-11.2 3.32-11.64 3.66L12 21.5 23.64 7zM3.42 7.74C4.88 6.7 8.32 4.99 12 4.99c3.69 0 7.12 1.71 8.58 2.75L12 18.25 3.42 7.74zM1 1l22 22-1.41 1.41-2.9-2.9C16.34 22.47 14.28 23 12 23 5.28 23 .8 19.68.36 19.34l10.23-12.7L1.41 2.41 1 1z"/>
+          </svg>
+        </div>
+        <h2 class="offline-title">Anda Sedang Offline</h2>
+        <p class="offline-desc">Koneksi internet tidak terdeteksi. Hubungkan ke jaringan untuk streaming anime atau nikmati koleksi video lokal di tab Beranda.</p>
+        <button id="btnRetryOnline" class="btn-primary" style="padding: 8px 20px; font-size: 13px;">Coba Muat Ulang</button>
+      </div>
+    `;
+    const btnRetry = document.getElementById('btnRetryOnline');
+    if (btnRetry) {
+      btnRetry.addEventListener('click', () => {
+        if (navigator.onLine) {
+          this.loadOngoing(true);
+          this.preloadBackgroundTabs();
+        } else {
+          alert('Anda masih offline. Periksa koneksi internet Anda.');
+        }
+      });
     }
   }
 
@@ -374,6 +456,20 @@ class OtakudesuManager {
         }
       }
     });
+
+    // Online & Offline Network State Handlers
+    window.addEventListener('online', () => {
+      if (this.webDynamicContainer && this.webDynamicContainer.querySelector('.web-offline-container')) {
+        this.loadOngoing(true);
+        this.preloadBackgroundTabs();
+      }
+    });
+
+    window.addEventListener('offline', () => {
+      if (!this.cache.ongoing && this.activeSub !== 'downloaded') {
+        this.renderOfflineNotice();
+      }
+    });
   }
 
   onTabActivated() {
@@ -526,7 +622,11 @@ class OtakudesuManager {
       const hasAnichin = anichinData && anichinData.animeList && anichinData.animeList.length > 0;
 
       if (!hasOtaku && !hasAnichin) {
-        this.webDynamicContainer.innerHTML = '<div class="web-empty-notice">Tidak dapat memuat anime ongoing. Periksa koneksi internet Anda.</div>';
+        if (!navigator.onLine) {
+          this.renderOfflineNotice();
+        } else {
+          this.webDynamicContainer.innerHTML = '<div class="web-empty-notice">Tidak dapat memuat anime ongoing. Periksa koneksi internet Anda.</div>';
+        }
         return;
       }
 
@@ -794,7 +894,11 @@ class OtakudesuManager {
       const anichinSchedule = this.cache.anichinSchedule || [];
 
       if (schedule.length === 0 && anichinSchedule.length === 0) {
-        this.webDynamicContainer.innerHTML = '<div class="web-empty-notice">Jadwal rilis tidak tersedia. Periksa koneksi internet Anda.</div>';
+        if (!navigator.onLine) {
+          this.renderOfflineNotice();
+        } else {
+          this.webDynamicContainer.innerHTML = '<div class="web-empty-notice">Jadwal rilis tidak tersedia. Periksa koneksi internet Anda.</div>';
+        }
         return;
       }
 
@@ -1010,7 +1114,11 @@ class OtakudesuManager {
 
       const genres = this.cache.genres || [];
       if (genres.length === 0) {
-        this.webDynamicContainer.innerHTML = '<div class="web-empty-notice">Daftar genre tidak ditemukan.</div>';
+        if (!navigator.onLine) {
+          this.renderOfflineNotice();
+        } else {
+          this.webDynamicContainer.innerHTML = '<div class="web-empty-notice">Daftar genre tidak ditemukan.</div>';
+        }
         return;
       }
 
@@ -1052,7 +1160,11 @@ class OtakudesuManager {
 
     } catch (err) {
       console.error('Error loading genres:', err);
-      this.webDynamicContainer.innerHTML = `<div class="web-empty-notice">Gagal memuat genre: ${err.message}</div>`;
+      if (!navigator.onLine) {
+        this.renderOfflineNotice();
+      } else {
+        this.webDynamicContainer.innerHTML = `<div class="web-empty-notice">Gagal memuat genre: ${err.message}</div>`;
+      }
     }
   }
 
@@ -1345,15 +1457,28 @@ class OtakudesuManager {
   }
 
   /**
-   * 4. Sub-Tab: Daftar Anime A-Z
-   * Menggabungkan direktori Otakudesu (Biru), Kusonime (Hitam), dan Ani-Chin Donghua (Kuning)
+   * Mengambil dan menggabungkan direktori lengkap dari 3 sumber:
+   * Otakudesu (Anime), Kusonime (Batch Anime), dan Ani-Chin (Donghua).
+   * Menjamin semua sumber dimuat secara paralel dan tidak ada yang tertinggal.
    */
-  async loadAnimeList() {
-    if (this.webBillboard) this.webBillboard.classList.add('hidden');
-    this.showLoading('Memuat direktori anime & donghua A-Z gabungan...');
+  async fetchAndMergeAnimeList() {
+    // Jika sudah lengkap memuat ketiga sumber, gunakan cache
+    if (this.cache.animeList && Array.isArray(this.cache.animeList) && this.cache.animeList.length > 0) {
+      const hasAllSources = this.cache.animeList.some(g => g.items && g.items.some(i => i.source === 'otakudesu')) &&
+                            this.cache.animeList.some(g => g.items && g.items.some(i => i.source === 'kusonime')) &&
+                            this.cache.animeList.some(g => g.items && g.items.some(i => i.source === 'anichin' || i.isDonghua));
+      if (hasAllSources) {
+        return this.cache.animeList;
+      }
+    }
 
-    try {
-      if (!this.cache.animeList) {
+    // Jika proses fetch sedang berjalan di latar belakang, gunakan promise yang sama
+    if (this.animeListFetchPromise) {
+      return this.animeListFetchPromise;
+    }
+
+    this.animeListFetchPromise = (async () => {
+      try {
         let otakuGroups = [];
         let kusoGroups = [];
         let anichinGroups = [];
@@ -1386,12 +1511,49 @@ class OtakudesuManager {
         await Promise.all(fetchPromises);
 
         // Gabungkan direktori tiga sumber
-        this.cache.animeList = this.mergeAnimeLists(otakuGroups, kusoGroups, anichinGroups);
+        const merged = this.mergeAnimeLists(otakuGroups, kusoGroups, anichinGroups);
+        if (merged && merged.length > 0) {
+          this.cache.animeList = merged;
+        }
+        return this.cache.animeList;
+      } catch (err) {
+        console.warn('Gagal memuat direktori anime gabungan:', err);
+        return this.cache.animeList || [];
+      } finally {
+        this.animeListFetchPromise = null;
       }
+    })();
 
+    return this.animeListFetchPromise;
+  }
+
+  /**
+   * 4. Sub-Tab: Daftar Anime A-Z
+   * Menggabungkan direktori Otakudesu (Biru), Kusonime (Hitam), dan Ani-Chin Donghua (Kuning)
+   */
+  async loadAnimeList() {
+    if (this.webBillboard) this.webBillboard.classList.add('hidden');
+
+    const isFullyCached = this.cache.animeList &&
+      Array.isArray(this.cache.animeList) &&
+      this.cache.animeList.length > 0 &&
+      this.cache.animeList.some(g => g.items && g.items.some(i => i.source === 'otakudesu')) &&
+      this.cache.animeList.some(g => g.items && g.items.some(i => i.source === 'kusonime')) &&
+      this.cache.animeList.some(g => g.items && g.items.some(i => i.source === 'anichin' || i.isDonghua));
+
+    if (!isFullyCached) {
+      this.showLoading('Memuat direktori anime & donghua A-Z gabungan (Otakudesu, Kusonime, Ani-Chin)...');
+      await this.fetchAndMergeAnimeList();
+    }
+
+    try {
       const groups = this.cache.animeList || [];
       if (groups.length === 0) {
-        this.webDynamicContainer.innerHTML = '<div class="web-empty-notice">Direktori anime tidak dapat dimuat.</div>';
+        if (!navigator.onLine) {
+          this.renderOfflineNotice();
+        } else {
+          this.webDynamicContainer.innerHTML = '<div class="web-empty-notice">Direktori anime tidak dapat dimuat.</div>';
+        }
         return;
       }
 
@@ -1471,7 +1633,11 @@ class OtakudesuManager {
 
     } catch (err) {
       console.error('Error loading anime list:', err);
-      this.webDynamicContainer.innerHTML = `<div class="web-empty-notice">Gagal memuat direktori: ${err.message}</div>`;
+      if (!navigator.onLine) {
+        this.renderOfflineNotice();
+      } else {
+        this.webDynamicContainer.innerHTML = `<div class="web-empty-notice">Gagal memuat direktori: ${err.message}</div>`;
+      }
     }
   }
 
@@ -2907,8 +3073,16 @@ class OtakudesuManager {
       });
     });
 
-    // Attach Card / Box Click (defaults to play)
+    // Attach Card / Box Click (defaults to play) and Hover Prefetch
     gridContainer.querySelectorAll('.ep-landscape-card, .ep-numbered-box').forEach(card => {
+      card.addEventListener('mouseenter', () => {
+        const idx = parseInt(card.dataset.index, 10);
+        const ep = episodes[idx];
+        if (ep && ep.url) {
+          this.prefetchEpisodeStream(ep.url, isDonghua);
+        }
+      }, { once: true });
+
       card.addEventListener('click', (e) => {
         if (e.target.closest('button')) return;
         const idx = parseInt(card.dataset.index, 10);
@@ -3106,9 +3280,13 @@ class OtakudesuManager {
     this.showDownloadToastNotification(`Menghubungkan stream Donghua ${ep.title}...`);
 
     try {
-      let streamData = null;
-      if (window.electronAPI && typeof window.electronAPI.anichinGetEpisodeStream === 'function') {
+      let streamData = this.streamCache?.get(ep.url);
+      if (!streamData && window.electronAPI && typeof window.electronAPI.anichinGetEpisodeStream === 'function') {
         streamData = await window.electronAPI.anichinGetEpisodeStream(ep.url);
+        if (streamData) {
+          if (!this.streamCache) this.streamCache = new Map();
+          this.streamCache.set(ep.url, streamData);
+        }
       }
 
       if (this.isStreamLoadingCancelled) return;
@@ -3154,6 +3332,14 @@ class OtakudesuManager {
           startTime: 0,
           currentQuality: 'HD'
         });
+
+        // Pemuatan asinkronus: prefetch episode berikutnya di latar belakang
+        if (this.library && animeDetail.episodes) {
+          const nextEp = this.library.findNextOnlineEpisode(animeDetail.episodes, ep);
+          if (nextEp && nextEp.url) {
+            this.prefetchEpisodeStream(nextEp.url, true);
+          }
+        }
       }
 
     } catch (err) {
@@ -3505,9 +3691,13 @@ class OtakudesuManager {
     this.showDownloadToastNotification(`Menghubungkan stream untuk ${ep.title}...`);
 
     try {
-      let streamData = null;
-      if (window.electronAPI && typeof window.electronAPI.otakudesuGetEpisodeStream === 'function') {
+      let streamData = this.streamCache?.get(ep.url);
+      if (!streamData && window.electronAPI && typeof window.electronAPI.otakudesuGetEpisodeStream === 'function') {
         streamData = await window.electronAPI.otakudesuGetEpisodeStream(ep.url);
+        if (streamData) {
+          if (!this.streamCache) this.streamCache = new Map();
+          this.streamCache.set(ep.url, streamData);
+        }
       }
 
       if (this.isStreamLoadingCancelled) return;
@@ -3570,32 +3760,18 @@ class OtakudesuManager {
       // Close modal
       this.closeDetailModal();
 
-      // Fetch precise skip times from AniSkip / AniList
-      let skipIntervals = null;
-      if (window.electronAPI && typeof window.electronAPI.getAnimeSkipTimes === 'function') {
-        try {
-          let epNum = 1;
-          if (this.player && typeof this.player.extractEpisodeNumber === 'function') {
-            epNum = this.player.extractEpisodeNumber(ep.title || ep.url || '', animeDetail.title);
-          } else {
-            const epMatch = (ep.title || '').match(/(?:Episode|Eps?\.?)\s*(\d+)/i);
-            epNum = epMatch ? parseInt(epMatch[1], 10) : 1;
-          }
-
-          const skipRes = await window.electronAPI.getAnimeSkipTimes(animeDetail.title, epNum);
-          if (skipRes && skipRes.found) {
-            skipIntervals = this.player && typeof this.player.validateSkipIntervals === 'function'
-              ? this.player.validateSkipIntervals({ op: skipRes.op, ed: skipRes.ed })
-              : { op: skipRes.op, ed: skipRes.ed };
-          }
-        } catch (e) {
-          console.warn('Gagal memuat AniSkip times:', e.message);
-        }
-      }
-
       if (this.isStreamLoadingCancelled) return;
 
-      // Launch player
+      // Extract episode number for background AniSkip
+      let epNum = 1;
+      if (this.player && typeof this.player.extractEpisodeNumber === 'function') {
+        epNum = this.player.extractEpisodeNumber(ep.title || ep.url || '', animeDetail.title);
+      } else {
+        const epMatch = (ep.title || '').match(/(?:Episode|Eps?\.?)\s*(\d+)/i);
+        epNum = epMatch ? parseInt(epMatch[1], 10) : 1;
+      }
+
+      // Launch player immediately for faster streaming startup
       if (this.player && typeof this.player.loadRemoteStream === 'function') {
         if (this.library) {
           this.library.setOnlinePlaylist({
@@ -3628,10 +3804,32 @@ class OtakudesuManager {
           startTime: resumeTime,
           availableQualities: streamData.availableQualities || [],
           currentQuality: streamData.currentQuality || (streamType === 'iframe' ? 'Auto' : '720p'),
-          skipIntervals: skipIntervals,
+          skipIntervals: null,
           streamType: streamType,
           embedUrl: streamData.embedUrl
         });
+
+        // Asynchronously fetch AniSkip in background without blocking video playback
+        if (window.electronAPI && typeof window.electronAPI.getAnimeSkipTimes === 'function') {
+          window.electronAPI.getAnimeSkipTimes(animeDetail.title, epNum)
+            .then(skipRes => {
+              if (skipRes && skipRes.found && this.player) {
+                const validated = typeof this.player.validateSkipIntervals === 'function'
+                  ? this.player.validateSkipIntervals({ op: skipRes.op, ed: skipRes.ed })
+                  : { op: skipRes.op, ed: skipRes.ed };
+                this.player.setSkipIntervals(validated);
+              }
+            })
+            .catch(() => {});
+        }
+
+        // Pemuatan asinkronus: prefetch stream episode berikutnya di latar belakang
+        if (this.library && animeDetail.episodes) {
+          const nextEp = this.library.findNextOnlineEpisode(animeDetail.episodes, ep);
+          if (nextEp && nextEp.url) {
+            this.prefetchEpisodeStream(nextEp.url, false);
+          }
+        }
       }
 
     } catch (err) {
@@ -3859,7 +4057,10 @@ class OtakudesuManager {
   }
 
   async triggerDownload(options) {
-    this.showDownloadToastNotification(`Memulai unduhan: ${options.episodeTitle} (${options.quality})...`);
+    if (!options) return;
+    const downloadUrl = options.downloadUrl || options.url;
+    options.downloadUrl = downloadUrl;
+    this.showDownloadToastNotification(`Memulai unduhan: ${options.episodeTitle || 'Episode'} (${options.quality || '720p'})...`);
 
     if (window.electronAPI && typeof window.electronAPI.startDownload === 'function') {
       try {

@@ -22,7 +22,13 @@ app.whenReady().then(async () => {
     data: [],
     totalPages: 1
   }));
-  ipcMain.handle('app:getVersion', () => '1.1.1');
+  ipcMain.handle('otakudesu:getSchedule', () => []);
+  ipcMain.handle('anichin:getSchedule', () => []);
+  ipcMain.handle('otakudesu:getGenres', () => []);
+  ipcMain.handle('otakudesu:getAnimeList', () => []);
+  ipcMain.handle('kusonime:getAnimeList', () => []);
+  ipcMain.handle('anichin:getAnimeList', () => []);
+  ipcMain.handle('app:getVersion', () => require('../../package.json').version);
   ipcMain.handle('settings:get-close-to-tray', () => false);
   ipcMain.handle('aniskip:getSkipTimes', () => ({ found: false }));
   ipcMain.handle('window:isFullScreen', () => false);

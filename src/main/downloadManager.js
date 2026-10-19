@@ -92,12 +92,12 @@ class DownloadManager {
   /**
    * Mulai mengunduh video anime
    */
-  async startDownload({ animeTitle, episodeTitle, downloadUrl, quality = '720p', mirrorHost = '', mirrors = [], posterUrl = '', synopsis = '', genres = '' }) {
+  async startDownload({ animeTitle, episodeTitle, downloadUrl, url, quality = '720p', mirrorHost = '', mirrors = [], posterUrl = '', synopsis = '', genres = '' }) {
     const id = `dl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
 
     // Urutkan mirror jika tersedia
     let candidateMirrors = Array.isArray(mirrors) ? this.sortMirrorsByPriority(mirrors) : [];
-    let initialUrl = downloadUrl;
+    let initialUrl = downloadUrl || url;
     let initialHost = mirrorHost;
 
     if (!initialUrl && candidateMirrors.length > 0) {
