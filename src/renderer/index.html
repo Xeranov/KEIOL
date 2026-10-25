@@ -97,6 +97,7 @@
           <div class="netflix-tabs">
             <button class="netflix-tab-btn active" id="tabHome" data-tab="home">Beranda</button>
             <button class="netflix-tab-btn" id="tabWeb" data-tab="web">Web</button>
+            <button class="netflix-tab-btn" id="tabIdlix" data-tab="idlix">Film &amp; Series</button>
             <button class="netflix-tab-btn" id="tabDownloads" data-tab="downloads">
               <span>Unduhan</span>
               <span id="tabDownloadsBadge" class="nav-download-badge hidden">0</span>
@@ -258,6 +259,76 @@
           <div id="webDetailContainer" class="web-detail-container hidden"></div>
         </div>
 
+      </div>
+
+      <!-- VIEW: IDLIX FILM & SERIAL TV -->
+      <div id="idlixSection" class="idlix-section hidden">
+        <!-- Sub-Navigation Pills & Filters -->
+        <div class="web-subnav-bar idlix-subnav-bar">
+          <div class="web-subnav-pills" role="tablist">
+            <button class="web-pill-btn active" id="pillIdlixAll" data-sub="all">Semua</button>
+            <button class="web-pill-btn" id="pillIdlixMovies" data-sub="movies">Film</button>
+            <button class="web-pill-btn" id="pillIdlixSeries" data-sub="series">Serial TV</button>
+            <button class="web-pill-btn" id="pillIdlixTrending" data-sub="trending">Populer</button>
+            <div class="idlix-genre-pill-wrapper">
+              <label for="selectIdlixGenre" class="sr-only">Pilih Genre</label>
+              <select id="selectIdlixGenre" class="web-pill-btn idlix-genre-select" title="Filter Genre">
+                <option value="">Semua Genre</option>
+              </select>
+            </div>
+          </div>
+          <div id="idlixSearchStatus" class="idlix-search-status hidden">
+            <span id="idlixSearchText">Hasil pencarian</span>
+            <button id="btnClearIdlixSearch" class="btn-clear-search" title="Hapus pencarian">&times;</button>
+          </div>
+        </div>
+
+        <!-- Content Body -->
+        <div id="idlixContentBody" class="web-content-body idlix-content-body">
+          <!-- Featured Hero Billboard (Trending/Featured Movie or Series Carousel) -->
+          <div id="idlixBillboard" class="netflix-billboard hidden">
+            <div class="billboard-backdrop" id="idlixBillboardBackdrop"></div>
+            <div class="billboard-gradient"></div>
+            <div class="billboard-scrim-left"></div>
+            <button id="btnIdlixBillboardPrev" class="billboard-carousel-arrow left" aria-label="Slide sebelumnya" title="Sebelumnya">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button id="btnIdlixBillboardNext" class="billboard-carousel-arrow right" aria-label="Slide berikutnya" title="Berikutnya">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+            <div class="billboard-content">
+              <div class="billboard-badge">
+                <span>★</span>
+                <span id="idlixBillboardTag">Film Unggulan</span>
+              </div>
+              <h1 id="idlixBillboardTitle" class="billboard-title">Judul Film</h1>
+              <p id="idlixBillboardDesc" class="billboard-desc">Sinopsis singkat...</p>
+              <div class="billboard-actions">
+                <button id="btnIdlixBillboardPlay" class="btn-netflix-play">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  <span>Putar</span>
+                </button>
+                <button id="btnIdlixBillboardDetail" class="btn-netflix-info">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                  <span>Detail &amp; Info</span>
+                </button>
+              </div>
+            </div>
+            <!-- Billboard Carousel Dots Indicators -->
+            <div id="idlixBillboardDots" class="billboard-dots" role="tablist" aria-label="Indikator slide billboard"></div>
+          </div>
+
+          <!-- Dynamic Container for Active Tab / Grid -->
+          <div id="idlixDynamicContainer" class="web-dynamic-container">
+            <div class="web-loading-spinner" id="idlixLoadingSpinner">
+              <div class="yt-spinner"></div>
+              <span>Memuat katalog Idlix...</span>
+            </div>
+          </div>
+
+          <!-- Full-Page Movie & Series Detail Container -->
+          <div id="idlixDetailContainer" class="web-detail-container idlix-detail-container hidden"></div>
+        </div>
       </div>
 
       <!-- Dedicated Downloads Tab Section -->
@@ -526,6 +597,23 @@
         <!-- Subtitle overlay -->
         <div id="subtitleDisplay" class="subtitle-display hidden"></div>
 
+        <!-- Idlix Stream Unlock Countdown Overlay -->
+        <div id="idlixUnlockOverlay" class="idlix-unlock-overlay hidden">
+          <div class="idlix-unlock-backdrop" id="idlixUnlockBackdrop"></div>
+          <div class="idlix-unlock-card">
+            <div class="idlix-unlock-spinner">
+              <svg class="idlix-countdown-ring" viewBox="0 0 64 64">
+                <circle class="ring-bg" cx="32" cy="32" r="28" fill="none" stroke-width="4"/>
+                <circle class="ring-fg" id="idlixRingProgress" cx="32" cy="32" r="28" fill="none" stroke-width="4"/>
+              </svg>
+              <span id="idlixCountdownSec" class="idlix-countdown-number">15</span>
+            </div>
+            <div class="idlix-unlock-title" id="idlixUnlockTitle">Menyiapkan Stream Idlix...</div>
+            <div class="idlix-unlock-subtitle" id="idlixUnlockSub">Mengamankan sesi pemutaran HLS tanpa jeda</div>
+            <button id="btnCancelIdlixUnlock" class="btn-secondary btn-cancel-unlock">Batal</button>
+          </div>
+        </div>
+
         <!-- 2X Speed Hold Pill Indicator (Translucent Pop-up) -->
         <div id="speedBoostPill" class="speed-boost-pill hidden" aria-live="polite">
           <span class="boost-icon">⏩</span>
@@ -770,6 +858,11 @@
                 <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/>
               </svg>
               <div id="subtitlesActiveBar" class="subtitles-active-bar hidden"></div>
+            </button>
+
+            <!-- Direct Video Resolution / Quality Selector Button on Player Bar -->
+            <button id="btnQualityDirect" class="ctrl-btn quality-badge-btn hidden" title="Pilih Resolusi Video" aria-label="Pilih Resolusi Video" aria-haspopup="true">
+              <span id="qualityDirectBadgeText">HD</span>
             </button>
 
             <!-- Settings Button -->
@@ -1320,14 +1413,21 @@
       </div>
     </div>
 
+    <!-- Idlix Clean Quick Spinning Loading Overlay -->
+    <div id="idlixQuickSpinner" class="idlix-quick-spinner hidden" aria-hidden="true">
+      <div class="yt-spinner"></div>
+    </div>
+
   </div>
 
+  <script src="js/hls.min.js"></script>
   <script src="js/player.js"></script>
   <script src="js/controls.js"></script>
   <script src="js/gestures.js"></script>
   <script src="js/shortcuts.js"></script>
   <script src="js/library.js"></script>
   <script src="js/otakudesu.js"></script>
+  <script src="js/idlix.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

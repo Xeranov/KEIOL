@@ -4,6 +4,33 @@ Semua perubahan penting pada proyek **KEIOL** akan didokumentasikan di berkas in
 
 ---
 
+## [2.0.0] - 2026-10-25
+
+### Ditambahkan (Added)
+- **Perombakan Antarmuka Film & Series (Netflix & Idlix Experience)**:
+  - **Rotating Hero Billboard Carousel**: Menampilkan banner sinematik 16:9 judul tren mingguan dengan backdrop resolusi tinggi, metadata lengkap (rating bintang, tahun rilis, durasi/season), tombol "Putar Sekarang", "Info Selengkapnya", indikator slide dot, serta transisi otomatis 7 detik dengan jeda saat kursor diarahkan ke banner.
+  - **Multi-Row Netflix Horizontal Sliders**: Baris kategori horizontal (Sedang Tren, Film Populer, Serial TV Teratas, Horor & Misteri, Drama Romansa) dengan tombol geser meluncur mulus (*smooth scrolling*).
+  - **Expanding Pop-Out Cards**: Kartu media membesar secara elegan saat disentuh kursor (*hover/focus*), menampilkan tombol putar cepat, tombol Daftar Saya (*bookmark*), ringkasan genre, dan persentase kecocokan.
+  - **Dynamic Filter Hub & Navigasi**: Tab filter (Semua, Film, Serial TV, Populer) yang responsif dan dropdown filter genre TMDB.
+  - **Immersive Full-Page Detail View**: Halaman detail film dan serial TV dengan backdrop sinematik, metadata kru/cast, sinopsis lengkap, pemilihan musim (*season selector*), dan kisi episode dengan thumbnail 16:9.
+- **Pemisahan Eksklusif Riwayat Lanjutkan Menonton (Continue Watching)**:
+  - Tab Web (Anime & Donghua) hanya menampilkan riwayat tontonan anime/donghua dari Otakudesu dan Ani-Chin.
+  - Tab Film & Series memiliki baris "Lanjutkan Menonton" tersendiri khusus judul film dan serial TV barat/Asia.
+  - Masing-masing tab terisolasi dan tidak saling mencampur riwayat tontonan.
+- **Pelacakan Waktu Tonton Real-Time & Resume Pemutaran**:
+  - Progres streaming terekam secara live saat pemutaran berjalan (`player:timeupdate`) setiap 3 detik.
+  - Menekan kartu Lanjutkan Menonton memutar video langsung dari detik terakhir yang ditonton (`startTime`).
+- **Tombol Hapus Riwayat Tontonan (`&times;`)**:
+  - Tombol hapus cepat pada sudut kartu tontonan untuk membersihkan riwayat tontonan anime maupun film secara mandiri tanpa reset data menyeluruh.
+- **Subtitle Bahasa Indonesia Otomatis**:
+  - Membaca subtitle Bahasa Indonesia secara otomatis dari manifest stream Idlix dan mengaktifkannya langsung ke player.
+
+### Diubah (Changed)
+- Peningkatan pemanggilan proxy HLS lokal untuk streaming film dan serial Idlix guna mencegah pemblokiran CORS dan proteksi CDN.
+- Performa muat awal tab Film & Series kini menggunakan pemuatan bertahap (*lazy batching*) sehingga beranda terbuka secara instan.
+
+---
+
 ## [1.2.0] - 2026-10-19
 
 ### Ditambahkan (Added)

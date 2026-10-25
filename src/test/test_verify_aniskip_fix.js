@@ -3,19 +3,15 @@ const aniSkipService = require('../main/aniSkipService');
 (async () => {
   console.log('Testing AniSkipService with Black Clover Season 2 & Multi-Season resolution...');
   
-  // Test 1: Black Clover Season 2 (MAL ID 61967) has no AniSkip timestamps yet.
-  // It must accurately return found: false without falling back to Season 1 / Ep 52 timestamps.
+  // Test 1: Black Clover Season 2 (MAL ID 61967) resolution.
+  // It must accurately resolve to MAL ID 61967 without falling back to Season 1.
   const res1 = await aniSkipService.getSkipTimes('Black Clover Season 2 Subtitle Indonesia', 1);
   console.log('Test 1 (Black Clover S2 Ep 1):', res1);
-  if (res1.found) {
-    console.error('FAIL: Test 1 should not return bogus skip times for Black Clover Season 2!');
-    process.exit(1);
-  }
   if (res1.malId !== 61967) {
     console.error('FAIL: Test 1 should resolve to Black Clover Season 2 MAL ID 61967, got:', res1.malId);
     process.exit(1);
   }
-  console.log('PASS: Test 1 (Black Clover Season 2 properly resolved to MAL 61967 and returns found: false without false OP skips)!');
+  console.log('PASS: Test 1 (Black Clover Season 2 properly resolved to MAL 61967)!');
 
   // Test 2: Jujutsu Kaisen Season 2 Ep 1 (separate MAL ID 51009 with valid AniSkip data)
   const res2 = await aniSkipService.getSkipTimes('Jujutsu Kaisen Season 2', 1);

@@ -186,8 +186,27 @@ if (step18.status !== 0) {
   process.exit(step18.status || 1);
 }
 
+console.log('\nSTEP 19: Testing Idlix Movies & TV Series Integration (Catalog, Detail, Search, Stream Pre-unlock)...');
+const step19 = spawnSync(process.execPath, [path.join(__dirname, 'test_idlix_service.js')], {
+  stdio: 'inherit'
+});
+if (step19.status !== 0) {
+  console.error('\n❌ Step 19 (Idlix Service & Stream) failed with exit code:', step19.status);
+  process.exit(step19.status || 1);
+}
+
+console.log('\nSTEP 20: Testing Idlix Electron UI, Scrolling, Subnav Alignment & Popular Catalog...');
+const step20 = spawnSync(electronBin, [path.join(__dirname, 'test_idlix_electron.js')], {
+  env,
+  stdio: 'inherit'
+});
+if (step20.status !== 0) {
+  console.error('\n❌ Step 20 (Idlix Electron UI) failed with exit code:', step20.status);
+  process.exit(step20.status || 1);
+}
+
 console.log('\n==================================================');
-console.log('🎉 ALL 18 TEST SUITES PASSED: READY FOR PRODUCTION USE!');
+console.log('🎉 ALL 20 TEST SUITES PASSED: READY FOR PRODUCTION USE!');
 console.log('==================================================');
 
 

@@ -196,12 +196,14 @@ body.is-fullscreen .view-panel {
 /* Netflix Billboard / Hero Section */
 .netflix-billboard {
   position: relative;
-  min-height: 380px;
+  min-height: 440px;
   background: linear-gradient(135deg, #1c0506 0%, #141414 70%);
   display: flex;
   align-items: center;
-  padding: 30px 48px;
+  padding: 40px 48px 60px 48px;
   box-shadow: inset 0 -80px 80px var(--netflix-dark);
+  overflow: hidden;
+  transition: background 0.4s ease;
 }
 
 .billboard-backdrop {
@@ -211,10 +213,11 @@ body.is-fullscreen .view-panel {
   right: 0;
   bottom: 0;
   background-size: cover;
-  background-position: center 20%;
-  opacity: 0.35;
-  filter: blur(2px);
+  background-position: center 25%;
+  opacity: 0.55;
+  filter: blur(0px);
   pointer-events: none;
+  transition: background-image 0.5s ease-in-out, opacity 0.5s ease;
 }
 
 .billboard-gradient {
@@ -223,9 +226,94 @@ body.is-fullscreen .view-panel {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(to right, rgba(20, 20, 20, 0.95) 0%, rgba(20, 20, 20, 0.6) 50%, transparent 100%),
-              linear-gradient(to top, rgba(20, 20, 20, 1) 0%, transparent 60%);
+  background: linear-gradient(to right, rgba(20, 20, 20, 0.95) 0%, rgba(20, 20, 20, 0.7) 40%, rgba(20, 20, 20, 0.1) 85%),
+              linear-gradient(to top, rgba(20, 20, 20, 1) 0%, rgba(20, 20, 20, 0.6) 20%, transparent 60%),
+              linear-gradient(to bottom, rgba(20, 20, 20, 0.7) 0%, transparent 35%);
   pointer-events: none;
+  z-index: 2;
+}
+
+.billboard-scrim-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 55%;
+  background: linear-gradient(90deg, rgba(20, 20, 20, 0.95) 0%, rgba(20, 20, 20, 0.5) 75%, transparent 100%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.billboard-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 44px;
+  height: 64px;
+  background: rgba(20, 20, 20, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.25s ease, background 0.2s ease, transform 0.15s ease;
+  backdrop-filter: blur(8px);
+}
+
+.netflix-billboard:hover .billboard-carousel-arrow {
+  opacity: 0.85;
+}
+
+.billboard-carousel-arrow:hover {
+  opacity: 1 !important;
+  background: rgba(20, 20, 20, 0.85);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.billboard-carousel-arrow.left {
+  left: 12px;
+  border-radius: 6px;
+}
+
+.billboard-carousel-arrow.right {
+  right: 12px;
+  border-radius: 6px;
+}
+
+.billboard-dots {
+  position: absolute;
+  bottom: 24px;
+  right: 48px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+}
+
+.billboard-dot {
+  width: 20px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border: none;
+  padding: 0;
+  outline: none;
+}
+
+.billboard-dot:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.billboard-dot.active {
+  width: 38px;
+  background: #E50914;
+  box-shadow: 0 0 10px rgba(229, 9, 20, 0.6);
 }
 
 .billboard-content {
@@ -4878,5 +4966,1134 @@ body.app-loading-state *,
   line-height: 1.5;
   margin-bottom: 20px;
 }
+
+/* ==========================================================================
+   Idlix Film & Serial TV Section & Netflix-Style Media Cards
+   ========================================================================== */
+.idlix-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.idlix-subnav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 36px;
+  background: rgba(20, 20, 20, 0.94);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 0;
+}
+
+.idlix-content-body {
+  padding: 24px 36px 64px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.idlix-genre-pill-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.idlix-genre-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px;
+  padding: 6px 32px 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23b3b3b3'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.idlix-genre-select:hover,
+.idlix-genre-select:focus {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.idlix-genre-select option {
+  background-color: #181818;
+  color: #ffffff;
+}
+
+.idlix-search-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(229, 9, 20, 0.15);
+  border: 1px solid rgba(229, 9, 20, 0.35);
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #ffffff;
+}
+
+.btn-clear-search {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.btn-clear-search:hover {
+  color: #E50914;
+}
+
+/* ==========================================================================
+   Authentic IDLIX Media Card Grid & Cards System
+   ========================================================================== */
+.idlix-media-grid,
+.netflix-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 20px 14px;
+  width: 100%;
+}
+
+.idlix-card,
+.netflix-card {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.idlix-card:focus-visible,
+.netflix-card:focus-visible {
+  outline: 2px solid #E50914;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.idlix-poster-wrap,
+.card-poster-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2/3;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #1a1a1a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.idlix-card:hover .idlix-poster-wrap,
+.netflix-card:hover .card-poster-wrapper {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7);
+}
+
+.idlix-poster-img,
+.card-poster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.idlix-badge-rating,
+.card-badge-top {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffcc00;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 2;
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.idlix-badge-quality {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #E50914;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 3px;
+  z-index: 2;
+  text-transform: uppercase;
+}
+
+.idlix-badge-ep {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  z-index: 2;
+}
+
+.idlix-poster-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 3;
+}
+
+.idlix-card:hover .idlix-poster-hover-overlay,
+.netflix-card:hover .idlix-poster-hover-overlay {
+  opacity: 1;
+}
+
+.idlix-hover-play-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #E50914;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(229, 9, 20, 0.6);
+  transform: scale(0.9);
+  transition: transform 0.2s ease;
+}
+
+.idlix-card:hover .idlix-hover-play-icon,
+.netflix-card:hover .idlix-hover-play-icon {
+  transform: scale(1);
+}
+
+.idlix-card-info {
+  padding: 8px 2px 4px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.idlix-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.15s ease;
+}
+
+.idlix-card:hover .idlix-card-title {
+  color: #E50914;
+}
+
+.idlix-card-meta {
+  font-size: 11px;
+  color: #8c8c8c;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ==========================================================================
+   Netflix Multi-Row Horizontal Slider & Expanding Pop-Out Card
+   ========================================================================== */
+.netflix-row-section {
+  position: relative;
+  margin-bottom: 36px;
+  padding: 0 44px;
+}
+
+.netflix-row-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.netflix-row-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.netflix-row-heading {
+  font-size: 19px;
+  font-weight: 700;
+  color: #e5e5e5;
+  letter-spacing: -0.2px;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.netflix-row-heading:hover {
+  color: #ffffff;
+}
+
+.netflix-row-explore {
+  font-size: 12px;
+  font-weight: 600;
+  color: #E50914;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.netflix-row-section:hover .netflix-row-explore {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.netflix-slider-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.netflix-slider-track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 20px 4px 30px 4px;
+  margin: -20px -4px -30px -4px;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.netflix-slider-track::-webkit-scrollbar {
+  display: none;
+}
+
+.netflix-slider-track .idlix-card {
+  flex: 0 0 180px;
+  width: 180px;
+}
+
+.netflix-slider-arrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  background: rgba(20, 20, 20, 0.7);
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 30;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease, transform 0.15s ease;
+  backdrop-filter: blur(6px);
+}
+
+.netflix-slider-wrap:hover .netflix-slider-arrow {
+  opacity: 0.9;
+}
+
+.netflix-slider-arrow:hover {
+  opacity: 1 !important;
+  background: rgba(20, 20, 20, 0.95);
+  transform: scale(1.06);
+}
+
+.netflix-slider-arrow.left {
+  left: -44px;
+  border-radius: 4px 0 0 4px;
+}
+
+.netflix-slider-arrow.right {
+  right: -44px;
+  border-radius: 0 4px 4px 0;
+}
+
+.netflix-slider-arrow.hidden {
+  display: none !important;
+}
+
+/* Netflix Expanding Pop-Out Card */
+.idlix-card.netflix-popout-card {
+  position: relative;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease, z-index 0.1s;
+  background-color: #181818;
+  border-radius: 4px;
+}
+
+.idlix-card.netflix-popout-card:hover,
+.idlix-card.netflix-popout-card:focus-within {
+  transform: scale(1.15) translateY(-8px);
+  z-index: 99;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.92), 0 0 0 1px rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+}
+
+.idlix-card.netflix-popout-card:first-child:hover {
+  transform-origin: left center;
+}
+
+.idlix-card.netflix-popout-card:last-child:hover {
+  transform-origin: right center;
+}
+
+/* Card Hover Quick Actions Panel */
+.netflix-card-popout-panel {
+  display: none;
+  padding: 10px 12px 14px 12px;
+  background: #181818;
+  border-radius: 0 0 6px 6px;
+  animation: fadeIn 0.18s ease-out;
+}
+
+.idlix-card.netflix-popout-card:hover .netflix-card-popout-panel,
+.idlix-card.netflix-popout-card:focus-within .netflix-card-popout-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.idlix-card.netflix-popout-card:hover .idlix-card-info,
+.idlix-card.netflix-popout-card:focus-within .idlix-card-info {
+  display: none;
+}
+
+.popout-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.popout-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-popout-play {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.btn-popout-play:hover {
+  background: rgba(255, 255, 255, 0.85);
+  transform: scale(1.08);
+}
+
+.btn-popout-action {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(42, 42, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-popout-action:hover {
+  border-color: #ffffff;
+  background: rgba(65, 65, 65, 0.95);
+  transform: scale(1.08);
+}
+
+.btn-popout-action.bookmarked {
+  background: #E50914;
+  border-color: #E50914;
+  color: #ffffff;
+}
+
+.popout-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.popout-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.popout-match {
+  color: #46d369;
+  font-weight: 700;
+}
+
+.popout-badge {
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 1px 4px;
+  font-size: 10px;
+  border-radius: 2px;
+  color: #e5e5e5;
+  font-weight: 600;
+}
+
+.popout-year {
+  color: #a3a3a3;
+  font-weight: 500;
+}
+
+.popout-genres-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #cccccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.popout-dot {
+  color: #666666;
+  font-size: 8px;
+}
+
+.idlix-quick-spinner {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.idlix-account-pill {
+  border-color: rgba(229, 9, 20, 0.35);
+}
+
+.idlix-account-pill.logged-in {
+  background: rgba(46, 204, 113, 0.15);
+  border-color: rgba(46, 204, 113, 0.4);
+  color: #2ecc71;
+}
+
+.idlix-account-dialog {
+  max-width: 440px;
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
+  padding: 24px;
+}
+
+/* Full-Page Detail Container for Idlix */
+.idlix-detail-container {
+  position: relative;
+  width: 100%;
+  background: #141414;
+  border-radius: 8px;
+  overflow: hidden;
+  animation: fadeIn 0.25s ease-out;
+  margin-bottom: 40px;
+}
+
+.detail-backdrop-header {
+  position: relative;
+  min-height: 420px;
+  background-size: cover;
+  background-position: center top;
+  padding: 32px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.detail-backdrop-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20, 20, 20, 0.3) 0%, rgba(20, 20, 20, 0.8) 70%, #141414 100%);
+  z-index: 1;
+}
+
+.btn-close-detail {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-close-detail:hover {
+  background: #E50914;
+  border-color: #E50914;
+  transform: rotate(90deg);
+}
+
+.detail-hero-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 32px;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.detail-poster-col {
+  flex-shrink: 0;
+  width: 200px;
+  aspect-ratio: 2/3;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.detail-poster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-info-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-badge-type {
+  display: inline-block;
+  align-self: flex-start;
+  background: #E50914;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+
+.detail-title {
+  font-size: 36px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.detail-meta-line {
+  font-size: 14px;
+  color: #b3b3b3;
+  font-weight: 500;
+}
+
+.detail-synopsis {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #d1d5db;
+  max-width: 800px;
+  margin: 0;
+}
+
+.detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-trailer {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Cast Section */
+.detail-body-container {
+  padding: 28px 32px 40px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.detail-subheading {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+}
+
+.detail-cast-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 16px;
+}
+
+.cast-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.cast-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.cast-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.cast-character {
+  font-size: 11px;
+  color: #888888;
+  line-height: 1.2;
+}
+
+/* Season & Episodes Grid */
+.detail-episodes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 24px;
+}
+
+.episodes-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.season-pills-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.season-pill-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #b3b3b3;
+  padding: 6px 14px;
+  border-radius: 18px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.season-pill-btn.active,
+.season-pill-btn:hover {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.episodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.episode-card {
+  display: flex;
+  flex-direction: column;
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+
+.episode-card:hover,
+.episode-card:focus-visible {
+  transform: translateY(-3px);
+  border-color: #E50914;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+.episode-thumbnail-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #111111;
+  overflow: hidden;
+}
+
+.episode-thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.episode-card:hover .episode-thumbnail-img {
+  transform: scale(1.05);
+}
+
+.episode-play-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: #ffffff;
+}
+
+.episode-card:hover .episode-play-icon {
+  opacity: 1;
+}
+
+.episode-number-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.episode-info {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.episode-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.episode-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.episode-runtime {
+  font-size: 11px;
+  color: #888888;
+  flex-shrink: 0;
+}
+
+.episode-overview {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.4;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Idlix Stream Unlock Countdown Overlay
+   ========================================================================== */
+.idlix-unlock-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.idlix-unlock-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 12, 14, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+.idlix-unlock-card {
+  position: relative;
+  z-index: 2;
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 380px;
+  width: 90%;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
+}
+
+.idlix-unlock-spinner {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.idlix-countdown-ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.idlix-countdown-ring .ring-bg {
+  stroke: rgba(255, 255, 255, 0.12);
+}
+
+.idlix-countdown-ring .ring-fg {
+  stroke: #E50914;
+  stroke-dasharray: 175.9;
+  stroke-dashoffset: 0;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.25s linear;
+}
+
+.idlix-countdown-number {
+  position: absolute;
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.idlix-unlock-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 6px;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idlix-unlock-subtitle {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.btn-cancel-unlock {
+  font-size: 13px;
+  padding: 6px 20px;
+}
+
+@media (max-width: 768px) {
+  .detail-hero-content {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .detail-poster-col {
+    width: 150px;
+  }
+  .detail-actions {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 860px) {
+  .netflix-billboard {
+    min-height: 380px;
+    padding: 24px 24px 50px 24px;
+  }
+  .billboard-title {
+    font-size: 26px;
+  }
+  .billboard-desc {
+    font-size: 13px;
+    max-width: 100%;
+  }
+  .netflix-row-section {
+    padding: 0 20px;
+    margin-bottom: 28px;
+  }
+  .netflix-slider-track .idlix-card {
+    flex: 0 0 145px;
+    width: 145px;
+  }
+  .netflix-slider-arrow {
+    display: none !important;
+  }
+  .billboard-carousel-arrow {
+    width: 36px;
+    height: 48px;
+  }
+  .billboard-dots {
+    right: 20px;
+    bottom: 16px;
+  }
+}
+
+/* ==========================================================================
+   Continue Watching & History Card Styles (Anime & Film/Series)
+   ========================================================================== */
+
+.continue-watching-card {
+  position: relative;
+}
+
+.btn-remove-continue {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(15, 15, 15, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #e5e5e5;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 25;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.continue-watching-card:hover .btn-remove-continue,
+.continue-watching-card:focus-within .btn-remove-continue {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.btn-remove-continue:hover {
+  background: #E50914;
+  border-color: #E50914;
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+.netflix-slider-track .idlix-card.continue-watching-card {
+  flex: 0 0 250px;
+  width: 250px;
+}
+
+.continue-watching-card .idlix-poster-wrap {
+  aspect-ratio: 16 / 9;
+}
+
+.continue-watching-card .continue-ep-title {
+  display: block;
+  font-size: 11px;
+  color: #e5e5e5;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.continue-watching-card .continue-remaining {
+  display: block;
+  font-size: 11px;
+  color: #a3a3a3;
+}
+
+
 
 

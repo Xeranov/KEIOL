@@ -72,6 +72,10 @@ class MediaServer {
         this.handleSubtitleExtract(parsedUrl, req, res);
       } else if (pathname === '/thumbnail') {
         this.handleThumbnail(parsedUrl, req, res);
+      } else if (pathname === '/idlix-hls/master.m3u8') {
+        this.handleIdlixMaster(parsedUrl, req, res);
+      } else if (pathname === '/idlix-hls/playlist.m3u8') {
+        this.handleIdlixPlaylist(parsedUrl, req, res);
       } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Not Found');
@@ -190,6 +194,12 @@ class MediaServer {
           '-referer', 'https://odvidhide.com/',
           '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           '-headers', 'Referer: https://odvidhide.com/\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n'
+        );
+      } else if (filePath.includes('majorplay.net') || filePath.includes('idlixku.com') || filePath.includes('akademivo') || filePath.includes('aspireheightsacademy') || filePath.includes('edubambu')) {
+        args.push(
+          '-referer', 'https://z2.idlixku.com/',
+          '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          '-headers', 'Referer: https://z2.idlixku.com/\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n'
         );
       } else {
         args.push(
@@ -440,6 +450,109 @@ class MediaServer {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end('Thumbnail error');
       }
+    });
+  }
+
+  async handleIdlixMaster(parsedUrl, req, res) {
+    const targetUrl = parsedUrl.searchParams.get('url');
+    if (!targetUrl) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      return res.end('Missing url parameter');
+    }
+    try {
+      const u = new URL(targetUrl);
+      const token = u.search.replace(/^\?/, '');
+      const origin = u.origin;
+
+      const manifestText = await this.fetchRemoteText(targetUrl);
+      const rewritten = manifestText.split(/\r?\n/).map(line => {
+        const trimmed = line.trim();
+        if (line.includes('URI="')) {
+          return line.replace(/URI="([^"]+)"/, (m, rel) => {
+            const subUrl = new URL(rel, targetUrl).href;
+            return `URI="http://127.0.0.1:${this.port}/idlix-hls/playlist.m3u8?url=${encodeURIComponent(subUrl)}&token=${encodeURIComponent(token)}"`;
+          });
+        }
+        if (trimmed && !trimmed.startsWith('#')) {
+          const subUrl = new URL(trimmed, targetUrl).href;
+          return `http://127.0.0.1:${this.port}/idlix-hls/playlist.m3u8?url=${encodeURIComponent(subUrl)}&token=${encodeURIComponent(token)}`;
+        }
+        return line;
+      }).join('\n');
+
+      res.writeHead(200, {
+        'Content-Type': 'application/vnd.apple.mpegurl',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(rewritten);
+    } catch (err) {
+      if (!res.headersSent) {
+        res.writeHead(502, { 'Content-Type': 'text/plain' });
+      }
+      res.end(`Idlix master proxy error: ${err.message}`);
+    }
+  }
+
+  async handleIdlixPlaylist(parsedUrl, req, res) {
+    const subUrl = parsedUrl.searchParams.get('url');
+    const token = parsedUrl.searchParams.get('token') || '';
+    if (!subUrl) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      return res.end('Missing url parameter');
+    }
+    try {
+      const sep = subUrl.includes('?') ? '&' : '?';
+      const fullUrl = token ? `${subUrl}${sep}${token}` : subUrl;
+      const playlistText = await this.fetchRemoteText(fullUrl);
+
+      const rewritten = playlistText.split(/\r?\n/).map(line => {
+        if (line.startsWith('#EXT-X-MAP:URI="')) {
+          return line.replace(/URI="([^"]+)"/, (m, uri) => {
+            const s = uri.includes('?') ? '&' : '?';
+            return `URI="${uri}${s}${token}"`;
+          });
+        }
+        if (line.startsWith('http://') || line.startsWith('https://')) {
+          const s = line.includes('?') ? '&' : '?';
+          return `${line}${s}${token}`;
+        }
+        return line;
+      }).join('\n');
+
+      res.writeHead(200, {
+        'Content-Type': 'application/vnd.apple.mpegurl',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(rewritten);
+    } catch (err) {
+      if (!res.headersSent) {
+        res.writeHead(502, { 'Content-Type': 'text/plain' });
+      }
+      res.end(`Idlix playlist proxy error: ${err.message}`);
+    }
+  }
+
+  fetchRemoteText(url) {
+    return new Promise((resolve, reject) => {
+      const isHttps = url.startsWith('https:');
+      const client = isHttps ? require('https') : require('http');
+      client.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://z2.idlixku.com/',
+          'Accept': '*/*'
+        }
+      }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          return this.fetchRemoteText(res.headers.location).then(resolve).catch(reject);
+        }
+        if (res.statusCode >= 400) {
+          return reject(new Error(`HTTP ${res.statusCode} from ${url}`));
+        }
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => resolve(data));
+      }).on('error', reject);
     });
   }
 }

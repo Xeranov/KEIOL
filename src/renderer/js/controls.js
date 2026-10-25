@@ -116,6 +116,8 @@ class ControlsManager {
     this.btnBackFromQuality = document.getElementById('btnBackFromQuality');
     this.settingsQualityView = document.getElementById('settingsQualityView');
     this.qualityOptionsList = document.getElementById('qualityOptionsList');
+    this.btnQualityDirect = document.getElementById('btnQualityDirect');
+    this.qualityDirectBadgeText = document.getElementById('qualityDirectBadgeText');
 
     this.btnSettingsAutoSkip = document.getElementById('btnSettingsAutoSkip');
     this.settingsAutoSkipStatus = document.getElementById('settingsAutoSkipStatus');
@@ -665,10 +667,23 @@ class ControlsManager {
   }
 
   initQualityControls() {
+    if (this.btnQualityDirect) {
+      this.btnQualityDirect.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.renderQualityOptions();
+        this.showSubView(this.settingsQualityView);
+        this.openSettings();
+      });
+    }
+
     window.addEventListener('player:qualitiesupdated', (e) => {
       const { availableQualities, currentQuality } = e.detail;
+      const displayQuality = currentQuality || 'Auto';
       if (this.settingsCurrentQualityText) {
-        this.settingsCurrentQualityText.textContent = currentQuality || '720p HD';
+        this.settingsCurrentQualityText.textContent = displayQuality;
+      }
+      if (this.qualityDirectBadgeText) {
+        this.qualityDirectBadgeText.textContent = displayQuality;
       }
       if (this.btnSettingsQuality) {
         if (Array.isArray(availableQualities) && availableQualities.length > 0) {
@@ -677,14 +692,25 @@ class ControlsManager {
           this.btnSettingsQuality.classList.add('hidden');
         }
       }
+      if (this.btnQualityDirect) {
+        if (Array.isArray(availableQualities) && availableQualities.length > 0) {
+          this.btnQualityDirect.classList.remove('hidden');
+        } else {
+          this.btnQualityDirect.classList.add('hidden');
+        }
+      }
     });
 
     window.addEventListener('player:qualitychanged', (e) => {
       const { quality } = e.detail;
+      const displayQuality = quality || 'Auto';
       if (this.settingsCurrentQualityText) {
-        this.settingsCurrentQualityText.textContent = quality || '720p HD';
+        this.settingsCurrentQualityText.textContent = displayQuality;
       }
-      this.showToast(`Kualitas video: ${quality}`);
+      if (this.qualityDirectBadgeText) {
+        this.qualityDirectBadgeText.textContent = displayQuality;
+      }
+      this.showToast(`Kualitas video: ${displayQuality}`);
     });
 
     window.addEventListener('player:toast', (e) => {

@@ -24,6 +24,7 @@ class VidPlayerCore {
     this.availableQualities = [];
     this.currentQuality = null;
     this.currentSkipIntervals = null;
+    this.hlsInstance = null;
 
     // Ensure audio pitch is preserved when playing fast (up to 4x)
     if ('preservesPitch' in this.video) {
@@ -80,6 +81,18 @@ class VidPlayerCore {
     });
 
     this.video.addEventListener('loadedmetadata', () => {
+      if (this.video.duration && isFinite(this.video.duration) && this.video.duration > 0) {
+        if (!this.mediaInfo || !this.mediaInfo.duration || this.mediaInfo.duration <= 0) {
+          if (this.mediaInfo) this.mediaInfo.duration = Math.round(this.video.duration);
+        }
+        window.dispatchEvent(new CustomEvent('player:timeupdate', {
+          detail: {
+            currentTime: this.getCurrentTime(),
+            duration: this.getDuration(),
+            progress: this.getDuration() > 0 ? (this.getCurrentTime() / this.getDuration()) : 0
+          }
+        }));
+      }
       if (this.currentSkipIntervals && this.video.duration > 0) {
         const validated = this.validateSkipIntervals(this.currentSkipIntervals, this.video.duration);
         if (JSON.stringify(validated) !== JSON.stringify(this.currentSkipIntervals)) {
@@ -295,6 +308,10 @@ class VidPlayerCore {
   }
 
   setupVideoSource(seekSec = 0) {
+    if (this.hlsInstance) {
+      this.hlsInstance.destroy();
+      this.hlsInstance = null;
+    }
     const encodedPath = encodeURIComponent(this.currentFilePath);
 
     if (this.playbackMode === 'direct') {
@@ -334,14 +351,17 @@ class VidPlayerCore {
     if (this.mediaInfo && this.mediaInfo.duration > 0) {
       return this.mediaInfo.duration;
     }
-    return this.video.duration || 0;
+    if (this.video && this.video.duration && isFinite(this.video.duration) && this.video.duration > 0) {
+      return this.video.duration;
+    }
+    return 0;
   }
 
   seek(targetSeconds) {
     const maxDur = this.getDuration();
     const clamped = Math.max(0, Math.min(targetSeconds, maxDur));
 
-    if (this.playbackMode === 'direct') {
+    if (this.playbackMode === 'direct' || this.hlsInstance) {
       this.video.currentTime = clamped;
     } else {
       // Transmux / Transcode stream: request new stream starting from clamped timestamp
@@ -464,12 +484,7 @@ class VidPlayerCore {
 
     trackEl.addEventListener('cuechange', () => {
       const cue = trackEl.track.activeCues && trackEl.track.activeCues[0];
-      if (cue) {
-        subContainer.textContent = cue.text;
-        subContainer.classList.remove('hidden');
-      } else {
-        subContainer.classList.add('hidden');
-      }
+      this.renderSubtitleCue(subContainer, cue);
     });
 
     this.video.appendChild(trackEl);
@@ -490,16 +505,91 @@ class VidPlayerCore {
 
     trackEl.addEventListener('cuechange', () => {
       const cue = trackEl.track.activeCues && trackEl.track.activeCues[0];
-      if (cue) {
-        subContainer.textContent = cue.text;
-        subContainer.classList.remove('hidden');
-      } else {
-        subContainer.classList.add('hidden');
-      }
+      this.renderSubtitleCue(subContainer, cue);
     });
 
     this.video.appendChild(trackEl);
     trackEl.track.mode = 'hidden';
+  }
+
+  async loadExternalSubtitleFromUrl(url, label = 'Bahasa Indonesia') {
+    const existingTrack = this.video.querySelector('track');
+    if (existingTrack) existingTrack.remove();
+
+    const subContainer = document.getElementById('subtitleDisplay');
+
+    try {
+      const res = await fetch(url);
+      const vttText = await res.text();
+      const blob = new Blob([vttText], { type: 'text/vtt' });
+      const blobUrl = URL.createObjectURL(blob);
+
+      const trackEl = document.createElement('track');
+      trackEl.kind = 'subtitles';
+      trackEl.label = label;
+      trackEl.srclang = 'id';
+      trackEl.src = blobUrl;
+      trackEl.default = true;
+
+      trackEl.addEventListener('cuechange', () => {
+        const cue = trackEl.track.activeCues && trackEl.track.activeCues[0];
+        this.renderSubtitleCue(subContainer, cue);
+      });
+
+      this.video.appendChild(trackEl);
+      trackEl.track.mode = 'hidden';
+    } catch (err) {
+      console.warn('Failed to load subtitle from URL:', err);
+    }
+  }
+
+  renderSubtitleCue(subContainer, cue) {
+    if (!subContainer) return;
+    if (!cue) {
+      subContainer.classList.add('hidden');
+      subContainer.innerHTML = '';
+      return;
+    }
+
+    subContainer.innerHTML = '';
+
+    // Prefer native VTTCue DocumentFragment parsing if supported
+    if (typeof cue.getCueAsHTML === 'function') {
+      try {
+        const frag = cue.getCueAsHTML();
+        if (frag && frag.childNodes && frag.childNodes.length > 0) {
+          subContainer.appendChild(frag);
+          subContainer.classList.remove('hidden');
+          return;
+        }
+      } catch (e) {
+        console.warn('[Player] getCueAsHTML error:', e);
+      }
+    }
+
+    // Fallback: Safe formatting of rich text tags (<i>, <b>, <u>, <em>, <strong>, <font color="...">)
+    const formatted = this.formatSubtitleRichText(cue.text || '');
+    subContainer.innerHTML = formatted;
+    subContainer.classList.remove('hidden');
+  }
+
+  formatSubtitleRichText(raw) {
+    if (!raw) return '';
+    // Escape HTML entities first to prevent unwanted injections
+    let text = raw
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // Unescape safe subtitle formatting tags (e.g. <i>, <b>, <u>, <em>, <font color="...">)
+    text = text
+      .replace(/&lt;(\/?(i|b|u|em|strong|s|strike|br))&gt;/gi, '<$1>')
+      .replace(/&lt;font\s+color=["']?([^"'>&]+)["']?&gt;/gi, '<span style="color:$1">')
+      .replace(/&lt;\/font&gt;/gi, '</span>')
+      .replace(/&lt;c\.([a-zA-Z0-9_-]+)&gt;/gi, '<span class="$1">')
+      .replace(/&lt;\/c&gt;/gi, '</span>');
+
+    return text;
   }
 
   /**
@@ -530,6 +620,12 @@ class VidPlayerCore {
         audioStreams: [{ index: 0, title: 'Audio Stream', language: 'jpn' }],
         subtitleStreams: []
       };
+
+      if (typeof options.duration === 'number' && options.duration > 0) {
+        this.mediaInfo.duration = Math.round(options.duration);
+      } else if (typeof options.runtime === 'number' && options.runtime > 0) {
+        this.mediaInfo.duration = Math.round(options.runtime * 60);
+      }
 
       this.selectedAudioTrack = 0;
       this.selectedSubTrack = -1;
@@ -608,19 +704,131 @@ class VidPlayerCore {
         }
       }
 
+      if (this.hlsInstance) {
+        this.hlsInstance.destroy();
+        this.hlsInstance = null;
+      }
+
       // Cek apakah stream utama merupakan MKV, HLS (.m3u8), atau memerlukan remux
       const isMkv = options.isMkv || /\.mkv/i.test(effectiveStreamUrl);
-      const isHls = effectiveStreamUrl.includes('.m3u8');
-      const requiresRemux = isMkv || isHls;
-      const initialSrc = requiresRemux
-        ? `http://127.0.0.1:${this.serverPort}/stream?path=${encodeURIComponent(effectiveStreamUrl)}&mode=transmux&audio=0`
-        : effectiveStreamUrl;
+      const isHls = options.isHls || effectiveStreamUrl.includes('.m3u8');
 
-      this.video.src = initialSrc;
-      this.video.playbackRate = this.normalPlaybackRate;
+      if (isHls && window.Hls && window.Hls.isSupported()) {
+        const hls = new window.Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          backBufferLength: 90
+        });
+        this.hlsInstance = hls;
 
-      if (options.startTime && options.startTime > 0) {
-        this.video.currentTime = options.startTime;
+        hls.loadSource(effectiveStreamUrl);
+        hls.attachMedia(this.video);
+
+        hls.on(window.Hls.Events.MANIFEST_PARSED, (event, data) => {
+          if (data && data.levels && data.levels.length > 0) {
+            let maxLevelIdx = 0;
+            let maxHeight = 0;
+            const qualities = data.levels.map((lvl, idx) => {
+              const parsedNameHeight = (lvl.name && parseInt(lvl.name, 10)) ||
+                (lvl.attrs?.NAME && parseInt(lvl.attrs.NAME, 10)) || 0;
+              const height = lvl.height || parsedNameHeight || (lvl.bitrate > 2000000 ? 720 : (lvl.bitrate > 1000000 ? 480 : 360));
+              if (height > maxHeight) {
+                maxHeight = height;
+                maxLevelIdx = idx;
+              }
+              const label = height >= 2160 ? `${height}p 4K UHD` : (height >= 1080 ? `${height}p Full HD` : (height >= 720 ? `${height}p HD` : `${height}p`));
+              return {
+                quality: `${height}p`,
+                label,
+                levelIndex: idx,
+                bitrate: lvl.bitrate
+              };
+            });
+
+            // Add Auto (adaptive) option
+            const allQualities = [
+              ...qualities,
+              {
+                quality: 'Auto',
+                label: 'Otomatis (Auto)',
+                levelIndex: -1,
+                isAuto: true
+              }
+            ];
+
+            // Autoplay highest resolution as requested by user
+            hls.currentLevel = maxLevelIdx;
+            if (qualities[maxLevelIdx]) {
+              qualities[maxLevelIdx].isDefault = true;
+            }
+
+            this.availableQualities = allQualities;
+            this.currentQuality = `${maxHeight}p`;
+
+            window.dispatchEvent(new CustomEvent('player:qualitiesupdated', {
+              detail: {
+                availableQualities: this.availableQualities,
+                currentQuality: this.currentQuality
+              }
+            }));
+            window.dispatchEvent(new CustomEvent('player:qualitychanged', {
+              detail: { quality: this.currentQuality }
+            }));
+          }
+
+          if (options.startTime && options.startTime > 0) {
+            this.video.currentTime = options.startTime;
+          }
+          this.video.playbackRate = this.normalPlaybackRate;
+          this.video.play().catch(() => {});
+        });
+
+        hls.on(window.Hls.Events.LEVEL_LOADED, (event, data) => {
+          if (data.details && data.details.totalduration > 0) {
+            this.mediaInfo.duration = Math.round(data.details.totalduration);
+            window.dispatchEvent(new CustomEvent('player:timeupdate', {
+              detail: {
+                currentTime: this.getCurrentTime(),
+                duration: this.mediaInfo.duration,
+                progress: this.mediaInfo.duration > 0 ? (this.getCurrentTime() / this.mediaInfo.duration) : 0
+              }
+            }));
+          }
+        });
+
+        hls.on(window.Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case window.Hls.ErrorTypes.NETWORK_ERROR:
+                console.warn('[Hls] Fatal network error, recovering...', data);
+                hls.startLoad();
+                break;
+              case window.Hls.ErrorTypes.MEDIA_ERROR:
+                console.warn('[Hls] Fatal media error, recovering...', data);
+                hls.recoverMediaError();
+                break;
+              default:
+                console.error('[Hls] Unrecoverable fatal error:', data);
+                hls.destroy();
+                this.hlsInstance = null;
+                break;
+            }
+          }
+        });
+      } else {
+        const requiresRemux = isMkv;
+        const initialSrc = requiresRemux
+          ? `http://127.0.0.1:${this.serverPort}/stream?path=${encodeURIComponent(effectiveStreamUrl)}&mode=transmux&audio=0`
+          : effectiveStreamUrl;
+
+        this.video.src = initialSrc;
+        this.video.playbackRate = this.normalPlaybackRate;
+
+        if (options.startTime && options.startTime > 0) {
+          this.video.currentTime = options.startTime;
+        }
+
+        await this.video.play().catch(() => {});
       }
 
       await this.video.play().catch(() => {});
@@ -784,6 +992,24 @@ class VidPlayerCore {
   }
 
   async switchQuality(newStreamUrl, qualityLabel) {
+    if (!qualityLabel) return;
+
+    // If native HLS.js is active, switch quality level directly!
+    if (this.hlsInstance && Array.isArray(this.availableQualities)) {
+      const qObj = this.availableQualities.find(q => q.quality === qualityLabel);
+      if (qObj && typeof qObj.levelIndex === 'number') {
+        this.hlsInstance.currentLevel = qObj.levelIndex;
+        this.currentQuality = qualityLabel;
+        window.dispatchEvent(new CustomEvent('player:qualitychanged', {
+          detail: { quality: qualityLabel }
+        }));
+        window.dispatchEvent(new CustomEvent('player:qualitiesupdated', {
+          detail: { availableQualities: this.availableQualities, currentQuality: this.currentQuality }
+        }));
+        return;
+      }
+    }
+
     if (!newStreamUrl || newStreamUrl === this.remoteStreamUrl) return;
 
     const savedTime = this.video ? this.video.currentTime : 0;
@@ -911,6 +1137,10 @@ class VidPlayerCore {
     this.availableQualities = [];
     this.currentQuality = null;
     this.currentSkipIntervals = null;
+    if (this.hlsInstance) {
+      this.hlsInstance.destroy();
+      this.hlsInstance = null;
+    }
     this.isBoostActive = false;
     this.streamSeekOffset = 0;
     this.playbackMode = 'direct';

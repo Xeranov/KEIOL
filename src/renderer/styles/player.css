@@ -531,6 +531,46 @@ body.window-maximized {
   padding: 4px 12px;
   border-radius: 4px;
   background-color: rgba(0, 0, 0, 0.4);
+  white-space: pre-line;
+}
+
+.subtitle-display i,
+.subtitle-display em {
+  font-style: italic;
+}
+
+.subtitle-display b,
+.subtitle-display strong {
+  font-weight: 700;
+}
+
+.subtitle-display u {
+  text-decoration: underline;
+}
+
+/* Video Quality Badge on Bottom Controls */
+.quality-badge-btn {
+  padding: 2px 7px;
+  min-width: 40px;
+  height: 28px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.quality-badge-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.04);
 }
 
 /* ==========================================================================

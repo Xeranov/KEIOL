@@ -164,7 +164,7 @@ class LibraryService {
     }
   }
 
-  saveOnlineProgress(animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster = null) {
+  saveOnlineProgress(animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster = null, extra = null) {
     if (!animeSlug || !episodeUrl) return;
     const now = Date.now();
     const completed = duration > 0 ? (currentTime / duration >= 0.90) : false;
@@ -183,6 +183,16 @@ class LibraryService {
     if (poster && !animeEntry.poster) animeEntry.poster = poster;
     if (animeTitle) animeEntry.animeTitle = animeTitle;
     if (!animeEntry.episodes) animeEntry.episodes = {};
+
+    // Strictly identify source: idlix vs anime
+    const isIdlix = (episodeUrl && episodeUrl.startsWith('idlix://')) ||
+                    (extra && extra.source === 'idlix') ||
+                    (animeSlug && animeSlug.startsWith('idlix:'));
+    animeEntry.source = isIdlix ? 'idlix' : (extra?.source || animeEntry.source || 'anime');
+
+    if (extra?.mediaObj) animeEntry.mediaObj = extra.mediaObj;
+    if (extra?.episodeObj) animeEntry.episodeObj = extra.episodeObj;
+    if (extra?.seasonNumber) animeEntry.seasonNumber = extra.seasonNumber;
 
     animeEntry.episodes[episodeUrl] = {
       episodeUrl,
@@ -203,6 +213,16 @@ class LibraryService {
       fs.writeFileSync(this.historyFile, JSON.stringify(this.history, null, 2));
     } catch (e) {
       console.error('Error saving online watch history:', e);
+    }
+  }
+
+  deleteOnlineProgress(slug) {
+    if (!slug || !this.history?.onlineHistory) return;
+    delete this.history.onlineHistory[slug];
+    try {
+      fs.writeFileSync(this.historyFile, JSON.stringify(this.history, null, 2));
+    } catch (e) {
+      console.error('Error deleting online watch history:', e);
     }
   }
 

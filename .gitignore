@@ -54,6 +54,7 @@ Thumbs.db
 .idea/
 *.sublime-project
 *.sublime-workspace
+.agents/
 
 # Test artifacts
 src/test/clickthrough_report.json

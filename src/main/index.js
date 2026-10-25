@@ -6,6 +6,7 @@ const libraryService = require('./libraryService');
 const otakudesuService = require('./otakudesuService');
 const kusonimeService = require('./kusonimeService');
 const anichinService = require('./anichinService');
+const idlixService = require('./idlixService');
 const downloadManager = require('./downloadManager');
 const extractorService = require('./extractorService');
 const aniSkipService = require('./aniSkipService');
@@ -27,6 +28,9 @@ async function createWindow() {
       requestHeaders['Origin'] = 'https://www.yourupload.com';
     } else if (url.includes('dramiyos-cdn') || url.includes('acek-cdn') || url.includes('vidhide') || url.includes('morencius.com')) {
       requestHeaders['Referer'] = 'https://odvidhide.com/';
+    } else if (url.includes('majorplay.net') || url.includes('idlixku.com') || url.includes('/v/z7/')) {
+      requestHeaders['Referer'] = 'https://z2.idlixku.com/';
+      requestHeaders['Origin'] = 'https://z2.idlixku.com';
     } else if (url.includes('desustream') || url.includes('desudrive') || url.includes('playdesu') || url.includes('desuwatch') || url.includes('odesu') || url.includes('moeplay') || url.includes('desudesu')) {
       requestHeaders['Referer'] = 'https://otakudesu.blog/';
     } else if (url.includes('googlevideo.com') || url.includes('videoplayback')) {
@@ -317,13 +321,18 @@ ipcMain.handle('shell:openExternal', async (_event, url) => {
 });
 
 // IPC Handlers: Online Watch History
-ipcMain.handle('library:saveOnlineProgress', (_event, animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster) => {
-  libraryService.saveOnlineProgress(animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster);
+ipcMain.handle('library:saveOnlineProgress', (_event, animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster, extra) => {
+  libraryService.saveOnlineProgress(animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster, extra);
   return true;
 });
 
 ipcMain.handle('library:getOnlineHistory', () => {
   return libraryService.getOnlineHistory();
+});
+
+ipcMain.handle('library:deleteOnlineProgress', (_event, slug) => {
+  libraryService.deleteOnlineProgress(slug);
+  return true;
 });
 
 // IPC Handlers: Otakudesu Integration
@@ -407,6 +416,63 @@ ipcMain.handle('anichin:getEpisodeStream', async (_event, urlOrSlug) => {
 
 ipcMain.handle('anichin:search', async (_event, query) => {
   return await anichinService.search(query);
+});
+
+// IPC Handlers: Idlix Movies & TV Series Integration
+ipcMain.handle('idlix:getMovies', async (_event, options) => {
+  return await idlixService.getMovies(options);
+});
+
+ipcMain.handle('idlix:getSeries', async (_event, options) => {
+  return await idlixService.getSeries(options);
+});
+
+ipcMain.handle('idlix:getMovieDetail', async (_event, slug) => {
+  return await idlixService.getMovieDetail(slug);
+});
+
+ipcMain.handle('idlix:getSeriesDetail', async (_event, slug) => {
+  return await idlixService.getSeriesDetail(slug);
+});
+
+ipcMain.handle('idlix:getSeasonEpisodes', async (_event, slug, seasonNumber) => {
+  return await idlixService.getSeasonEpisodes(slug, seasonNumber);
+});
+
+ipcMain.handle('idlix:search', async (_event, query, type) => {
+  return await idlixService.search(query, type);
+});
+
+ipcMain.handle('idlix:getFilterOptions', async (_event, type) => {
+  return await idlixService.getFilterOptions(type);
+});
+
+ipcMain.handle('idlix:getTrending', async () => {
+  return await idlixService.getTrending();
+});
+
+ipcMain.handle('idlix:initiateStreamSession', async (_event, contentType, contentId) => {
+  return await idlixService.initiateStreamSession(contentType, contentId);
+});
+
+ipcMain.handle('idlix:claimAndRedeemStream', async (_event, gateToken, unlockAt) => {
+  return await idlixService.claimAndRedeemStream(gateToken, unlockAt);
+});
+
+ipcMain.handle('idlix:getStreamDirect', async (_event, contentType, contentId) => {
+  return await idlixService.getStreamDirect(contentType, contentId);
+});
+
+ipcMain.handle('idlix:login', async (_event, identifier, password) => {
+  return await idlixService.login(identifier, password);
+});
+
+ipcMain.handle('idlix:logout', async () => {
+  return await idlixService.logout();
+});
+
+ipcMain.handle('idlix:getCurrentUser', async () => {
+  return await idlixService.getCurrentUser();
 });
 
 // IPC Handler: Application Version
@@ -496,7 +562,10 @@ ipcMain.handle('settings:set-close-to-tray', (_event, enabled) => {
   return trayManager.setCloseToTray(enabled);
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  await createWindow();
+  idlixService.ensureAuthenticatedSession().catch(() => {});
+});
 
 app.on('window-all-closed', () => {
   mediaServer.stop();

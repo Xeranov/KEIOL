@@ -1,12 +1,12 @@
 {
   "name": "KEIOL",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "minSupportedVersion": "1.0.1",
   "forceUpdate": false,
-  "forceUpdateMessage": "Pembaruan v1.2.0 tersedia dengan peningkatan kontrol player khas YouTube (double-click fullscreen & Shift+N), preloading katalog multi-sumber lengkap, dan akurasi skip intro.",
-  "releaseDate": "2026-10-19",
-  "changelog": "- Kontrol Pemutar Video Khas YouTube: ketukan ganda (double-click) pada layar untuk toggle Fullscreen / Unfullscreen\n- Tombol & Shortcut Episode Selanjutnya: pintasan Shift + N dan tombol fisik pemutar untuk berpindah ke episode berikutnya secara instan\n- Skip Intro Cerdas & Bersih: tombol lewati intro otomatis memudar saat idle dan tidak akan tampil jika tidak ada data intro yang pasti; tombol pintas S (+85s) tetap tersedia tanpa menjeda video\n- Preloading Multi-Sumber Terpadu: daftar anime A-Z memuat seluruh sumber secara paralel di latar belakang sejak startup\n- Optimasi Loading & Mode Offline: tombol lewati loading 10 detik saat startup dan deteksi offline otomatis\n- Peningkatan Mesin AniSkip: akurasi resolusi judul bersambung multi-season dan eliminasi notifikasi streaming lambat",
+  "forceUpdateMessage": "Pembaruan besar v2.0.0 hadir dengan perombakan antarmuka Film & Series bertema Netflix & Idlix, pemisahan riwayat Lanjutkan Menonton antara Anime dan Film, serta resume pemutaran real-time.",
+  "releaseDate": "2026-10-25",
+  "changelog": "- Perombakan Total Antarmuka Film & Series (Netflix & Idlix Experience): Rotating Hero Billboard Carousel otomatis, baris multi-row slider horizontal per kategori, kartu pop-out interaktif, dynamic filter hub, dan tampilan detail layar penuh.\n- Pemisahan Eksklusif Lanjutkan Menonton: Tab Web hanya menampilkan anime & donghua, sedangkan Tab Film & Series memiliki baris Lanjutkan Menonton tersendiri khusus film & serial barat/Asia tanpa bercampur.\n- Pelacakan Waktu Tonton Real-Time & Resume Pemutaran: Pemutaran merekam progres secara live saat video ditonton dan dapat dilanjutkan langsung dari detik terakhir.\n- Tombol Hapus Riwayat Lanjutkan Menonton: Ikon silang cepat pada kartu untuk membersihkan judul yang sudah selesai ditonton.\n- Subtitle Bahasa Indonesia Otomatis: Deteksi dan aktivasi subtitle bahasa Indonesia instan saat streaming Idlix dimulai.",
   "downloadUrl": "https://github.com/Xeranov/KEIOL/releases/latest",
-  "installerUrl": "https://github.com/Xeranov/KEIOL/releases/download/v1.2.0/KEIOL-Setup-1.2.0.exe"
+  "installerUrl": "https://github.com/Xeranov/KEIOL/releases/download/v2.0.0/KEIOL-Setup-2.0.0.exe"
 }
 

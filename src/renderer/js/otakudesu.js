@@ -275,7 +275,17 @@ class OtakudesuManager {
   async refreshOnlineHistory() {
     if (window.electronAPI && typeof window.electronAPI.getOnlineHistory === 'function') {
       try {
-        this.onlineHistory = await window.electronAPI.getOnlineHistory() || {};
+        const rawHistory = await window.electronAPI.getOnlineHistory() || {};
+        // Strictly filter for anime history only: exclude idlix movies and series
+        const animeHistory = {};
+        for (const [k, v] of Object.entries(rawHistory)) {
+          if (!v) continue;
+          if (v.source === 'idlix') continue;
+          if (v.lastEpisodeUrl && v.lastEpisodeUrl.startsWith('idlix://')) continue;
+          if (v.episodes && Object.keys(v.episodes).some(u => u.startsWith('idlix://'))) continue;
+          animeHistory[k] = v;
+        }
+        this.onlineHistory = animeHistory;
       } catch (e) {
         console.warn('Gagal memuat online history:', e);
       }
@@ -636,8 +646,18 @@ class OtakudesuManager {
 
       let contentHtml = '';
 
-      // 1. Row: Lanjutkan Menonton (Online Watch History)
-      const historyList = Object.values(this.onlineHistory || {}).filter(h => h && h.animeTitle).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      // 1. Row: Lanjutkan Menonton (Online Watch History Anime ONLY)
+      const isAnimeItem = (h) => {
+        if (!h || !h.animeTitle) return false;
+        if (h.source === 'idlix') return false;
+        if (h.lastEpisodeUrl && h.lastEpisodeUrl.startsWith('idlix://')) return false;
+        if (h.episodes && Object.keys(h.episodes).some(u => u.startsWith('idlix://'))) return false;
+        return true;
+      };
+
+      const historyList = Object.values(this.onlineHistory || {})
+        .filter(isAnimeItem)
+        .sort((a, b) => (b.lastWatched || b.updatedAt || 0) - (a.lastWatched || a.updatedAt || 0));
 
       if (historyList.length > 0) {
         contentHtml += `
@@ -2256,6 +2276,7 @@ class OtakudesuManager {
 
     return `
       <div class="netflix-card otakudesu-card continue-watching-card" data-url="${animeUrl}" data-slug="${slug || ''}" tabindex="0" role="article" aria-label="${hist.animeTitle}">
+        <button class="btn-remove-continue" data-slug="${slug || ''}" title="Hapus dari Lanjutkan Menonton" aria-label="Hapus">&times;</button>
         <div class="netflix-card-poster-wrap">
           ${hist.poster ? `<img class="netflix-card-poster" src="${hist.poster}" alt="${hist.animeTitle}" loading="lazy">` : `<div class="poster-placeholder"><span>${(hist.animeTitle || 'A').charAt(0)}</span></div>`}
           <div class="poster-gradient-overlay"></div>
@@ -2324,6 +2345,19 @@ class OtakudesuManager {
 
   bindCardClicks(container = this.webDynamicContainer) {
     if (!container) return;
+
+    // Remove from Continue Watching handler
+    container.querySelectorAll('.btn-remove-continue').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const slug = btn.dataset.slug;
+        if (slug && window.electronAPI?.deleteOnlineProgress) {
+          await window.electronAPI.deleteOnlineProgress(slug);
+          await this.refreshOnlineHistory();
+          this.loadOngoing(true);
+        }
+      });
+    });
 
     // Continue Watching direct play handler
     container.querySelectorAll('.btn-continue-play').forEach(btn => {

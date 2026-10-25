@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.initOtakudesu(player, window.libraryManager);
   }
 
+  if (typeof window.initIdlix === 'function') {
+    window.initIdlix(player, window.libraryManager);
+  }
+
   // Preload web catalog saat startup loading screen aktif
   if (startupLoadingEl) {
     const btnSkipStartupLoading = document.getElementById('btnSkipStartupLoading');

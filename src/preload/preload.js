@@ -31,9 +31,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   factoryReset: () => ipcRenderer.invoke('app:factoryReset'),
 
   // Online Watch History (Streaming)
-  saveOnlineProgress: (animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster) =>
-    ipcRenderer.invoke('library:saveOnlineProgress', animeSlug, animeTitle, episodeUrl, episodeTitle, currentTime, duration, poster),
+  saveOnlineProgress: (...args) => ipcRenderer.invoke('library:saveOnlineProgress', ...args),
   getOnlineHistory: () => ipcRenderer.invoke('library:getOnlineHistory'),
+  deleteOnlineProgress: (slug) => ipcRenderer.invoke('library:deleteOnlineProgress', slug),
 
   // Otakudesu Integration APIs
   otakudesuGetOngoing: (page) => ipcRenderer.invoke('otakudesu:getOngoing', page),
@@ -63,6 +63,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   anichinGetAnimeDetail: (urlOrSlug) => ipcRenderer.invoke('anichin:getDetail', urlOrSlug),
   anichinGetEpisodeStream: (urlOrSlug) => ipcRenderer.invoke('anichin:getEpisodeStream', urlOrSlug),
   anichinSearch: (query) => ipcRenderer.invoke('anichin:search', query),
+
+  // Idlix Integration APIs (Movies & TV Series Streaming)
+  idlixGetMovies: (options) => ipcRenderer.invoke('idlix:getMovies', options),
+  idlixGetSeries: (options) => ipcRenderer.invoke('idlix:getSeries', options),
+  idlixGetMovieDetail: (slug) => ipcRenderer.invoke('idlix:getMovieDetail', slug),
+  idlixGetSeriesDetail: (slug) => ipcRenderer.invoke('idlix:getSeriesDetail', slug),
+  idlixGetSeasonEpisodes: (slug, seasonNumber) => ipcRenderer.invoke('idlix:getSeasonEpisodes', slug, seasonNumber),
+  idlixSearch: (query, type) => ipcRenderer.invoke('idlix:search', query, type),
+  idlixGetFilterOptions: (type) => ipcRenderer.invoke('idlix:getFilterOptions', type),
+  idlixGetTrending: () => ipcRenderer.invoke('idlix:getTrending'),
+  idlixInitiateStreamSession: (contentType, contentId) => ipcRenderer.invoke('idlix:initiateStreamSession', contentType, contentId),
+  idlixClaimAndRedeemStream: (gateToken, unlockAt) => ipcRenderer.invoke('idlix:claimAndRedeemStream', gateToken, unlockAt),
+  idlixGetStreamDirect: (contentType, contentId) => ipcRenderer.invoke('idlix:getStreamDirect', contentType, contentId),
+  idlixLogin: (identifier, password) => ipcRenderer.invoke('idlix:login', identifier, password),
+  idlixLogout: () => ipcRenderer.invoke('idlix:logout'),
+  idlixGetCurrentUser: () => ipcRenderer.invoke('idlix:getCurrentUser'),
 
   // Application Version
   getAppVersion: () => ipcRenderer.invoke('app:getVersion'),

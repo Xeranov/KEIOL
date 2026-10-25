@@ -30,15 +30,17 @@ class LibraryManager {
     this.netflixSearchBox = document.querySelector('.netflix-search-box');
 
     // Tabs & Navigation
-    this.activeNav = 'home'; // 'home' | 'web' | 'downloads' | 'settings'
+    this.activeNav = 'home'; // 'home' | 'web' | 'idlix' | 'downloads' | 'settings'
     this.tabHome = document.getElementById('tabHome');
     this.tabWeb = document.getElementById('tabWeb');
+    this.tabIdlix = document.getElementById('tabIdlix');
     this.tabDownloads = document.getElementById('tabDownloads');
     this.tabSettings = document.getElementById('tabSettings');
     this.tabDownloadsBadge = document.getElementById('tabDownloadsBadge');
 
     // Sections
     this.webSection = document.getElementById('webSection');
+    this.idlixSection = document.getElementById('idlixSection');
     this.downloadsSection = document.getElementById('downloadsSection');
     this.settingsSection = document.getElementById('settingsSection');
     this.inputWebUrl = document.getElementById('inputWebUrl');
@@ -221,6 +223,9 @@ class LibraryManager {
     }
     if (this.tabWeb) {
       this.tabWeb.addEventListener('click', () => this.switchNavTab('web'));
+    }
+    if (this.tabIdlix) {
+      this.tabIdlix.addEventListener('click', () => this.switchNavTab('idlix'));
     }
     if (this.tabDownloads) {
       this.tabDownloads.addEventListener('click', () => this.switchNavTab('downloads'));
@@ -584,9 +589,18 @@ class LibraryManager {
   }
 
   async switchNavTab(tabName) {
+    // Matikan player jika sedang berada di player view dan user klik tab navigasi
+    if (this.playerView && !this.playerView.classList.contains('hidden')) {
+      this.playerView.classList.add('hidden');
+      this.galleryView.classList.remove('hidden');
+      if (this.btnBackToGallery) this.btnBackToGallery.classList.add('hidden');
+      if (this.player) this.player.stop();
+    }
+
     this.activeNav = tabName;
     if (this.tabHome) this.tabHome.classList.toggle('active', tabName === 'home');
     if (this.tabWeb) this.tabWeb.classList.toggle('active', tabName === 'web');
+    if (this.tabIdlix) this.tabIdlix.classList.toggle('active', tabName === 'idlix');
     if (this.tabDownloads) this.tabDownloads.classList.toggle('active', tabName === 'downloads');
     if (this.tabSettings) this.tabSettings.classList.toggle('active', tabName === 'settings');
     document.querySelectorAll('.netflix-series-tab').forEach(t => t.classList.remove('active'));
@@ -594,6 +608,7 @@ class LibraryManager {
     // Sembunyikan semua section terlebih dahulu
     if (this.netflixContent) this.netflixContent.classList.add('hidden');
     if (this.webSection) this.webSection.classList.add('hidden');
+    if (this.idlixSection) this.idlixSection.classList.add('hidden');
     if (this.downloadsSection) this.downloadsSection.classList.add('hidden');
     if (this.settingsSection) this.settingsSection.classList.add('hidden');
     if (this.folderActionGroup) this.folderActionGroup.classList.add('hidden');
@@ -610,12 +625,19 @@ class LibraryManager {
       this.searchQuery = '';
       if (this.inputSearchAnime) this.inputSearchAnime.value = '';
       if (window.otakudesuManager) window.otakudesuManager.onTabDeactivated();
+      if (window.idlixManager) window.idlixManager.onTabDeactivated();
       await this.scanAndRender();
     } else if (tabName === 'web') {
       if (this.webSection) this.webSection.classList.remove('hidden');
       if (window.otakudesuManager) window.otakudesuManager.onTabActivated();
+      if (window.idlixManager) window.idlixManager.onTabDeactivated();
+    } else if (tabName === 'idlix') {
+      if (this.idlixSection) this.idlixSection.classList.remove('hidden');
+      if (window.otakudesuManager) window.otakudesuManager.onTabDeactivated();
+      if (window.idlixManager) window.idlixManager.onTabActivated();
     } else if (tabName === 'downloads') {
       if (this.downloadsSection) this.downloadsSection.classList.remove('hidden');
+      if (window.idlixManager) window.idlixManager.onTabDeactivated();
       if (window.otakudesuManager) {
         window.otakudesuManager.onTabDeactivated();
         window.otakudesuManager.renderDedicatedDownloadsTab();
@@ -623,6 +645,7 @@ class LibraryManager {
     } else if (tabName === 'settings') {
       if (this.settingsSection) this.settingsSection.classList.remove('hidden');
       if (window.otakudesuManager) window.otakudesuManager.onTabDeactivated();
+      if (window.idlixManager) window.idlixManager.onTabDeactivated();
       await this.renderSettingsTab();
     }
   }
@@ -1053,17 +1076,15 @@ class LibraryManager {
 
     // Cancel autoplay timer and stop playback completely
     this.cancelAutoplay();
-    this.player.stop();
+    if (this.player) this.player.stop();
 
-    if (this.currentOnlineAnime) {
-      this.switchNavTab('web');
-      this.currentOnlineAnime = null;
-    } else {
-      this.scanAndRender();
-    }
+    const targetTab = this.lastActiveNav || (this.currentOnlineAnime ? 'web' : 'home');
+    this.currentOnlineAnime = null;
+    this.switchNavTab(targetTab);
   }
 
   showPlayerView() {
+    this.lastActiveNav = this.activeNav || 'home';
     this.galleryView.classList.add('hidden');
     this.playerView.classList.remove('hidden');
     if (this.btnBackToGallery) this.btnBackToGallery.classList.remove('hidden');
